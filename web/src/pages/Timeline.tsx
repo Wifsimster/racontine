@@ -16,6 +16,7 @@ import { api } from "@/lib/api";
 import {
   type Entry,
   type EntryItem,
+  type ItemType,
   type MealData,
   type NapData,
   type ActivityData,
@@ -23,8 +24,18 @@ import {
   type HealthData,
   SOURCE_LABELS,
 } from "@/lib/types";
+import { ITEM_CHIP, SOURCE_BADGE } from "@/lib/ui";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+
+const ITEM_ICON: Record<ItemType, typeof Soup> = {
+  meal: Soup,
+  nap: Moon,
+  activity: Sparkles,
+  anecdote: Baby,
+  health: HeartPulse,
+};
 
 function formatDate(iso: string): string {
   const d = new Date(iso + "T00:00:00");
@@ -35,14 +46,28 @@ function formatDate(iso: string): string {
   });
 }
 
+function Chip({ type }: { type: ItemType }) {
+  const Icon = ITEM_ICON[type];
+  return (
+    <span
+      className={cn(
+        "mt-0.5 grid size-7 shrink-0 place-items-center rounded-lg",
+        ITEM_CHIP[type],
+      )}
+    >
+      <Icon className="size-4" />
+    </span>
+  );
+}
+
 function ItemLine({ item }: { item: EntryItem }) {
   if (item.type === "meal") {
     const d = item.data as MealData;
     return (
-      <li className="flex items-start gap-2 text-sm">
-        <Soup className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-        <span>
-          <span className="font-medium">{d.moment}</span> — {d.contenu}
+      <li className="flex items-start gap-2.5 text-sm">
+        <Chip type="meal" />
+        <span className="pt-0.5">
+          <span className="font-bold">{d.moment}</span> — {d.contenu}
           {d.appetit ? ` (${d.appetit})` : ""}
         </span>
       </li>
@@ -51,9 +76,9 @@ function ItemLine({ item }: { item: EntryItem }) {
   if (item.type === "nap") {
     const d = item.data as NapData;
     return (
-      <li className="flex items-start gap-2 text-sm">
-        <Moon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-        <span>
+      <li className="flex items-start gap-2.5 text-sm">
+        <Chip type="nap" />
+        <span className="pt-0.5">
           Sieste {d.debut ?? "?"}
           {d.fin ? ` → ${d.fin}` : ""}
           {d.note ? ` · ${d.note}` : ""}
@@ -64,26 +89,28 @@ function ItemLine({ item }: { item: EntryItem }) {
   if (item.type === "activity") {
     const d = item.data as ActivityData;
     return (
-      <li className="flex items-start gap-2 text-sm">
-        <Sparkles className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-        <span>{d.label}</span>
+      <li className="flex items-start gap-2.5 text-sm">
+        <Chip type="activity" />
+        <span className="pt-0.5">{d.label}</span>
       </li>
     );
   }
   if (item.type === "health") {
     const d = item.data as HealthData;
     return (
-      <li className="flex items-start gap-2 text-sm">
-        <HeartPulse className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-        <span>{d.note}</span>
+      <li className="flex items-start gap-2.5 text-sm">
+        <Chip type="health" />
+        <span className="pt-0.5">{d.note}</span>
       </li>
     );
   }
   const d = item.data as AnecdoteData;
   return (
-    <li className="flex items-start gap-2 text-sm italic">
-      <Baby className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-      <span>« {d.text} »</span>
+    <li className="flex items-start gap-2.5 text-sm">
+      <Chip type="anecdote" />
+      <span className="pt-0.5 font-serif italic text-anecdote">
+        « {d.text} »
+      </span>
     </li>
   );
 }
@@ -97,7 +124,7 @@ function EntryCard({ entry }: { entry: Entry }) {
   const hasStory = Boolean(entry.story || entry.title);
 
   const body = (
-    <article className="flex flex-col gap-4 rounded-2xl border bg-card p-5 shadow-sm">
+    <article className="paper-ruled flex flex-col gap-4 rounded-2xl border bg-card p-5 pl-7 shadow-sm">
       {/* En-tête : date + contexte */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex flex-col gap-1">
@@ -111,7 +138,9 @@ function EntryCard({ entry }: { entry: Entry }) {
           ) : null}
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
-          <Badge variant="secondary">{SOURCE_LABELS[entry.source]}</Badge>
+          <Badge className={SOURCE_BADGE[entry.source]}>
+            {SOURCE_LABELS[entry.source]}
+          </Badge>
           {entry.status === "draft" && <Badge>À relire</Badge>}
           {entry.status === "processing" && (
             <Badge variant="secondary">Extraction…</Badge>

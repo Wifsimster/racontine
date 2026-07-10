@@ -38,14 +38,16 @@ export default function Login() {
     <div className="min-h-svh flex flex-col items-center justify-center gap-6 p-6">
       <div className="flex items-center gap-3">
         <BookOpenText className="size-9 text-primary" />
-        <h1 className="text-3xl font-semibold tracking-tight">Racontine</h1>
+        <h1 className="font-serif text-4xl font-semibold tracking-tight">
+          Racontine
+        </h1>
       </div>
 
       <form
         onSubmit={submit}
         className="flex w-full max-w-sm flex-col gap-4 rounded-xl border bg-card p-6 shadow-sm"
       >
-        <h2 className="text-lg font-medium">
+        <h2 className="font-serif text-xl font-semibold">
           {mode === "signin" ? "Connexion" : "Créer un compte"}
         </h2>
 
