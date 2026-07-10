@@ -5,6 +5,9 @@ import type {
   MemberRole,
   PendingInvitation,
   InvitationPreview,
+  Notification,
+  Subscriber,
+  SubscriptionStatus,
 } from "./types";
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
@@ -123,4 +126,36 @@ export const api = {
       `/api/invitations/token/${token}/accept`,
       { method: "POST" },
     ),
+
+  /* -------------------------- Abonnements ----------------------------- */
+
+  getSubscription: (childId: string) =>
+    req<SubscriptionStatus>(`/api/children/${childId}/subscription`),
+
+  subscribe: (childId: string, emailEnabled = true) =>
+    req<SubscriptionStatus>(`/api/children/${childId}/subscription`, {
+      method: "PUT",
+      body: JSON.stringify({ emailEnabled }),
+    }),
+
+  unsubscribe: (childId: string) =>
+    req<void>(`/api/children/${childId}/subscription`, { method: "DELETE" }),
+
+  listSubscribers: (childId: string) =>
+    req<{ subscribers: Subscriber[] }>(
+      `/api/children/${childId}/subscribers`,
+    ),
+
+  /* ------------------------- Notifications ---------------------------- */
+
+  listNotifications: (limit = 30) =>
+    req<{ notifications: Notification[]; unread: number }>(
+      `/api/notifications?limit=${limit}`,
+    ),
+
+  markNotificationRead: (id: string) =>
+    req<void>(`/api/notifications/${id}/read`, { method: "POST" }),
+
+  markAllNotificationsRead: () =>
+    req<void>("/api/notifications/read-all", { method: "POST" }),
 };

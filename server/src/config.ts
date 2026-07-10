@@ -29,11 +29,12 @@ export const config = {
   /** Origines autorisées par CORS (front en dev + reverse proxy). */
   corsOrigins,
   /**
-   * Base publique du front, pour construire les liens d'invitation et de magic
-   * link envoyés aux proches. Défaut : la 1re origine CORS (le reverse proxy).
+   * Base publique du front, pour construire les liens d'invitation, de magic
+   * link et des e-mails de notification. Défaut : la 1re origine CORS.
    */
   webBaseUrl: (
     process.env.WEB_BASE_URL ??
+    process.env.APP_URL ??
     corsOrigins[0] ??
     "http://localhost:5173"
   ).replace(/\/$/, ""),
@@ -44,4 +45,16 @@ export const config = {
    * les liens sont journalisés côté serveur et l'admin copie le lien depuis l'UI.
    */
   notifyWebhookUrl: process.env.NOTIFY_WEBHOOK_URL,
+  /**
+   * E-mail (SMTP) pour les notifications aux proches abonnés. Optionnel : si
+   * SMTP_HOST est absent, les e-mails sont désactivés (notifs in-app seules).
+   */
+  mail: {
+    host: process.env.SMTP_HOST,
+    port: Number(process.env.SMTP_PORT ?? 587),
+    secure: process.env.SMTP_SECURE === "true",
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+    from: process.env.MAIL_FROM ?? "Racontine <no-reply@racontine.local>",
+  },
 };

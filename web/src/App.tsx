@@ -1,7 +1,8 @@
 import { Link, Navigate, Outlet, useLocation } from "react-router-dom";
-import { BookOpenText, LogOut, Users } from "lucide-react";
+import { BookOpenText, LogOut, Users, Share2 } from "lucide-react";
 import { useSession, signOut } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
+import NotificationsBell from "@/components/NotificationsBell";
 
 export default function App() {
   const { data: session, isPending } = useSession();
@@ -27,8 +28,19 @@ export default function App() {
           <span className="text-lg font-semibold tracking-tight">Racontine</span>
         </Link>
         <div className="flex items-center gap-1">
+          <NotificationsBell />
           <Button variant="ghost" size="icon-sm" aria-label="Partager" asChild>
             <Link to="/partage">
+              <Share2 />
+            </Link>
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Proches & notifications"
+            asChild
+          >
+            <Link to="/proches">
               <Users />
             </Link>
           </Button>

@@ -132,6 +132,11 @@ export const invitationStatus = pgEnum("invitation_status", [
   "revoked",
 ]);
 
+/** Type de notification — extensible (jalons, invitations… en Phase 3). */
+export const notificationType = pgEnum("notification_type", [
+  "entry_published", // une nouvelle journée est publiée sur la timeline suivie
+]);
+
 export const children = pgTable("children", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
@@ -280,12 +285,64 @@ export const invitations = pgTable(
   ],
 );
 
+/**
+ * Abonnement d'un proche à la timeline d'un enfant : chaque publication d'une
+ * journée déclenche une notification in-app + un e-mail à tous les abonnés.
+ */
+export const subscriptions = pgTable(
+  "subscriptions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    childId: uuid("child_id")
+      .notNull()
+      .references(() => children.id, { onDelete: "cascade" }),
+    /** L'abonné reçoit aussi un e-mail (en plus de la notif in-app). */
+    emailEnabled: boolean("email_enabled").notNull().default(true),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [
+    // Un seul abonnement par (proche, enfant).
+    unique("subscriptions_user_child").on(t.userId, t.childId),
+    index("subscriptions_child_idx").on(t.childId),
+  ],
+);
+
+/** Notification in-app pour un abonné (cloche + liste des non-lues). */
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    childId: uuid("child_id").references(() => children.id, {
+      onDelete: "cascade",
+    }),
+    entryId: uuid("entry_id").references(() => entries.id, {
+      onDelete: "cascade",
+    }),
+    type: notificationType("type").notNull(),
+    title: text("title").notNull(),
+    body: text("body"),
+    /** Null tant que la notification n'a pas été lue. */
+    readAt: timestamp("read_at"),
+    /** Horodatage de l'envoi de l'e-mail (null si non/pas encore envoyé). */
+    emailedAt: timestamp("emailed_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [index("notifications_user_idx").on(t.userId, t.createdAt)],
+);
+
 /* ----------------------------------- Relations --------------------------- */
 
 export const childrenRelations = relations(children, ({ many }) => ({
   entries: many(entries),
   memberships: many(memberships),
   invitations: many(invitations),
+  subscriptions: many(subscriptions),
 }));
 
 export const membershipsRelations = relations(memberships, ({ one }) => ({
@@ -303,6 +360,28 @@ export const invitationsRelations = relations(invitations, ({ one }) => ({
   child: one(children, {
     fields: [invitations.childId],
     references: [children.id],
+  }),
+}));
+
+export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
+  child: one(children, {
+    fields: [subscriptions.childId],
+    references: [children.id],
+  }),
+  user: one(user, {
+    fields: [subscriptions.userId],
+    references: [user.id],
+  }),
+}));
+
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+  child: one(children, {
+    fields: [notifications.childId],
+    references: [children.id],
+  }),
+  entry: one(entries, {
+    fields: [notifications.entryId],
+    references: [entries.id],
   }),
 }));
 
@@ -336,3 +415,5 @@ export type Child = typeof children.$inferSelect;
 export type Membership = typeof memberships.$inferSelect;
 export type Invitation = typeof invitations.$inferSelect;
 export type MemberRole = (typeof memberRole.enumValues)[number];
+export type Subscription = typeof subscriptions.$inferSelect;
+export type Notification = typeof notifications.$inferSelect;

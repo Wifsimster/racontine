@@ -9,6 +9,7 @@ import Capture from "./pages/Capture";
 import Review from "./pages/Review";
 import Share from "./pages/Share";
 import Invite from "./pages/Invite";
+import Proches from "./pages/Proches";
 
 const router = createBrowserRouter([
   { path: "/login", element: <Login /> },
@@ -22,6 +23,7 @@ const router = createBrowserRouter([
       { path: "capture", element: <Capture /> },
       { path: "entries/:id", element: <Review /> },
       { path: "partage", element: <Share /> },
+      { path: "proches", element: <Proches /> },
     ],
   },
 ]);

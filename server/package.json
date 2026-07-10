@@ -19,11 +19,13 @@
     "better-auth": "^1.6.23",
     "drizzle-orm": "^0.45.2",
     "fastify": "^5.3.2",
+    "nodemailer": "^9.0.3",
     "postgres": "^3.4.9",
     "sharp": "^0.35.3"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
+    "@types/nodemailer": "^8.0.1",
     "drizzle-kit": "^0.31.10",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3"
