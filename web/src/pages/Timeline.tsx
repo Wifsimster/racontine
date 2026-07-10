@@ -1,6 +1,17 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Camera, Soup, Moon, Sparkles, HeartPulse, Baby } from "lucide-react";
+import {
+  Camera,
+  Soup,
+  Moon,
+  Sparkles,
+  HeartPulse,
+  Baby,
+  Star,
+  ChevronDown,
+  Pencil,
+  BookHeart,
+} from "lucide-react";
 import { api } from "@/lib/api";
 import {
   type Entry,
@@ -83,38 +94,56 @@ function EntryCard({ entry }: { entry: Entry }) {
     entry.status === "processing" ||
     entry.status === "failed";
 
+  const hasStory = Boolean(entry.story || entry.title);
+
   const body = (
-    <div className="flex flex-col gap-3 rounded-xl border bg-card p-4 shadow-sm">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <span className="font-medium capitalize">{formatDate(entry.date)}</span>
-          <Badge variant="secondary">{SOURCE_LABELS[entry.source]}</Badge>
+    <article className="flex flex-col gap-4 rounded-2xl border bg-card p-5 shadow-sm">
+      {/* En-tête : date + contexte */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-col gap-1">
+          <span className="text-sm font-medium capitalize text-muted-foreground">
+            {formatDate(entry.date)}
+          </span>
+          {entry.title ? (
+            <h2 className="font-serif text-xl leading-tight tracking-tight">
+              {entry.title}
+            </h2>
+          ) : null}
         </div>
-        {entry.status === "draft" && <Badge>À relire</Badge>}
-        {entry.status === "processing" && (
-          <Badge variant="secondary">Extraction…</Badge>
-        )}
-        {entry.status === "failed" && (
-          <Badge variant="destructive">Échec</Badge>
-        )}
+        <div className="flex shrink-0 items-center gap-1.5">
+          <Badge variant="secondary">{SOURCE_LABELS[entry.source]}</Badge>
+          {entry.status === "draft" && <Badge>À relire</Badge>}
+          {entry.status === "processing" && (
+            <Badge variant="secondary">Extraction…</Badge>
+          )}
+          {entry.status === "failed" && <Badge variant="destructive">Échec</Badge>}
+        </div>
       </div>
 
       {entry.child && (
-        <p className="text-xs text-muted-foreground">{entry.child.name}</p>
+        <p className="-mt-2 text-xs text-muted-foreground">{entry.child.name}</p>
+      )}
+
+      {/* Le récit — cœur de la valorisation */}
+      {entry.story && (
+        <p className="text-[15px] leading-relaxed text-foreground/90">
+          {entry.story}
+        </p>
+      )}
+
+      {/* Temps fort du jour */}
+      {entry.highlight && (
+        <div className="flex items-start gap-2 rounded-xl bg-primary/5 px-3 py-2.5 text-sm">
+          <Star className="mt-0.5 size-4 shrink-0 fill-primary/20 text-primary" />
+          <span className="font-medium text-foreground/90">{entry.highlight}</span>
+        </div>
       )}
 
       {entry.mood && (
         <p className="text-sm text-muted-foreground">Humeur : {entry.mood}</p>
       )}
 
-      {entry.items.length > 0 && (
-        <ul className="flex flex-col gap-1.5">
-          {entry.items.map((it) => (
-            <ItemLine key={it.id} item={it} />
-          ))}
-        </ul>
-      )}
-
+      {/* Photos du carnet */}
       {entry.attachments.length > 0 && (
         <div className="flex gap-2 overflow-x-auto">
           {entry.attachments.map((a) => (
@@ -122,17 +151,46 @@ function EntryCard({ entry }: { entry: Entry }) {
               key={a.id}
               src={a.thumbUrl}
               alt="page du carnet"
-              className="h-20 w-20 shrink-0 rounded-md object-cover"
+              className="h-20 w-20 shrink-0 rounded-lg object-cover"
               loading="lazy"
             />
           ))}
         </div>
       )}
 
+      {/* Détails structurés — repliés quand un récit existe déjà */}
+      {entry.items.length > 0 &&
+        (hasStory ? (
+          <details className="group">
+            <summary className="flex w-fit cursor-pointer list-none items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+              <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
+              Le détail de la journée
+            </summary>
+            <ul className="mt-3 flex flex-col gap-1.5 border-l pl-3">
+              {entry.items.map((it) => (
+                <ItemLine key={it.id} item={it} />
+              ))}
+            </ul>
+          </details>
+        ) : (
+          <ul className="flex flex-col gap-1.5">
+            {entry.items.map((it) => (
+              <ItemLine key={it.id} item={it} />
+            ))}
+          </ul>
+        ))}
+
       {entry.status === "failed" && entry.failureReason && (
         <p className="text-sm text-destructive">{entry.failureReason}</p>
       )}
-    </div>
+
+      {needsReview && (
+        <span className="flex items-center gap-1.5 text-sm font-medium text-primary">
+          <Pencil className="size-3.5" />
+          {entry.status === "failed" ? "Reprendre" : "Relire et publier"}
+        </span>
+      )}
+    </article>
   );
 
   return needsReview ? (
@@ -166,11 +224,13 @@ export default function Timeline() {
         <p className="py-12 text-center text-muted-foreground">Chargement…</p>
       ) : entries.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-16 text-center">
-          <p className="text-muted-foreground">
-            Aucune journée pour l'instant.
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Photographiez le carnet pour créer votre première entrée.
+          <div className="rounded-full bg-primary/10 p-4">
+            <BookHeart className="size-7 text-primary" />
+          </div>
+          <p className="font-medium">Le journal est encore vide</p>
+          <p className="max-w-xs text-sm text-muted-foreground">
+            Photographiez le carnet et Racontine transforme la journée en un joli
+            souvenir, prêt à partager.
           </p>
         </div>
       ) : (

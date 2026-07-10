@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { AlertTriangle, Loader2, Plus, Trash2 } from "lucide-react";
+import {
+  AlertTriangle,
+  ChevronDown,
+  Loader2,
+  Plus,
+  Sparkles,
+  Star,
+  Trash2,
+} from "lucide-react";
 import { api } from "@/lib/api";
 import {
   type Entry,
@@ -40,6 +48,9 @@ export default function Review() {
   const nav = useNavigate();
   const [entry, setEntry] = useState<Entry | null>(null);
   const [items, setItems] = useState<DraftItem[]>([]);
+  const [title, setTitle] = useState("");
+  const [story, setStory] = useState("");
+  const [highlight, setHighlight] = useState("");
   const [mood, setMood] = useState("");
   const [transcription, setTranscription] = useState("");
   const [source, setSource] = useState<EntrySource>("nounou");
@@ -51,6 +62,9 @@ export default function Review() {
   const hydrate = useCallback((e: Entry) => {
     setEntry(e);
     setItems(toDraftItems(e.items));
+    setTitle(e.title ?? "");
+    setStory(e.story ?? "");
+    setHighlight(e.highlight ?? "");
     setMood(e.mood ?? "");
     setTranscription(e.transcription ?? "");
     setSource(e.source);
@@ -102,6 +116,9 @@ export default function Review() {
     setError(null);
     try {
       await api.updateEntry(id, {
+        title: title.trim() || null,
+        story: story.trim() || null,
+        highlight: highlight.trim() || null,
         mood: mood || null,
         transcription: transcription || null,
         source,
@@ -138,10 +155,12 @@ export default function Review() {
   if (entry.status === "processing") {
     return (
       <div className="mx-auto flex w-full max-w-lg flex-col items-center gap-4 p-8 text-center">
-        <Loader2 className="size-8 animate-spin text-primary" />
-        <p className="font-medium">Extraction de la journée en cours…</p>
+        <div className="relative">
+          <Sparkles className="size-8 animate-pulse text-primary" />
+        </div>
+        <p className="font-medium">Racontine écrit la journée…</p>
         <p className="text-sm text-muted-foreground">
-          Claude lit les pages du carnet. Cela prend quelques secondes.
+          Lecture du carnet et mise en récit. Quelques secondes suffisent.
         </p>
         {entry.attachments.length > 0 && (
           <img
@@ -158,7 +177,7 @@ export default function Review() {
     return (
       <div className="mx-auto flex w-full max-w-lg flex-col items-center gap-4 p-8 text-center">
         <AlertTriangle className="size-8 text-destructive" />
-        <p className="font-medium">L'extraction a échoué</p>
+        <p className="font-medium">La lecture du carnet a échoué</p>
         <p className="text-sm text-muted-foreground">{entry.failureReason}</p>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => nav("/capture")}>
@@ -174,8 +193,8 @@ export default function Review() {
 
   return (
     <div className="mx-auto w-full max-w-3xl p-4 pb-28">
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Photos originales */}
+      <div className="grid gap-6 md:grid-cols-[1fr_1.15fr]">
+        {/* Photos originales — la source */}
         <div className="flex flex-col gap-3 md:sticky md:top-4 md:self-start">
           <h2 className="text-sm font-medium text-muted-foreground">
             Page(s) du carnet
@@ -191,12 +210,12 @@ export default function Review() {
           ))}
         </div>
 
-        {/* Champs extraits */}
+        {/* La valorisation — ce qui sera publié */}
         <div className="flex flex-col gap-5">
           <div>
-            <h1 className="text-xl font-semibold">Relire la journée</h1>
+            <h1 className="text-xl font-semibold">Relire et valoriser</h1>
             <p className="text-sm text-muted-foreground">
-              Corrigez les champs puis publiez dans le journal.
+              Racontine a écrit la journée. Ajustez si besoin, puis publiez.
             </p>
           </div>
 
@@ -213,6 +232,42 @@ export default function Review() {
             </div>
           )}
 
+          {/* Titre */}
+          <div className="flex flex-col gap-1.5">
+            <Label>Titre de la journée</Label>
+            <Input
+              value={title}
+              placeholder="Une jolie journée…"
+              className="font-serif text-lg md:text-lg"
+              onChange={(e) => setTitle(e.target.value)}
+            />
+          </div>
+
+          {/* Récit — le cœur */}
+          <div className="flex flex-col gap-1.5">
+            <Label>Le récit de la journée</Label>
+            <Textarea
+              rows={5}
+              value={story}
+              placeholder="Le récit chaleureux que liront les proches…"
+              className="text-[15px] leading-relaxed"
+              onChange={(e) => setStory(e.target.value)}
+            />
+          </div>
+
+          {/* Temps fort */}
+          <div className="flex flex-col gap-1.5">
+            <Label className="flex items-center gap-1.5">
+              <Star className="size-3.5 text-primary" /> Temps fort du jour
+            </Label>
+            <Input
+              value={highlight}
+              placeholder="Le moment à retenir…"
+              onChange={(e) => setHighlight(e.target.value)}
+            />
+          </div>
+
+          {/* Contexte compact */}
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <Label>Date</Label>
@@ -243,21 +298,32 @@ export default function Review() {
             <Input value={mood} onChange={(e) => setMood(e.target.value)} />
           </div>
 
-          <ItemEditor
-            items={items}
-            onField={setItemField}
-            onRemove={removeItem}
-            onAdd={addItem}
-          />
+          {/* Détails structurés — secondaires, repliés par défaut */}
+          <details className="group rounded-lg border">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 p-3 text-sm font-medium">
+              <span className="flex items-center gap-1.5 text-muted-foreground">
+                Détails de la journée (repas, siestes, activités…)
+              </span>
+              <ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" />
+            </summary>
+            <div className="flex flex-col gap-5 border-t p-3">
+              <ItemEditor
+                items={items}
+                onField={setItemField}
+                onRemove={removeItem}
+                onAdd={addItem}
+              />
 
-          <div className="flex flex-col gap-1.5">
-            <Label>Transcription intégrale</Label>
-            <Textarea
-              rows={5}
-              value={transcription}
-              onChange={(e) => setTranscription(e.target.value)}
-            />
-          </div>
+              <div className="flex flex-col gap-1.5">
+                <Label>Transcription intégrale</Label>
+                <Textarea
+                  rows={5}
+                  value={transcription}
+                  onChange={(e) => setTranscription(e.target.value)}
+                />
+              </div>
+            </div>
+          </details>
 
           {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
@@ -275,7 +341,10 @@ export default function Review() {
             Enregistrer
           </Button>
           <Button className="flex-1" onClick={() => save(true)} disabled={saving}>
-            {entry.status === "published" ? "Republier" : "Publier"}
+            <Sparkles />
+            {entry.status === "published"
+              ? "Republier dans le journal"
+              : "Publier dans le journal"}
           </Button>
         </div>
       </div>

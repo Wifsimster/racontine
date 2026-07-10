@@ -132,6 +132,13 @@ export const entries = pgTable(
     status: entryStatus("status").notNull().default("processing"),
     failureReason: text("failure_reason"),
     mood: text("mood"),
+    /* --- Valorisation automatique de la journée (généré par le VLM) --- */
+    /** Titre court et évocateur de la journée. */
+    title: text("title"),
+    /** Récit chaleureux de la journée, destiné aux proches. */
+    story: text("story"),
+    /** Le temps fort du jour (première fois, mot rigolo…). */
+    highlight: text("highlight"),
     /** transcription_integrale du carnet. */
     transcription: text("transcription"),
     /** Champs signalés incertains par le VLM (surlignés à la relecture). */

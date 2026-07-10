@@ -38,6 +38,10 @@ export type Entry = {
   status: EntryStatus;
   failureReason: string | null;
   mood: string | null;
+  /** Valorisation automatique de la journée. */
+  title: string | null;
+  story: string | null;
+  highlight: string | null;
   transcription: string | null;
   uncertainties: string[] | null;
   publishedAt: string | null;
