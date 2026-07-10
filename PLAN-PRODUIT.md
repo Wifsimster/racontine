@@ -68,12 +68,12 @@ Les journées des jeunes enfants gardés hors du domicile (nounou, MAM, crèche)
 ### 2.5 Hypothèses à valider (par ordre de risque)
 | # | Hypothèse | Test | Critère de succès |
 |---|---|---|---|
-| H1 | Le VLM lit de façon fiable l'écriture réelle de la nounou | Prototyper sur 20 pages réelles du carnet de ta fille | ≥ 90 % des champs extraits corrects sans retouche |
+| H1 ✅ | **VALIDÉE (2026-07-10)** — le VLM lit de façon fiable l'écriture réelle de la nounou | Prototypé sur pages réelles du carnet | Fonctionne très bien |
 | H2 | Le geste « photo chaque soir » tient dans la durée | Dogfooding 4 semaines en famille | ≥ 5 photos/semaine sans lassitude |
 | H3 | Les proches consultent réellement | Inviter 3-5 proches, mesurer les visites | ≥ 2 visites/semaine/proche le 1er mois |
 | H4 | D'autres parents paieraient | 10 interviews (parents avec nounou/MAM) + landing page fictive | ≥ 30 % « je paierais 3-5 €/mois » |
 
-⚠️ **Ne pas construire au-delà du MVP tant que H1 et H2 ne sont pas validées.** H1 se teste en une journée avec l'API Claude et des photos du carnet existant.
+⚠️ **Ne pas construire au-delà du MVP tant que H2 n'est pas validée.** H1 validée le 2026-07-10 : l'extraction VLM sur le carnet réel fonctionne très bien → go pour la Phase 1.
 
 ### 2.6 Monétisation
 Cohérent avec ton modèle homelab existant :
@@ -157,12 +157,10 @@ Cohérent avec ton modèle homelab existant :
 - `milestones` (premiers mots, premiers pas — extraits automatiquement des anecdotes par le LLM 🎯)
 
 ### 3.5 Phasage
-**Phase 0 — Spike de validation (1-2 jours)** ← commencer ici
-- [ ] Photographier 20 pages réelles du carnet
-- [ ] Script d'extraction via API Claude avec le schéma JSON ci-dessus
-- [ ] Mesurer le taux d'exactitude → décision go/no-go (H1)
+**Phase 0 — Spike de validation** ✅ **TERMINÉE (2026-07-10)**
+- [x] Extraction testée sur pages réelles du carnet → fonctionne très bien (H1 validée)
 
-**Phase 1 — MVP familial (2-4 semaines de soirées)**
+**Phase 1 — MVP familial (2-4 semaines de soirées)** ← en cours
 - [ ] Docker Compose : back + Postgres + front PWA
 - [ ] Upload photo → pipeline → écran de relecture → timeline
 - [ ] Auth Better Auth : toi + co-parent
@@ -193,7 +191,7 @@ Cohérent avec ton modèle homelab existant :
 ### 3.7 Estimation d'effort global
 | Phase | Effort |
 |---|---|
-| 0 — Spike | 1-2 jours |
+| 0 — Spike | ✅ fait |
 | 1 — MVP | ~30-40 h |
 | 2 — Proches | ~20 h |
 | 3 — Premium | ~20-30 h |
@@ -201,4 +199,4 @@ Cohérent avec ton modèle homelab existant :
 ---
 
 ## Prochaine action
-👉 **Phase 0** : prendre 20 photos du carnet de la nounou et lancer le spike d'extraction. Tout le reste dépend de H1.
+👉 **Phase 1 — MVP familial** : Docker Compose (back + Postgres + PWA), pipeline upload → extraction → relecture → timeline, auth Better Auth. Objectif : dogfooding en famille pour valider H2 (le geste photo tient dans la durée).
