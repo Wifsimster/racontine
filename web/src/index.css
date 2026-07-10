@@ -2,52 +2,107 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* --- Polices auto-hébergées (hors-ligne, cohérentes avec l'export livre) --- */
+@font-face {
+  font-family: "Fraunces";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/fraunces-600.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Nunito";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/nunito-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Nunito";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/nunito-700.woff2") format("woff2");
+}
+
+/* ---------------------------------------------------------------------------
+   « Le carnet, en vrai » — papier réglé, encre bleu-nuit, feutres par catégorie.
+   --------------------------------------------------------------------------- */
 :root {
-  --radius: 0.625rem;
-  --background: oklch(0.985 0.008 84);
-  --foreground: oklch(0.24 0.02 60);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.24 0.02 60);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.24 0.02 60);
-  --primary: oklch(0.62 0.13 40);
-  --primary-foreground: oklch(0.985 0.008 84);
-  --secondary: oklch(0.95 0.02 84);
-  --secondary-foreground: oklch(0.3 0.03 50);
-  --muted: oklch(0.95 0.015 84);
-  --muted-foreground: oklch(0.52 0.02 60);
-  --accent: oklch(0.93 0.04 70);
-  --accent-foreground: oklch(0.3 0.03 50);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.9 0.015 80);
-  --input: oklch(0.9 0.015 80);
-  --ring: oklch(0.62 0.13 40);
+  --radius: 1.1rem; /* plus rond, plus tendre */
+
+  --background: oklch(0.98 0.006 95); /* papier */
+  --foreground: oklch(0.31 0.05 278); /* encre bleu-nuit */
+  --card: oklch(0.995 0.004 95);
+  --card-foreground: oklch(0.31 0.05 278);
+  --popover: oklch(0.995 0.004 95);
+  --popover-foreground: oklch(0.31 0.05 278);
+  --primary: oklch(0.55 0.16 12); /* groseille — trait de marge */
+  --primary-foreground: oklch(0.99 0.005 95);
+  --secondary: oklch(0.95 0.012 280);
+  --secondary-foreground: oklch(0.38 0.04 278);
+  --muted: oklch(0.955 0.008 280);
+  --muted-foreground: oklch(0.52 0.03 278);
+  --accent: oklch(0.93 0.02 285);
+  --accent-foreground: oklch(0.38 0.04 278);
+  --destructive: oklch(0.58 0.16 28);
+  --border: oklch(0.9 0.012 280);
+  --input: oklch(0.9 0.012 280);
+  --ring: oklch(0.55 0.16 12);
+
+  /* réglure du papier */
+  --rule: oklch(0.86 0.045 285);
+
+  /* feutres — un par type de moment (couleur = sens, pas décoration) */
+  --meal: oklch(0.58 0.1 75);
+  --meal-bg: oklch(0.93 0.05 80);
+  --nap: oklch(0.52 0.1 275);
+  --nap-bg: oklch(0.92 0.035 280);
+  --activity: oklch(0.56 0.11 155);
+  --activity-bg: oklch(0.92 0.05 155);
+  --anecdote: oklch(0.57 0.12 5);
+  --anecdote-bg: oklch(0.93 0.04 5);
+  --health: oklch(0.56 0.14 30);
+  --health-bg: oklch(0.93 0.05 35);
 }
 
 .dark {
-  --background: oklch(0.2 0.015 60);
-  --foreground: oklch(0.96 0.01 84);
-  --card: oklch(0.24 0.015 60);
-  --card-foreground: oklch(0.96 0.01 84);
-  --popover: oklch(0.24 0.015 60);
-  --popover-foreground: oklch(0.96 0.01 84);
-  --primary: oklch(0.72 0.12 45);
-  --primary-foreground: oklch(0.2 0.015 60);
-  --secondary: oklch(0.3 0.02 60);
-  --secondary-foreground: oklch(0.96 0.01 84);
-  --muted: oklch(0.3 0.02 60);
-  --muted-foreground: oklch(0.7 0.015 70);
-  --accent: oklch(0.33 0.03 55);
-  --accent-foreground: oklch(0.96 0.01 84);
-  --destructive: oklch(0.704 0.191 22.216);
+  --background: oklch(0.22 0.02 278); /* nuit encre */
+  --foreground: oklch(0.94 0.012 285);
+  --card: oklch(0.26 0.02 278);
+  --card-foreground: oklch(0.94 0.012 285);
+  --popover: oklch(0.26 0.02 278);
+  --popover-foreground: oklch(0.94 0.012 285);
+  --primary: oklch(0.7 0.13 10);
+  --primary-foreground: oklch(0.2 0.02 278);
+  --secondary: oklch(0.32 0.02 278);
+  --secondary-foreground: oklch(0.94 0.012 285);
+  --muted: oklch(0.32 0.02 278);
+  --muted-foreground: oklch(0.72 0.02 285);
+  --accent: oklch(0.35 0.03 280);
+  --accent-foreground: oklch(0.94 0.012 285);
+  --destructive: oklch(0.7 0.15 28);
   --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 16%);
-  --ring: oklch(0.72 0.12 45);
+  --ring: oklch(0.7 0.13 10);
+
+  --rule: oklch(0.4 0.04 280);
+
+  --meal: oklch(0.78 0.1 78);
+  --meal-bg: oklch(0.32 0.05 75);
+  --nap: oklch(0.75 0.09 278);
+  --nap-bg: oklch(0.3 0.04 278);
+  --activity: oklch(0.76 0.1 155);
+  --activity-bg: oklch(0.3 0.05 155);
+  --anecdote: oklch(0.77 0.1 8);
+  --anecdote-bg: oklch(0.32 0.05 8);
+  --health: oklch(0.75 0.12 32);
+  --health-bg: oklch(0.32 0.05 32);
 }
 
 @theme inline {
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 8px);
+  --radius-md: calc(var(--radius) - 4px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   --color-background: var(--background);
@@ -68,6 +123,20 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+
+  --color-meal: var(--meal);
+  --color-meal-bg: var(--meal-bg);
+  --color-nap: var(--nap);
+  --color-nap-bg: var(--nap-bg);
+  --color-activity: var(--activity);
+  --color-activity-bg: var(--activity-bg);
+  --color-anecdote: var(--anecdote);
+  --color-anecdote-bg: var(--anecdote-bg);
+  --color-health: var(--health);
+  --color-health-bg: var(--health-bg);
+
+  --font-sans: "Nunito", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Fraunces", Georgia, serif;
 }
 
 @layer base {
@@ -76,5 +145,27 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+  }
+}
+
+@layer components {
+  /* Fond « papier réglé » + trait de marge groseille, comme un cahier. */
+  .paper-ruled {
+    background-image:
+      linear-gradient(var(--rule) 1px, transparent 1px);
+    background-size: 100% 2.15rem;
+    background-position: 0 1.7rem;
+    position: relative;
+  }
+  .paper-ruled::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 1.5rem;
+    width: 1.5px;
+    background: var(--primary);
+    opacity: 0.45;
   }
 }

@@ -93,7 +93,9 @@ export default function Capture() {
   return (
     <div className="mx-auto flex w-full max-w-lg flex-col gap-5 p-4">
       <div>
-        <h1 className="text-xl font-semibold">Photographier le carnet</h1>
+        <h1 className="font-serif text-2xl font-semibold">
+          Photographier le carnet
+        </h1>
         <p className="text-sm text-muted-foreground">
           Une photo des pages du jour suffit — Racontine s'occupe du récit.
         </p>

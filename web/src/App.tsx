@@ -25,7 +25,9 @@ export default function App() {
       <header className="sticky top-0 z-10 flex items-center justify-between border-b bg-background/95 px-4 py-3 backdrop-blur">
         <Link to="/" className="flex items-center gap-2">
           <BookOpenText className="size-6 text-primary" />
-          <span className="text-lg font-semibold tracking-tight">Racontine</span>
+          <span className="font-serif text-xl font-semibold tracking-tight">
+            Racontine
+          </span>
         </Link>
         <div className="flex items-center gap-1">
           <NotificationsBell />

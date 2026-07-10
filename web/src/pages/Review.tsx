@@ -213,7 +213,9 @@ export default function Review() {
         {/* La valorisation — ce qui sera publié */}
         <div className="flex flex-col gap-5">
           <div>
-            <h1 className="text-xl font-semibold">Relire et valoriser</h1>
+            <h1 className="font-serif text-2xl font-semibold">
+              Relire et valoriser
+            </h1>
             <p className="text-sm text-muted-foreground">
               Racontine a écrit la journée. Ajustez si besoin, puis publiez.
             </p>
