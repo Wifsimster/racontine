@@ -153,7 +153,8 @@ Cohérent avec ton modèle homelab existant :
 - `entries` (1 jour × 1 enfant × 1 source : nounou / MAM / maison)
 - `entry_items` (repas, sieste, humeur… typés pour les graphiques)
 - `attachments` (photos du carnet + photos souvenirs)
-- `users` + `memberships` (rôles : admin / contributeur / lecteur ; portée par enfant)
+- `users` + `memberships` (rôles : admin / contributeur / lecteur ; portée par enfant) ✅ implémenté
+- `invitations` (token, email, rôle, expiration) — cercle des proches ✅ implémenté
 - `milestones` (premiers mots, premiers pas — extraits automatiquement des anecdotes par le LLM 🎯)
 
 ### 3.5 Phasage
@@ -166,9 +167,9 @@ Cohérent avec ton modèle homelab existant :
 - [ ] Auth Better Auth : toi + co-parent
 - [ ] Dogfooding 4 semaines (H2)
 
-**Phase 2 — Cercle des proches (2-3 semaines)**
-- [ ] Invitations magic-link, rôles lecteurs, permissions par enfant
-- [ ] Notifications (mail ou ntfy que tu as déjà)
+**Phase 2 — Cercle des proches (2-3 semaines)** ← en cours
+- [x] Invitations magic-link, rôles (admin / contributeur / lecteur), permissions par enfant
+- [ ] Notifications (mail ou ntfy que tu as déjà) — livraison des liens branchable via `NOTIFY_WEBHOOK_URL`
 - [ ] Recherche plein texte + filtres (repas, sommeil…)
 - [ ] Mesurer H3
 

@@ -113,6 +113,25 @@ export const attachmentKind = pgEnum("attachment_kind", [
   "souvenir", // photo souvenir libre
 ]);
 
+/**
+ * Rôle d'un utilisateur sur un enfant — portée par enfant (§3.4 du plan produit).
+ *  admin       → parent pivot : tout, y compris inviter/révoquer.
+ *  contributor → co-parent : photographie, relit, publie.
+ *  reader      → proche : consulte le journal publié, rien d'autre.
+ */
+export const memberRole = pgEnum("member_role", [
+  "admin",
+  "contributor",
+  "reader",
+]);
+
+/** Cycle de vie d'une invitation à rejoindre le cercle d'un enfant. */
+export const invitationStatus = pgEnum("invitation_status", [
+  "pending",
+  "accepted",
+  "revoked",
+]);
+
 /** Type de notification — extensible (jalons, invitations… en Phase 3). */
 export const notificationType = pgEnum("notification_type", [
   "entry_published", // une nouvelle journée est publiée sur la timeline suivie
@@ -210,6 +229,63 @@ export const attachments = pgTable(
 );
 
 /**
+ * Qui a accès à quel enfant, et avec quel rôle. Un même utilisateur peut suivre
+ * plusieurs enfants ; un même enfant peut être partagé avec plusieurs proches.
+ */
+export const memberships = pgTable(
+  "memberships",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    childId: uuid("child_id")
+      .notNull()
+      .references(() => children.id, { onDelete: "cascade" }),
+    role: memberRole("role").notNull().default("reader"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [
+    // Un seul rôle par (utilisateur, enfant).
+    unique("memberships_user_child").on(t.userId, t.childId),
+    index("memberships_user_idx").on(t.userId),
+    index("memberships_child_idx").on(t.childId),
+  ],
+);
+
+/**
+ * Invitation d'un proche à rejoindre le cercle d'un enfant. Le `token` est la
+ * capacité : quiconque le détient et se connecte peut accepter. Lien partagé
+ * par l'admin (copié depuis l'UI) ou envoyé par magic link.
+ */
+export const invitations = pgTable(
+  "invitations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    childId: uuid("child_id")
+      .notNull()
+      .references(() => children.id, { onDelete: "cascade" }),
+    email: text("email").notNull(),
+    role: memberRole("role").notNull().default("reader"),
+    token: text("token").notNull().unique(),
+    status: invitationStatus("status").notNull().default("pending"),
+    invitedBy: text("invited_by").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    acceptedBy: text("accepted_by").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    expiresAt: timestamp("expires_at").notNull(),
+    acceptedAt: timestamp("accepted_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [
+    index("invitations_child_idx").on(t.childId),
+    index("invitations_email_idx").on(t.email),
+  ],
+);
+
+/**
  * Abonnement d'un proche à la timeline d'un enfant : chaque publication d'une
  * journée déclenche une notification in-app + un e-mail à tous les abonnés.
  */
@@ -264,7 +340,27 @@ export const notifications = pgTable(
 
 export const childrenRelations = relations(children, ({ many }) => ({
   entries: many(entries),
+  memberships: many(memberships),
+  invitations: many(invitations),
   subscriptions: many(subscriptions),
+}));
+
+export const membershipsRelations = relations(memberships, ({ one }) => ({
+  child: one(children, {
+    fields: [memberships.childId],
+    references: [children.id],
+  }),
+  user: one(user, {
+    fields: [memberships.userId],
+    references: [user.id],
+  }),
+}));
+
+export const invitationsRelations = relations(invitations, ({ one }) => ({
+  child: one(children, {
+    fields: [invitations.childId],
+    references: [children.id],
+  }),
 }));
 
 export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
@@ -316,5 +412,8 @@ export type Entry = typeof entries.$inferSelect;
 export type EntryItem = typeof entryItems.$inferSelect;
 export type Attachment = typeof attachments.$inferSelect;
 export type Child = typeof children.$inferSelect;
+export type Membership = typeof memberships.$inferSelect;
+export type Invitation = typeof invitations.$inferSelect;
+export type MemberRole = (typeof memberRole.enumValues)[number];
 export type Subscription = typeof subscriptions.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;

@@ -6,6 +6,8 @@ function parseOrigins(raw: string | undefined): string[] {
     .filter(Boolean);
 }
 
+const corsOrigins = parseOrigins(process.env.CORS_ORIGINS);
+
 export const config = {
   port: Number(process.env.PORT ?? 3010),
   host: process.env.HOST ?? "0.0.0.0",
@@ -25,15 +27,24 @@ export const config = {
     signupEnabled: process.env.SIGNUP_ENABLED !== "false",
   },
   /** Origines autorisées par CORS (front en dev + reverse proxy). */
-  corsOrigins: parseOrigins(process.env.CORS_ORIGINS),
+  corsOrigins,
   /**
-   * URL publique du front (PWA) — sert à construire les liens des e-mails de
-   * notification. Défaut : première origine CORS.
+   * Base publique du front, pour construire les liens d'invitation, de magic
+   * link et des e-mails de notification. Défaut : la 1re origine CORS.
    */
-  appUrl:
+  webBaseUrl: (
+    process.env.WEB_BASE_URL ??
     process.env.APP_URL ??
-    parseOrigins(process.env.CORS_ORIGINS)[0] ??
-    "http://localhost:5173",
+    corsOrigins[0] ??
+    "http://localhost:5173"
+  ).replace(/\/$/, ""),
+  /** Durée de validité d'une invitation (jours). */
+  invitationTtlDays: Number(process.env.INVITATION_TTL_DAYS ?? 14),
+  /**
+   * Webhook optionnel (ntfy, etc.) pour livrer les liens aux proches. Sans lui,
+   * les liens sont journalisés côté serveur et l'admin copie le lien depuis l'UI.
+   */
+  notifyWebhookUrl: process.env.NOTIFY_WEBHOOK_URL,
   /**
    * E-mail (SMTP) pour les notifications aux proches abonnés. Optionnel : si
    * SMTP_HOST est absent, les e-mails sont désactivés (notifs in-app seules).

@@ -35,6 +35,24 @@ Premier lancement : ouvrir `http://localhost:5173`, créer le compte parent
 (puis le co-parent), et passer `SIGNUP_ENABLED=false` pour fermer les
 inscriptions.
 
+## Partage avec les proches
+
+Chaque enfant a son propre cercle. Le parent qui crée l'enfant en devient
+**administrateur**. Depuis l'écran **Partager** (icône 👥 dans l'en-tête), il
+invite des proches par email en choisissant un rôle :
+
+| Rôle | Droits |
+|---|---|
+| **Administrateur** | Tout, y compris inviter / retirer des proches |
+| **Contributeur** | Photographier, relire et publier les journées |
+| **Lecteur** | Consulter uniquement le journal **publié** |
+
+L'invitation génère un lien (`/invite/<token>`, valable `INVITATION_TTL_DAYS`
+jours). L'admin peut le copier pour l'envoyer lui-même, ou le laisser partir par
+magic link. Le proche ouvre le lien, se connecte **sans mot de passe** (magic
+link) et rejoint le cercle — même quand `SIGNUP_ENABLED=false`. La visibilité et
+les droits sont vérifiés côté serveur, par enfant, sur chaque route.
+
 ### Base de données
 
 Schéma géré par **Drizzle**. Après modification de `server/src/db/schema.ts` :

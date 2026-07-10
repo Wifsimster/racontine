@@ -23,10 +23,50 @@ export type AttachmentRef = {
   height?: number | null;
 };
 
+export type MemberRole = "admin" | "contributor" | "reader";
+
 export type Child = {
   id: string;
   name: string;
   birthdate: string | null;
+  /** Rôle de l'utilisateur courant sur cet enfant. */
+  role?: MemberRole;
+};
+
+export type Member = {
+  userId: string;
+  name: string;
+  email: string;
+  role: MemberRole;
+};
+
+export type PendingInvitation = {
+  id: string;
+  email: string;
+  role: MemberRole;
+  expiresAt: string;
+  expired: boolean;
+  url: string;
+};
+
+export type InvitationPreview = {
+  email: string;
+  role: MemberRole;
+  childName: string;
+  status: "pending" | "accepted" | "revoked";
+  expired: boolean;
+};
+
+export const ROLE_LABELS: Record<MemberRole, string> = {
+  admin: "Administrateur",
+  contributor: "Contributeur",
+  reader: "Lecteur",
+};
+
+export const ROLE_HINTS: Record<MemberRole, string> = {
+  admin: "Tout gérer, inviter et retirer des proches",
+  contributor: "Photographier, relire et publier les journées",
+  reader: "Consulter le journal publié",
 };
 
 export type Entry = {

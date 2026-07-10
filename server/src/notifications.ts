@@ -55,7 +55,7 @@ export async function notifyEntryPublished(params: {
     const dateLabel = formatDateFr(date);
     const title = `Nouvelle journée de ${childName}`;
     const body = `La journée du ${dateLabel} vient d'être publiée dans le journal de ${childName}.`;
-    const link = `${config.appUrl.replace(/\/$/, "")}/entries/${entryId}`;
+    const link = `${config.webBaseUrl}/entries/${entryId}`;
 
     const canEmail = mailEnabled();
 

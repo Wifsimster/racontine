@@ -1,6 +1,10 @@
 import type {
   Child,
   Entry,
+  Member,
+  MemberRole,
+  PendingInvitation,
+  InvitationPreview,
   Notification,
   Subscriber,
   SubscriptionStatus,
@@ -86,6 +90,42 @@ export const api = {
 
   deleteEntry: (id: string) =>
     req<void>(`/api/entries/${id}`, { method: "DELETE" }),
+
+  /* ------------------------------ Partage ------------------------------- */
+
+  listMembers: (childId: string) =>
+    req<{ members: Member[]; invitations: PendingInvitation[] }>(
+      `/api/children/${childId}/members`,
+    ),
+
+  invite: (childId: string, email: string, role: MemberRole) =>
+    req<PendingInvitation>(`/api/children/${childId}/invitations`, {
+      method: "POST",
+      body: JSON.stringify({ email, role }),
+    }),
+
+  revokeInvitation: (id: string) =>
+    req<void>(`/api/invitations/${id}`, { method: "DELETE" }),
+
+  setMemberRole: (childId: string, userId: string, role: MemberRole) =>
+    req<void>(`/api/children/${childId}/members/${userId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ role }),
+    }),
+
+  removeMember: (childId: string, userId: string) =>
+    req<void>(`/api/children/${childId}/members/${userId}`, {
+      method: "DELETE",
+    }),
+
+  getInvitation: (token: string) =>
+    req<InvitationPreview>(`/api/invitations/token/${token}`),
+
+  acceptInvitation: (token: string) =>
+    req<{ childId: string; role: MemberRole }>(
+      `/api/invitations/token/${token}/accept`,
+      { method: "POST" },
+    ),
 
   /* -------------------------- Abonnements ----------------------------- */
 
