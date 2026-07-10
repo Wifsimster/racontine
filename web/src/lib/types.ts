@@ -56,6 +56,34 @@ export const SOURCE_LABELS: Record<EntrySource, string> = {
   maison: "Maison",
 };
 
+export type SubscriptionStatus = {
+  subscribed: boolean;
+  emailEnabled: boolean;
+};
+
+export type Subscriber = {
+  userId: string;
+  name: string;
+  email: string;
+  emailEnabled: boolean;
+  createdAt: string;
+};
+
+export type NotificationType = "entry_published";
+
+export type Notification = {
+  id: string;
+  userId: string;
+  childId: string | null;
+  entryId: string | null;
+  type: NotificationType;
+  title: string;
+  body: string | null;
+  readAt: string | null;
+  emailedAt: string | null;
+  createdAt: string;
+};
+
 export const ITEM_LABELS: Record<ItemType, string> = {
   meal: "Repas",
   nap: "Sieste",

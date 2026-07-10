@@ -7,11 +7,13 @@ import {
   entryItems,
   attachments,
   children,
+  subscriptions,
   type EntryItemData,
 } from "../db/schema.js";
 import { requireUser } from "../plugins/auth.js";
 import { storeCarnetImage, resolveUpload } from "../storage.js";
 import { extractFromImages, type Extraction } from "../vlm.js";
+import { notifyEntryPublished } from "../notifications.js";
 
 async function readStored(relPath: string): Promise<Buffer> {
   return readFile(resolveUpload(relPath));
@@ -151,6 +153,15 @@ export async function entriesRoutes(app: FastifyInstance) {
         .insert(children)
         .values({ name, birthdate: birthdate ?? null })
         .returning();
+      // Le créateur suit d'office la timeline du nouvel enfant.
+      if (req.user?.id) {
+        await db
+          .insert(subscriptions)
+          .values({ userId: req.user.id, childId: child.id })
+          .onConflictDoNothing({
+            target: [subscriptions.userId, subscriptions.childId],
+          });
+      }
       return reply.code(201).send(child);
     },
   );
@@ -370,6 +381,11 @@ export async function entriesRoutes(app: FastifyInstance) {
     if (!current.length)
       return reply.code(404).send({ error: "entrée introuvable" });
 
+    // Ne notifier qu'à la première publication (transition draft → published),
+    // pas à chaque correction d'une entrée déjà publiée.
+    const isFirstPublish =
+      body.publish === true && current[0].status !== "published";
+
     const patch: Partial<typeof entries.$inferInsert> = {
       updatedAt: new Date(),
     };
@@ -404,7 +420,20 @@ export async function entriesRoutes(app: FastifyInstance) {
       await tx.update(entries).set(patch).where(eq(entries.id, id));
     });
 
-    return serializeEntry(id);
+    const result = await serializeEntry(id);
+
+    // Notification des abonnés en arrière-plan (n'impacte pas la réponse).
+    if (isFirstPublish && result?.child) {
+      void notifyEntryPublished({
+        entryId: id,
+        childId: result.child.id,
+        childName: result.child.name,
+        date: result.date,
+        actorUserId: req.user?.id ?? null,
+      });
+    }
+
+    return result;
   });
 
   app.delete<{ Params: { id: string } }>(

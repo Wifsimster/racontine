@@ -26,4 +26,24 @@ export const config = {
   },
   /** Origines autorisées par CORS (front en dev + reverse proxy). */
   corsOrigins: parseOrigins(process.env.CORS_ORIGINS),
+  /**
+   * URL publique du front (PWA) — sert à construire les liens des e-mails de
+   * notification. Défaut : première origine CORS.
+   */
+  appUrl:
+    process.env.APP_URL ??
+    parseOrigins(process.env.CORS_ORIGINS)[0] ??
+    "http://localhost:5173",
+  /**
+   * E-mail (SMTP) pour les notifications aux proches abonnés. Optionnel : si
+   * SMTP_HOST est absent, les e-mails sont désactivés (notifs in-app seules).
+   */
+  mail: {
+    host: process.env.SMTP_HOST,
+    port: Number(process.env.SMTP_PORT ?? 587),
+    secure: process.env.SMTP_SECURE === "true",
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+    from: process.env.MAIL_FROM ?? "Racontine <no-reply@racontine.local>",
+  },
 };
