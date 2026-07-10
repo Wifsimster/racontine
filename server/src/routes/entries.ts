@@ -69,9 +69,16 @@ async function serializeEntry(entryId: string) {
   };
 }
 
-/** Traitement VLM en arrière-plan : processing → draft | failed. */
-async function processEntry(entryId: string, jpegs: Buffer[]) {
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Traitement VLM en arrière-plan : processing → draft | failed.
+ * Ré-extrait à partir de TOUTES les pages de l'entrée (chemins disque) pour
+ * fusionner correctement un ajout de page à une journée existante.
+ */
+async function processEntry(entryId: string, paths: string[]) {
   try {
+    const jpegs = await Promise.all(paths.map((p) => readStored(p)));
     const x = await extractFromImages(jpegs);
     if (x.illisible) {
       await db
@@ -132,9 +139,14 @@ export async function entriesRoutes(app: FastifyInstance) {
     async (req, reply) => {
       const name = req.body?.name?.trim();
       if (!name) return reply.code(400).send({ error: "name requis" });
+      const birthdate = req.body.birthdate?.trim();
+      if (birthdate && !DATE_RE.test(birthdate))
+        return reply
+          .code(400)
+          .send({ error: "birthdate invalide (attendu AAAA-MM-JJ)" });
       const [child] = await db
         .insert(children)
-        .values({ name, birthdate: req.body.birthdate ?? null })
+        .values({ name, birthdate: birthdate ?? null })
         .returning();
       return reply.code(201).send(child);
     },
@@ -147,30 +159,33 @@ export async function entriesRoutes(app: FastifyInstance) {
     let date = todayIso();
     let source: (typeof SOURCES)[number] = "nounou";
     const stored: Awaited<ReturnType<typeof storeCarnetImage>>[] = [];
-    const jpegBuffers: Buffer[] = [];
 
-    for await (const part of req.parts()) {
-      if (part.type === "file") {
-        const buf = await part.toBuffer();
-        try {
+    try {
+      for await (const part of req.parts()) {
+        if (part.type === "file") {
+          const buf = await part.toBuffer();
           const img = await storeCarnetImage(buf);
           stored.push(img);
-        } catch {
-          return reply.code(400).send({
-            error:
-              "Image indécodable (format non supporté ou fichier corrompu).",
-          });
+        } else {
+          const value = String(part.value);
+          if (part.fieldname === "childId") childId = value;
+          else if (part.fieldname === "date" && DATE_RE.test(value))
+            date = value;
+          else if (
+            part.fieldname === "source" &&
+            (SOURCES as readonly string[]).includes(value)
+          )
+            source = value as (typeof SOURCES)[number];
         }
-      } else {
-        const value = String(part.value);
-        if (part.fieldname === "childId") childId = value;
-        else if (part.fieldname === "date" && value) date = value;
-        else if (
-          part.fieldname === "source" &&
-          (SOURCES as readonly string[]).includes(value)
-        )
-          source = value as (typeof SOURCES)[number];
       }
+    } catch (err) {
+      const tooLarge =
+        err instanceof Error && /file too large|request.*too large/i.test(err.message);
+      return reply.code(tooLarge ? 413 : 400).send({
+        error: tooLarge
+          ? "Photo trop volumineuse (max 20 Mo par page)."
+          : "Image indécodable (format non supporté ou fichier corrompu).",
+      });
     }
 
     if (!stored.length)
@@ -186,41 +201,70 @@ export async function entriesRoutes(app: FastifyInstance) {
           .send({ error: "childId requis (plusieurs enfants)" });
     }
 
-    // Réutilise l'entrée existante pour (enfant, date, source) — pages multiples.
-    const existing = await db
-      .select()
-      .from(entries)
-      .where(
-        and(
-          eq(entries.childId, childId),
-          eq(entries.date, date),
-          eq(entries.source, source),
-        ),
-      )
+    // L'enfant doit exister (sinon violation de clé étrangère → 500).
+    const child = await db
+      .select({ id: children.id })
+      .from(children)
+      .where(eq(children.id, childId))
       .limit(1);
+    if (!child.length)
+      return reply.code(400).send({ error: "enfant introuvable" });
 
-    let entryId: string;
-    if (existing.length) {
-      entryId = existing[0].id;
+    // Find-or-create sûr face aux requêtes concurrentes : INSERT … ON CONFLICT
+    // DO NOTHING, puis relecture si l'entrée existait déjà.
+    const [inserted] = await db
+      .insert(entries)
+      .values({
+        childId,
+        date,
+        source,
+        status: "processing",
+        createdBy: req.user?.id ?? null,
+      })
+      .onConflictDoNothing({
+        target: [entries.childId, entries.date, entries.source],
+      })
+      .returning();
+
+    let entry = inserted;
+    if (!entry) {
+      const [existing] = await db
+        .select()
+        .from(entries)
+        .where(
+          and(
+            eq(entries.childId, childId),
+            eq(entries.date, date),
+            eq(entries.source, source),
+          ),
+        )
+        .limit(1);
+      // Ne pas écraser une journée déjà relue et publiée.
+      if (existing.status === "published") {
+        return reply.code(409).send({
+          error:
+            "Cette journée est déjà publiée. Modifiez ou supprimez l'entrée existante avant de re-photographier.",
+          id: existing.id,
+        });
+      }
       await db
         .update(entries)
         .set({ status: "processing", updatedAt: new Date() })
-        .where(eq(entries.id, entryId));
-    } else {
-      const [created] = await db
-        .insert(entries)
-        .values({
-          childId,
-          date,
-          source,
-          status: "processing",
-          createdBy: req.user?.id ?? null,
-        })
-        .returning();
-      entryId = created.id;
+        .where(eq(entries.id, existing.id));
+      entry = existing;
     }
+    const entryId = entry.id;
 
-    // Rattache les photos.
+    // Positions à la suite des pages déjà rattachées (fusion multi-requêtes).
+    const existingAtts = await db
+      .select({ position: attachments.position })
+      .from(attachments)
+      .where(eq(attachments.entryId, entryId));
+    const basePos = existingAtts.reduce(
+      (max, a) => Math.max(max, a.position + 1),
+      0,
+    );
+
     await db.insert(attachments).values(
       stored.map((img, i) => ({
         entryId,
@@ -230,17 +274,22 @@ export async function entriesRoutes(app: FastifyInstance) {
         mime: img.mime,
         width: img.width,
         height: img.height,
-        position: i,
+        position: basePos + i,
       })),
     );
 
-    // On garde les buffers normalisés pour l'extraction (via re-lecture disque évitée).
-    for (const img of stored) {
-      jpegBuffers.push(await readStored(img.originalPath));
-    }
+    // Ré-extraction sur TOUTES les pages de l'entrée (existantes + nouvelles).
+    const allAtts = await db
+      .select({ path: attachments.originalPath })
+      .from(attachments)
+      .where(eq(attachments.entryId, entryId))
+      .orderBy(attachments.position);
 
     // Extraction en arrière-plan : la requête répond tout de suite.
-    void processEntry(entryId, jpegBuffers);
+    void processEntry(
+      entryId,
+      allAtts.map((a) => a.path),
+    );
 
     return reply.code(202).send({ id: entryId, status: "processing" });
   });

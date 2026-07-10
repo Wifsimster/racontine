@@ -15,7 +15,10 @@ export async function buildApp() {
     credentials: true,
   });
   await app.register(multipart, {
-    limits: { fileSize: 20 * 1024 * 1024 }, // photos de carnet jusqu'à 20 Mo
+    limits: {
+      fileSize: 20 * 1024 * 1024, // photos de carnet jusqu'à 20 Mo
+      files: 12, // un carnet tient largement en 12 pages/jour
+    },
   });
 
   app.get("/api/health", async () => ({

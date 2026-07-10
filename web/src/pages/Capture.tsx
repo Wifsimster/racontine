@@ -8,13 +8,22 @@ import { Label } from "@/components/ui/label";
 
 const SOURCES: EntrySource[] = ["nounou", "mam", "creche", "maison"];
 
+type Shot = { file: File; url: string };
+
+/** Date locale du téléphone au format AAAA-MM-JJ (le carnet est photographié le soir). */
+function localDate(): string {
+  const d = new Date();
+  const off = d.getTimezoneOffset() * 60000;
+  return new Date(d.getTime() - off).toISOString().slice(0, 10);
+}
+
 export default function Capture() {
   const nav = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
   const [children, setChildren] = useState<Child[]>([]);
   const [childId, setChildId] = useState<string>("");
   const [source, setSource] = useState<EntrySource>("nounou");
-  const [files, setFiles] = useState<File[]>([]);
+  const [shots, setShots] = useState<Shot[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -28,13 +37,37 @@ export default function Capture() {
       .catch(() => setChildren([]));
   }, []);
 
+  // Libère les aperçus (object URLs) au démontage.
+  useEffect(() => {
+    return () => {
+      setShots((prev) => {
+        prev.forEach((s) => URL.revokeObjectURL(s.url));
+        return prev;
+      });
+    };
+  }, []);
+
   function onPick(e: React.ChangeEvent<HTMLInputElement>) {
-    if (e.target.files) setFiles((prev) => [...prev, ...Array.from(e.target.files!)]);
+    if (!e.target.files) return;
+    const added = Array.from(e.target.files).map((file) => ({
+      file,
+      url: URL.createObjectURL(file),
+    }));
+    setShots((prev) => [...prev, ...added]);
+    e.target.value = ""; // permet de re-sélectionner le même fichier
+  }
+
+  function removeShot(idx: number) {
+    setShots((prev) => {
+      const s = prev[idx];
+      if (s) URL.revokeObjectURL(s.url);
+      return prev.filter((_, j) => j !== idx);
+    });
   }
 
   async function submit() {
     setError(null);
-    if (!files.length) {
+    if (!shots.length) {
       setError("Ajoutez au moins une photo.");
       return;
     }
@@ -46,7 +79,10 @@ export default function Capture() {
         const child = await api.createChild("Mon enfant");
         cid = child.id;
       }
-      const res = await api.ingest(files, { childId: cid || undefined, source });
+      const res = await api.ingest(
+        shots.map((s) => s.file),
+        { childId: cid || undefined, source, date: localDate() },
+      );
       nav(`/entries/${res.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Échec de l'envoi");
@@ -107,18 +143,18 @@ export default function Capture() {
         Ajouter une ou plusieurs pages
       </Button>
 
-      {files.length > 0 && (
+      {shots.length > 0 && (
         <div className="grid grid-cols-3 gap-2">
-          {files.map((f, i) => (
-            <div key={i} className="relative">
+          {shots.map((s, i) => (
+            <div key={s.url} className="relative">
               <img
-                src={URL.createObjectURL(f)}
+                src={s.url}
                 alt={`page ${i + 1}`}
                 className="aspect-square w-full rounded-md object-cover"
               />
               <button
                 type="button"
-                onClick={() => setFiles(files.filter((_, j) => j !== i))}
+                onClick={() => removeShot(i)}
                 className="absolute right-1 top-1 rounded-full bg-background/80 p-1 shadow"
                 aria-label="retirer"
               >
@@ -131,7 +167,7 @@ export default function Capture() {
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 
-      <Button onClick={submit} disabled={submitting || !files.length}>
+      <Button onClick={submit} disabled={submitting || !shots.length}>
         {submitting ? "Envoi…" : "Envoyer pour extraction"}
       </Button>
       <p className="text-xs text-muted-foreground">
