@@ -15,6 +15,13 @@
       "when": 1783716990952,
       "tag": "0001_sudden_tusk",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783718050016,
+      "tag": "0002_equal_pandemic",
+      "breakpoints": true
     }
   ]
 }

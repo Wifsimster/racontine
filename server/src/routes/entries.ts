@@ -1,15 +1,23 @@
 import type { FastifyInstance } from "fastify";
 import { readFile } from "node:fs/promises";
-import { and, eq, desc } from "drizzle-orm";
+import { and, eq, desc, inArray, or } from "drizzle-orm";
 import { db } from "../db/index.js";
 import {
   entries,
   entryItems,
   attachments,
   children,
+  memberships,
   type EntryItemData,
 } from "../db/schema.js";
 import { requireUser } from "../plugins/auth.js";
+import {
+  accessibleChildIds,
+  childRole,
+  entryChildId,
+  hasChildRole,
+  roleAtLeast,
+} from "../access.js";
 import { storeCarnetImage, resolveUpload } from "../storage.js";
 import { extractFromImages, type Extraction } from "../vlm.js";
 
@@ -133,8 +141,24 @@ export async function entriesRoutes(app: FastifyInstance) {
 
   /* --------------------------------- Enfants ---------------------------- */
 
-  app.get("/api/children", async () => {
-    return db.select().from(children).orderBy(children.createdAt);
+  app.get("/api/children", async (req) => {
+    const ids = await accessibleChildIds(req.user!.id);
+    if (!ids.length) return [];
+    const rows = await db
+      .select({
+        id: children.id,
+        name: children.name,
+        birthdate: children.birthdate,
+        createdAt: children.createdAt,
+        role: memberships.role,
+      })
+      .from(children)
+      .innerJoin(memberships, eq(memberships.childId, children.id))
+      .where(
+        and(inArray(children.id, ids), eq(memberships.userId, req.user!.id)),
+      )
+      .orderBy(children.createdAt);
+    return rows;
   });
 
   app.post<{ Body: { name?: string; birthdate?: string } }>(
@@ -147,11 +171,18 @@ export async function entriesRoutes(app: FastifyInstance) {
         return reply
           .code(400)
           .send({ error: "birthdate invalide (attendu AAAA-MM-JJ)" });
-      const [child] = await db
-        .insert(children)
-        .values({ name, birthdate: birthdate ?? null })
-        .returning();
-      return reply.code(201).send(child);
+      // Le créateur devient admin de l'enfant (fait dans une transaction).
+      const child = await db.transaction(async (tx) => {
+        const [c] = await tx
+          .insert(children)
+          .values({ name, birthdate: birthdate ?? null })
+          .returning();
+        await tx
+          .insert(memberships)
+          .values({ userId: req.user!.id, childId: c.id, role: "admin" });
+        return c;
+      });
+      return reply.code(201).send({ ...child, role: "admin" as const });
     },
   );
 
@@ -194,24 +225,22 @@ export async function entriesRoutes(app: FastifyInstance) {
     if (!stored.length)
       return reply.code(400).send({ error: "aucune photo fournie" });
 
-    // childId facultatif si le foyer n'a qu'un seul enfant.
+    // childId facultatif si l'utilisateur ne suit qu'un seul enfant.
     if (!childId) {
-      const kids = await db.select().from(children).limit(2);
-      if (kids.length === 1) childId = kids[0].id;
+      const ids = await accessibleChildIds(req.user!.id);
+      if (ids.length === 1) childId = ids[0];
       else
         return reply
           .code(400)
           .send({ error: "childId requis (plusieurs enfants)" });
     }
 
-    // L'enfant doit exister (sinon violation de clé étrangère → 500).
-    const child = await db
-      .select({ id: children.id })
-      .from(children)
-      .where(eq(children.id, childId))
-      .limit(1);
-    if (!child.length)
-      return reply.code(400).send({ error: "enfant introuvable" });
+    // Contribuer exige le rôle contributor (ou admin) sur cet enfant. On ne
+    // divulgue pas l'existence d'un enfant non partagé : 403 uniforme.
+    if (!(await hasChildRole(req.user!.id, childId, "contributor")))
+      return reply
+        .code(403)
+        .send({ error: "accès refusé à cet enfant" });
 
     // Find-or-create sûr face aux requêtes concurrentes : INSERT … ON CONFLICT
     // DO NOTHING, puis relecture si l'entrée existait déjà.
@@ -301,12 +330,40 @@ export async function entriesRoutes(app: FastifyInstance) {
 
   app.get<{ Querystring: { childId?: string; limit?: string; offset?: string } }>(
     "/api/entries",
-    async (req) => {
+    async (req, reply) => {
       const limit = Math.min(Number(req.query.limit ?? 20) || 20, 50);
       const offset = Math.max(Number(req.query.offset ?? 0) || 0, 0);
-      const where = req.query.childId
-        ? eq(entries.childId, req.query.childId)
-        : undefined;
+
+      // Portée : uniquement les enfants suivis par l'utilisateur. Un lecteur ne
+      // voit que le journal publié ; contributeur/admin voient aussi les
+      // brouillons (relecture).
+      const rows0 = await db
+        .select({ childId: memberships.childId, role: memberships.role })
+        .from(memberships)
+        .where(eq(memberships.userId, req.user!.id));
+      const roleByChild = new Map(rows0.map((r) => [r.childId, r.role]));
+      const accessibleIds = [...roleByChild.keys()];
+      const draftableIds = accessibleIds.filter((id) =>
+        roleAtLeast(roleByChild.get(id)!, "contributor"),
+      );
+
+      if (!accessibleIds.length)
+        return { entries: [], nextOffset: null };
+
+      let scope = req.query.childId ? [req.query.childId] : accessibleIds;
+      if (req.query.childId && !roleByChild.has(req.query.childId))
+        return reply.code(403).send({ error: "accès refusé à cet enfant" });
+
+      const draftableInScope = draftableIds.filter((id) => scope.includes(id));
+      const where = and(
+        inArray(entries.childId, scope),
+        or(
+          eq(entries.status, "published"),
+          draftableInScope.length
+            ? inArray(entries.childId, draftableInScope)
+            : undefined,
+        ),
+      );
 
       const rows = await db.query.entries.findMany({
         where,
@@ -337,8 +394,17 @@ export async function entriesRoutes(app: FastifyInstance) {
   app.get<{ Params: { id: string } }>(
     "/api/entries/:id",
     async (req, reply) => {
+      const childId = await entryChildId(req.params.id);
+      if (!childId)
+        return reply.code(404).send({ error: "entrée introuvable" });
+      const role = await childRole(req.user!.id, childId);
+      if (!role) return reply.code(404).send({ error: "entrée introuvable" });
+
       const entry = await serializeEntry(req.params.id);
       if (!entry) return reply.code(404).send({ error: "entrée introuvable" });
+      // Un lecteur ne voit que le journal publié.
+      if (role === "reader" && entry.status !== "published")
+        return reply.code(404).send({ error: "entrée introuvable" });
       return entry;
     },
   );
@@ -368,6 +434,10 @@ export async function entriesRoutes(app: FastifyInstance) {
       .where(eq(entries.id, id))
       .limit(1);
     if (!current.length)
+      return reply.code(404).send({ error: "entrée introuvable" });
+
+    // Relire / publier exige contributor+ sur l'enfant.
+    if (!(await hasChildRole(req.user!.id, current[0].childId, "contributor")))
       return reply.code(404).send({ error: "entrée introuvable" });
 
     const patch: Partial<typeof entries.$inferInsert> = {
@@ -410,6 +480,11 @@ export async function entriesRoutes(app: FastifyInstance) {
   app.delete<{ Params: { id: string } }>(
     "/api/entries/:id",
     async (req, reply) => {
+      const childId = await entryChildId(req.params.id);
+      if (!childId) return reply.code(204).send();
+      // Supprimer une journée est réservé à l'admin de l'enfant.
+      if (!(await hasChildRole(req.user!.id, childId, "admin")))
+        return reply.code(403).send({ error: "accès refusé" });
       await db.delete(entries).where(eq(entries.id, req.params.id));
       return reply.code(204).send();
     },

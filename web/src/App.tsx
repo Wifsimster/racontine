@@ -1,5 +1,5 @@
 import { Link, Navigate, Outlet, useLocation } from "react-router-dom";
-import { BookOpenText, LogOut } from "lucide-react";
+import { BookOpenText, LogOut, Users } from "lucide-react";
 import { useSession, signOut } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 
@@ -26,14 +26,23 @@ export default function App() {
           <BookOpenText className="size-6 text-primary" />
           <span className="text-lg font-semibold tracking-tight">Racontine</span>
         </Link>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          aria-label="Se déconnecter"
-          onClick={() => signOut().then(() => (window.location.href = "/login"))}
-        >
-          <LogOut />
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon-sm" aria-label="Partager" asChild>
+            <Link to="/partage">
+              <Users />
+            </Link>
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Se déconnecter"
+            onClick={() =>
+              signOut().then(() => (window.location.href = "/login"))
+            }
+          >
+            <LogOut />
+          </Button>
+        </div>
       </header>
       <main>
         <Outlet />
