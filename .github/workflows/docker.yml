@@ -3,6 +3,8 @@ name: Build & push images (GHCR)
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 env:
@@ -25,6 +27,8 @@ jobs:
 
   images:
     needs: check
+    # Les PRs valident (job check) mais ne publient pas d'images.
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: read
