@@ -174,20 +174,25 @@ export async function extractFromImages(
   }
 
   const raw = toolUse.input as Partial<Extraction>;
+  // Le SDK n'impose pas le input_schema à l'exécution : un champ « tableau »
+  // pourrait arriver sous une autre forme (string, number…). On force donc un
+  // vrai tableau, sinon `?? []` laisserait passer une string itérée caractère
+  // par caractère ou un nombre qui ferait planter l'aval.
+  const arr = <T>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
   return {
     date: raw.date ?? null,
     enfant: raw.enfant ?? null,
-    repas: raw.repas ?? [],
-    siestes: raw.siestes ?? [],
+    repas: arr<Extraction["repas"][number]>(raw.repas),
+    siestes: arr<Extraction["siestes"][number]>(raw.siestes),
     humeur: raw.humeur ?? null,
-    activites: raw.activites ?? [],
+    activites: arr<string>(raw.activites),
     sante: raw.sante ?? null,
-    anecdotes: raw.anecdotes ?? [],
+    anecdotes: arr<string>(raw.anecdotes),
     transcription_integrale: raw.transcription_integrale ?? null,
     titre: raw.titre ?? null,
     recit: raw.recit ?? null,
     temps_fort: raw.temps_fort ?? null,
-    incertitudes: raw.incertitudes ?? [],
+    incertitudes: arr<string>(raw.incertitudes),
     illisible: raw.illisible ?? false,
   };
 }

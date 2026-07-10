@@ -60,7 +60,15 @@ export default function NotificationsBell() {
         ),
       );
       setUnread((u) => Math.max(0, u - 1));
-      api.markNotificationRead(n.id).catch(() => {});
+      // En cas d'échec, on annule la mise à jour optimiste : sans ça, le
+      // rafraîchissement périodique (60 s) ferait « remonter » le badge de façon
+      // déroutante alors que le serveur a toujours la notif comme non lue.
+      api.markNotificationRead(n.id).catch(() => {
+        setItems((prev) =>
+          prev.map((x) => (x.id === n.id ? { ...x, readAt: n.readAt } : x)),
+        );
+        setUnread((u) => u + 1);
+      });
     }
     setOpen(false);
     if (n.entryId) nav(`/entries/${n.entryId}`);

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, writeFile, unlink } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
 import { config } from "./config.js";
@@ -74,4 +74,19 @@ export async function storeCarnetImage(input: Buffer): Promise<StoredImage> {
     width: normalized.info.width,
     height: normalized.info.height,
   };
+}
+
+/**
+ * Supprime du disque les fichiers d'une image stockée (original + miniature).
+ * Best-effort : un fichier déjà absent n'est pas une erreur. Sert à nettoyer les
+ * images écrites avant qu'un contrôle en aval n'annule l'ingestion.
+ */
+export async function deleteStored(img: {
+  originalPath: string;
+  thumbPath: string;
+}): Promise<void> {
+  await Promise.allSettled([
+    unlink(absolute(img.originalPath)),
+    unlink(absolute(img.thumbPath)),
+  ]);
 }

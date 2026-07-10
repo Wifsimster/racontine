@@ -2,7 +2,7 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
 import { dbHealthy } from "./db/index.js";
-import { config } from "./config.js";
+import { config, validateConfig } from "./config.js";
 import { authPlugin } from "./plugins/auth.js";
 import { entriesRoutes } from "./routes/entries.js";
 import { attachmentsRoutes } from "./routes/attachments.js";
@@ -10,6 +10,8 @@ import { sharingRoutes } from "./routes/sharing.js";
 import { subscriptionsRoutes } from "./routes/subscriptions.js";
 
 export async function buildApp() {
+  validateConfig();
+
   const app = Fastify({ logger: true });
 
   await app.register(cors, {

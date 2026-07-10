@@ -101,9 +101,26 @@ export default function Share() {
     setInvitations(res.invitations);
   }, []);
 
+  // Charge le cercle de l'enfant sélectionné. Le drapeau `ignore` évite qu'une
+  // réponse tardive (enfant précédent) n'écrase l'affichage de l'enfant courant
+  // si l'on change de sélection plus vite que le réseau ne répond.
   useEffect(() => {
-    if (selected) refresh(selected).catch((e) => setError(e.message));
-  }, [selected, refresh]);
+    if (!selected) return;
+    let ignore = false;
+    api
+      .listMembers(selected)
+      .then((res) => {
+        if (ignore) return;
+        setMembers(res.members);
+        setInvitations(res.invitations);
+      })
+      .catch((e) => {
+        if (!ignore) setError(e instanceof Error ? e.message : "Échec");
+      });
+    return () => {
+      ignore = true;
+    };
+  }, [selected]);
 
   async function invite(e: React.FormEvent) {
     e.preventDefault();
@@ -219,8 +236,12 @@ export default function Share() {
                 size="icon-sm"
                 aria-label="Révoquer"
                 onClick={async () => {
-                  await api.revokeInvitation(inv.id);
-                  if (selected) refresh(selected);
+                  try {
+                    await api.revokeInvitation(inv.id);
+                    if (selected) await refresh(selected);
+                  } catch (e) {
+                    setError(e instanceof Error ? e.message : "Échec");
+                  }
                 }}
               >
                 <Trash2 className="text-destructive" />
