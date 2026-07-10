@@ -10,6 +10,7 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: "autoUpdate",
+      includeAssets: ["apple-touch-icon.png"],
       manifest: {
         name: "Racontine",
         short_name: "Racontine",
@@ -18,7 +19,17 @@ export default defineConfig({
         background_color: "#faf7f2",
         display: "standalone",
         lang: "fr",
-        icons: [],
+        start_url: "/",
+        icons: [
+          { src: "pwa-192.png", sizes: "192x192", type: "image/png" },
+          { src: "pwa-512.png", sizes: "512x512", type: "image/png" },
+          {
+            src: "pwa-maskable-512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "maskable",
+          },
+        ],
       },
     }),
   ],

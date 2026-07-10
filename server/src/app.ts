@@ -1,12 +1,19 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
-import { dbHealthy } from "./db.js";
+import { dbHealthy } from "./db/index.js";
+import { config } from "./config.js";
+import { authPlugin } from "./plugins/auth.js";
+import { entriesRoutes } from "./routes/entries.js";
+import { attachmentsRoutes } from "./routes/attachments.js";
 
 export async function buildApp() {
   const app = Fastify({ logger: true });
 
-  await app.register(cors, { origin: true, credentials: true });
+  await app.register(cors, {
+    origin: config.corsOrigins,
+    credentials: true,
+  });
   await app.register(multipart, {
     limits: { fileSize: 20 * 1024 * 1024 }, // photos de carnet jusqu'à 20 Mo
   });
@@ -16,10 +23,12 @@ export async function buildApp() {
     db: (await dbHealthy()) ? "up" : "down",
   }));
 
-  // À venir (Phase 1) :
-  // - POST /api/entries/ingest : upload photo(s) → extraction VLM → brouillon
-  // - GET  /api/entries        : timeline du journal
-  // - PATCH /api/entries/:id   : relecture/correction puis publication
+  // Better Auth (email/password) — plugin encapsulé (corps brut).
+  await app.register(authPlugin);
+
+  // Routes métier (protégées par requireUser).
+  await app.register(entriesRoutes);
+  await app.register(attachmentsRoutes);
 
   return app;
 }
