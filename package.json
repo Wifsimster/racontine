@@ -1,0 +1,15 @@
+{
+  "name": "racontine",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Journal numérique de l'enfance — photo du carnet de liaison → LLM → journal privé self-hosted",
+  "scripts": {
+    "dev": "pnpm --parallel --filter server --filter web dev",
+    "build": "pnpm --filter server --filter web build",
+    "typecheck": "pnpm --filter server --filter web typecheck"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@11.5.0"
+}

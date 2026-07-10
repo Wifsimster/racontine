@@ -1,0 +1,39 @@
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: racontine
+      POSTGRES_PASSWORD: racontine
+      POSTGRES_DB: racontine
+    ports:
+      - "5433:5432" # 5433 côté hôte : un autre Postgres occupe déjà 5432 sur le homelab
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U racontine"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  server:
+    build: ./server
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://racontine:racontine@db:5432/racontine
+    volumes:
+      - ./uploads:/app/uploads
+    ports:
+      - "3010:3010"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build: ./web
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      - server
