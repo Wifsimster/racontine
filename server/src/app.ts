@@ -6,6 +6,7 @@ import { config } from "./config.js";
 import { authPlugin } from "./plugins/auth.js";
 import { entriesRoutes } from "./routes/entries.js";
 import { attachmentsRoutes } from "./routes/attachments.js";
+import { subscriptionsRoutes } from "./routes/subscriptions.js";
 
 export async function buildApp() {
   const app = Fastify({ logger: true });
@@ -32,6 +33,7 @@ export async function buildApp() {
   // Routes métier (protégées par requireUser).
   await app.register(entriesRoutes);
   await app.register(attachmentsRoutes);
+  await app.register(subscriptionsRoutes);
 
   return app;
 }

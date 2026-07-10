@@ -7,6 +7,7 @@ import Login from "./pages/Login";
 import Timeline from "./pages/Timeline";
 import Capture from "./pages/Capture";
 import Review from "./pages/Review";
+import Proches from "./pages/Proches";
 
 const router = createBrowserRouter([
   { path: "/login", element: <Login /> },
@@ -17,6 +18,7 @@ const router = createBrowserRouter([
       { index: true, element: <Timeline /> },
       { path: "capture", element: <Capture /> },
       { path: "entries/:id", element: <Review /> },
+      { path: "proches", element: <Proches /> },
     ],
   },
 ]);

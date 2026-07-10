@@ -15,6 +15,13 @@
       "when": 1783716990952,
       "tag": "0001_sudden_tusk",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783717503794,
+      "tag": "0002_stiff_rhodey",
+      "breakpoints": true
     }
   ]
 }

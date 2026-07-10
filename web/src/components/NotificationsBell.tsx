@@ -1,0 +1,147 @@
+import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Bell } from "lucide-react";
+import { api } from "@/lib/api";
+import type { Notification } from "@/lib/types";
+import { Button } from "@/components/ui/button";
+
+function timeAgo(iso: string): string {
+  const then = new Date(iso).getTime();
+  const mins = Math.round((Date.now() - then) / 60000);
+  if (mins < 1) return "à l'instant";
+  if (mins < 60) return `il y a ${mins} min`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return `il y a ${hrs} h`;
+  const days = Math.round(hrs / 24);
+  return `il y a ${days} j`;
+}
+
+export default function NotificationsBell() {
+  const nav = useNavigate();
+  const [open, setOpen] = useState(false);
+  const [items, setItems] = useState<Notification[]>([]);
+  const [unread, setUnread] = useState(0);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  async function refresh() {
+    try {
+      const res = await api.listNotifications();
+      setItems(res.notifications);
+      setUnread(res.unread);
+    } catch {
+      /* silencieux : la cloche n'est pas critique */
+    }
+  }
+
+  useEffect(() => {
+    refresh();
+    // Rafraîchissement léger toutes les 60 s pour voir arriver les notifs.
+    const t = setInterval(refresh, 60000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Ferme le panneau au clic à l'extérieur.
+  useEffect(() => {
+    if (!open) return;
+    function onDown(e: MouseEvent) {
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+
+  async function onClickItem(n: Notification) {
+    if (!n.readAt) {
+      setItems((prev) =>
+        prev.map((x) =>
+          x.id === n.id ? { ...x, readAt: new Date().toISOString() } : x,
+        ),
+      );
+      setUnread((u) => Math.max(0, u - 1));
+      api.markNotificationRead(n.id).catch(() => {});
+    }
+    setOpen(false);
+    if (n.entryId) nav(`/entries/${n.entryId}`);
+  }
+
+  async function markAll() {
+    setItems((prev) =>
+      prev.map((x) =>
+        x.readAt ? x : { ...x, readAt: new Date().toISOString() },
+      ),
+    );
+    setUnread(0);
+    api.markAllNotificationsRead().catch(() => {});
+  }
+
+  return (
+    <div ref={panelRef} className="relative">
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        aria-label="Notifications"
+        onClick={() => {
+          setOpen((o) => !o);
+          if (!open) refresh();
+        }}
+      >
+        <Bell />
+        {unread > 0 && (
+          <span className="absolute -right-0.5 -top-0.5 flex min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-4 text-primary-foreground">
+            {unread > 9 ? "9+" : unread}
+          </span>
+        )}
+      </Button>
+
+      {open && (
+        <div className="absolute right-0 top-full z-20 mt-2 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border bg-popover shadow-lg">
+          <div className="flex items-center justify-between border-b px-3 py-2">
+            <span className="text-sm font-semibold">Notifications</span>
+            {unread > 0 && (
+              <button
+                className="text-xs text-primary hover:underline"
+                onClick={markAll}
+              >
+                Tout marquer lu
+              </button>
+            )}
+          </div>
+          <div className="max-h-96 overflow-y-auto">
+            {items.length === 0 ? (
+              <p className="px-3 py-8 text-center text-sm text-muted-foreground">
+                Aucune notification.
+              </p>
+            ) : (
+              items.map((n) => (
+                <button
+                  key={n.id}
+                  onClick={() => onClickItem(n)}
+                  className={`flex w-full flex-col items-start gap-0.5 border-b px-3 py-2.5 text-left last:border-b-0 hover:bg-accent ${
+                    n.readAt ? "" : "bg-primary/5"
+                  }`}
+                >
+                  <div className="flex w-full items-center gap-2">
+                    {!n.readAt && (
+                      <span className="size-2 shrink-0 rounded-full bg-primary" />
+                    )}
+                    <span className="text-sm font-medium">{n.title}</span>
+                  </div>
+                  {n.body && (
+                    <span className="text-xs text-muted-foreground">
+                      {n.body}
+                    </span>
+                  )}
+                  <span className="text-[11px] text-muted-foreground">
+                    {timeAgo(n.createdAt)}
+                  </span>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

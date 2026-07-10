@@ -113,6 +113,11 @@ export const attachmentKind = pgEnum("attachment_kind", [
   "souvenir", // photo souvenir libre
 ]);
 
+/** Type de notification — extensible (jalons, invitations… en Phase 3). */
+export const notificationType = pgEnum("notification_type", [
+  "entry_published", // une nouvelle journée est publiée sur la timeline suivie
+]);
+
 export const children = pgTable("children", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
@@ -204,10 +209,84 @@ export const attachments = pgTable(
   (t) => [index("attachments_entry_idx").on(t.entryId)],
 );
 
+/**
+ * Abonnement d'un proche à la timeline d'un enfant : chaque publication d'une
+ * journée déclenche une notification in-app + un e-mail à tous les abonnés.
+ */
+export const subscriptions = pgTable(
+  "subscriptions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    childId: uuid("child_id")
+      .notNull()
+      .references(() => children.id, { onDelete: "cascade" }),
+    /** L'abonné reçoit aussi un e-mail (en plus de la notif in-app). */
+    emailEnabled: boolean("email_enabled").notNull().default(true),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [
+    // Un seul abonnement par (proche, enfant).
+    unique("subscriptions_user_child").on(t.userId, t.childId),
+    index("subscriptions_child_idx").on(t.childId),
+  ],
+);
+
+/** Notification in-app pour un abonné (cloche + liste des non-lues). */
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    childId: uuid("child_id").references(() => children.id, {
+      onDelete: "cascade",
+    }),
+    entryId: uuid("entry_id").references(() => entries.id, {
+      onDelete: "cascade",
+    }),
+    type: notificationType("type").notNull(),
+    title: text("title").notNull(),
+    body: text("body"),
+    /** Null tant que la notification n'a pas été lue. */
+    readAt: timestamp("read_at"),
+    /** Horodatage de l'envoi de l'e-mail (null si non/pas encore envoyé). */
+    emailedAt: timestamp("emailed_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [index("notifications_user_idx").on(t.userId, t.createdAt)],
+);
+
 /* ----------------------------------- Relations --------------------------- */
 
 export const childrenRelations = relations(children, ({ many }) => ({
   entries: many(entries),
+  subscriptions: many(subscriptions),
+}));
+
+export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
+  child: one(children, {
+    fields: [subscriptions.childId],
+    references: [children.id],
+  }),
+  user: one(user, {
+    fields: [subscriptions.userId],
+    references: [user.id],
+  }),
+}));
+
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+  child: one(children, {
+    fields: [notifications.childId],
+    references: [children.id],
+  }),
+  entry: one(entries, {
+    fields: [notifications.entryId],
+    references: [entries.id],
+  }),
 }));
 
 export const entriesRelations = relations(entries, ({ one, many }) => ({
@@ -237,3 +316,5 @@ export type Entry = typeof entries.$inferSelect;
 export type EntryItem = typeof entryItems.$inferSelect;
 export type Attachment = typeof attachments.$inferSelect;
 export type Child = typeof children.$inferSelect;
+export type Subscription = typeof subscriptions.$inferSelect;
+export type Notification = typeof notifications.$inferSelect;
