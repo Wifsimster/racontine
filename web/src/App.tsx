@@ -1,36 +1,43 @@
-import { useEffect, useState } from "react";
-import { BookOpenText, Camera } from "lucide-react";
+import { Link, Navigate, Outlet, useLocation } from "react-router-dom";
+import { BookOpenText, LogOut } from "lucide-react";
+import { useSession, signOut } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 
-type Health = { status: string; db: string };
-
 export default function App() {
-  const [health, setHealth] = useState<Health | null>(null);
+  const { data: session, isPending } = useSession();
+  const location = useLocation();
 
-  useEffect(() => {
-    fetch("/api/health")
-      .then((r) => r.json())
-      .then(setHealth)
-      .catch(() => setHealth(null));
-  }, []);
+  if (isPending) {
+    return (
+      <div className="flex min-h-svh items-center justify-center text-muted-foreground">
+        Chargement…
+      </div>
+    );
+  }
+
+  if (!session) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
 
   return (
-    <div className="min-h-svh flex flex-col items-center justify-center gap-6 p-6">
-      <div className="flex items-center gap-3">
-        <BookOpenText className="size-10 text-primary" />
-        <h1 className="text-4xl font-semibold tracking-tight">Racontine</h1>
-      </div>
-      <p className="text-muted-foreground text-center max-w-md text-balance">
-        Le carnet de liaison, dématérialisé — photographiez la journée, on
-        s&apos;occupe du reste.
-      </p>
-      <Button size="lg">
-        <Camera />
-        Photographier le carnet
-      </Button>
-      <p className="text-xs text-muted-foreground">
-        API : {health ? `${health.status} · db ${health.db}` : "hors ligne"}
-      </p>
+    <div className="min-h-svh">
+      <header className="sticky top-0 z-10 flex items-center justify-between border-b bg-background/95 px-4 py-3 backdrop-blur">
+        <Link to="/" className="flex items-center gap-2">
+          <BookOpenText className="size-6 text-primary" />
+          <span className="text-lg font-semibold tracking-tight">Racontine</span>
+        </Link>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Se déconnecter"
+          onClick={() => signOut().then(() => (window.location.href = "/login"))}
+        >
+          <LogOut />
+        </Button>
+      </header>
+      <main>
+        <Outlet />
+      </main>
     </div>
   );
 }
