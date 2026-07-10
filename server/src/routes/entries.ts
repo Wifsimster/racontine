@@ -105,6 +105,9 @@ async function processEntry(entryId: string, paths: string[]) {
         .set({
           status: "draft",
           mood: x.humeur,
+          title: x.titre,
+          story: x.recit,
+          highlight: x.temps_fort,
           transcription: x.transcription_integrale,
           uncertainties: x.incertitudes,
           failureReason: null,
@@ -346,6 +349,9 @@ export async function entriesRoutes(app: FastifyInstance) {
     Params: { id: string };
     Body: {
       mood?: string | null;
+      title?: string | null;
+      story?: string | null;
+      highlight?: string | null;
       transcription?: string | null;
       source?: string;
       date?: string;
@@ -368,6 +374,9 @@ export async function entriesRoutes(app: FastifyInstance) {
       updatedAt: new Date(),
     };
     if (body.mood !== undefined) patch.mood = body.mood;
+    if (body.title !== undefined) patch.title = body.title;
+    if (body.story !== undefined) patch.story = body.story;
+    if (body.highlight !== undefined) patch.highlight = body.highlight;
     if (body.transcription !== undefined)
       patch.transcription = body.transcription;
     if (body.source && (SOURCES as readonly string[]).includes(body.source))

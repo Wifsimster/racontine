@@ -92,7 +92,12 @@ export default function Capture() {
 
   return (
     <div className="mx-auto flex w-full max-w-lg flex-col gap-5 p-4">
-      <h1 className="text-xl font-semibold">Photographier le carnet</h1>
+      <div>
+        <h1 className="text-xl font-semibold">Photographier le carnet</h1>
+        <p className="text-sm text-muted-foreground">
+          Une photo des pages du jour suffit — Racontine s'occupe du récit.
+        </p>
+      </div>
 
       {children.length > 1 && (
         <div className="flex flex-col gap-1.5">
@@ -168,10 +173,11 @@ export default function Capture() {
       {error && <p className="text-sm text-destructive">{error}</p>}
 
       <Button onClick={submit} disabled={submitting || !shots.length}>
-        {submitting ? "Envoi…" : "Envoyer pour extraction"}
+        {submitting ? "Envoi…" : "Raconter la journée"}
       </Button>
       <p className="text-xs text-muted-foreground">
-        Cette page sera analysée via l'API Claude pour structurer la journée.
+        Racontine lit le carnet via l'API Claude et écrit un joli récit de la
+        journée, que vous relisez avant de publier.
       </p>
     </div>
   );

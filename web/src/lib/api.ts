@@ -63,6 +63,9 @@ export const api = {
     id: string,
     patch: Partial<{
       mood: string | null;
+      title: string | null;
+      story: string | null;
+      highlight: string | null;
       transcription: string | null;
       source: string;
       date: string;

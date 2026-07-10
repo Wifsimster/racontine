@@ -11,6 +11,10 @@ export type Extraction = {
   sante: string | null;
   anecdotes: string[];
   transcription_integrale: string | null;
+  /** Valorisation automatique — le cœur du produit. */
+  titre: string | null;
+  recit: string | null;
+  temps_fort: string | null;
   incertitudes: string[];
   illisible: boolean;
 };
@@ -74,6 +78,21 @@ const EXTRACTION_TOOL: Anthropic.Tool = {
         type: ["string", "null"],
         description: "transcription fidèle et intégrale du texte manuscrit",
       },
+      titre: {
+        type: ["string", "null"],
+        description:
+          "Titre court et évocateur de la journée (3 à 6 mots, sans point final), ex. « Peinture et premiers papillons ». Basé uniquement sur ce qui est écrit.",
+      },
+      recit: {
+        type: ["string", "null"],
+        description:
+          "Récit chaleureux de 2 à 4 phrases racontant la journée de l'enfant à ses proches, à la 3e personne, au présent, ton tendre et vivant mais jamais mièvre. Uniquement à partir du contenu réel du carnet — n'invente aucun détail. Null si le carnet est trop vide pour un récit.",
+      },
+      temps_fort: {
+        type: ["string", "null"],
+        description:
+          "Le moment le plus marquant de la journée en une phrase courte (première fois, mot rigolo, jolie activité…), sinon null.",
+      },
       incertitudes: {
         type: "array",
         items: { type: "string" },
@@ -92,8 +111,11 @@ const EXTRACTION_TOOL: Anthropic.Tool = {
 
 const SYSTEM_PROMPT = `Tu es l'assistant d'extraction de Racontine. On te fournit une ou plusieurs photos d'une page manuscrite d'un carnet de liaison d'enfant (nounou, MAM ou crèche), en français.
 
-Lis attentivement l'écriture manuscrite et structure la journée. Consignes :
-- N'invente jamais : si une information est absente, laisse le champ vide (liste vide ou null).
+Lis attentivement l'écriture manuscrite, structure la journée, puis **valorise-la** : transforme des notes brutes en un joli souvenir que les proches auront plaisir à lire. C'est le cœur du produit.
+
+Consignes :
+- N'invente jamais : si une information est absente, laisse le champ vide (liste vide ou null). Le récit ne doit contenir que des faits présents dans le carnet.
+- "titre", "recit" et "temps_fort" sont la valorisation : rédige-les avec chaleur, dans un français soigné et vivant, à partir des repas, siestes, activités, humeur et anecdotes réels.
 - Signale dans "incertitudes" tout mot ou champ dont la lecture n'est pas sûre.
 - "transcription_integrale" doit reproduire fidèlement le texte manuscrit.
 - Si l'image ne contient pas de carnet lisible, mets "illisible" à true.
@@ -162,6 +184,9 @@ export async function extractFromImages(
     sante: raw.sante ?? null,
     anecdotes: raw.anecdotes ?? [],
     transcription_integrale: raw.transcription_integrale ?? null,
+    titre: raw.titre ?? null,
+    recit: raw.recit ?? null,
+    temps_fort: raw.temps_fort ?? null,
     incertitudes: raw.incertitudes ?? [],
     illisible: raw.illisible ?? false,
   };
