@@ -238,7 +238,14 @@ export default function Timeline() {
 
   async function load(offset: number) {
     const res = await api.timeline({ offset, limit: 20 });
-    setEntries((prev) => (offset === 0 ? res.entries : [...prev, ...res.entries]));
+    setEntries((prev) => {
+      if (offset === 0) return res.entries;
+      // Pagination par offset : si une entrée a été publiée entre deux chargements,
+      // la fenêtre glisse et peut renvoyer une entrée déjà affichée. On dédoublonne
+      // par id pour éviter cartes en double et clés React dupliquées.
+      const seen = new Set(prev.map((e) => e.id));
+      return [...prev, ...res.entries.filter((e) => !seen.has(e.id))];
+    });
     setNextOffset(res.nextOffset);
     setLoading(false);
   }

@@ -1,13 +1,9 @@
 import type { FastifyInstance } from "fastify";
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
-import {
-  subscriptions,
-  notifications,
-  children,
-  user,
-} from "../db/schema.js";
+import { subscriptions, notifications, user } from "../db/schema.js";
 import { requireUser } from "../plugins/auth.js";
+import { hasChildRole } from "../access.js";
 
 export async function subscriptionsRoutes(app: FastifyInstance) {
   app.addHook("preHandler", requireUser);
@@ -43,12 +39,10 @@ export async function subscriptionsRoutes(app: FastifyInstance) {
     const { childId } = req.params;
     const emailEnabled = req.body?.emailEnabled ?? true;
 
-    const [child] = await db
-      .select({ id: children.id })
-      .from(children)
-      .where(eq(children.id, childId))
-      .limit(1);
-    if (!child) return reply.code(404).send({ error: "enfant introuvable" });
+    // S'abonner exige d'être membre du cercle de l'enfant (n'importe quel rôle).
+    // On ne divulgue pas l'existence d'un enfant non partagé : 404 uniforme.
+    if (!(await hasChildRole(req.user!.id, childId, "reader")))
+      return reply.code(404).send({ error: "enfant introuvable" });
 
     await db
       .insert(subscriptions)
@@ -77,10 +71,15 @@ export async function subscriptionsRoutes(app: FastifyInstance) {
     },
   );
 
-  /** Liste des proches abonnés à la timeline d'un enfant. */
+  /** Liste des proches abonnés à la timeline d'un enfant (admin uniquement). */
   app.get<{ Params: { childId: string } }>(
     "/api/children/:childId/subscribers",
-    async (req) => {
+    async (req, reply) => {
+      // Expose nom + e-mail des abonnés : réservé à l'admin de l'enfant, comme
+      // la liste des membres (sharing.ts). 404 uniforme si pas admin/inconnu.
+      if (!(await hasChildRole(req.user!.id, req.params.childId, "admin")))
+        return reply.code(404).send({ error: "enfant introuvable" });
+
       const rows = await db
         .select({
           userId: subscriptions.userId,

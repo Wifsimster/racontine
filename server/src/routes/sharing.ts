@@ -6,6 +6,7 @@ import {
   children,
   memberships,
   invitations,
+  subscriptions,
   user,
   type MemberRole,
 } from "../db/schema.js";
@@ -223,14 +224,26 @@ export async function sharingRoutes(app: FastifyInstance) {
         return reply
           .code(400)
           .send({ error: "il doit rester au moins un administrateur" });
-      await db
-        .delete(memberships)
-        .where(
-          and(
-            eq(memberships.childId, childId),
-            eq(memberships.userId, userId),
-          ),
-        );
+      // Retirer l'adhésion ET l'abonnement : sans quoi le proche continuerait de
+      // recevoir notifications et e-mails de la timeline malgré l'accès révoqué.
+      await db.transaction(async (tx) => {
+        await tx
+          .delete(memberships)
+          .where(
+            and(
+              eq(memberships.childId, childId),
+              eq(memberships.userId, userId),
+            ),
+          );
+        await tx
+          .delete(subscriptions)
+          .where(
+            and(
+              eq(subscriptions.childId, childId),
+              eq(subscriptions.userId, userId),
+            ),
+          );
+      });
       return reply.code(204).send();
     },
   );
@@ -275,12 +288,41 @@ export async function sharingRoutes(app: FastifyInstance) {
         .where(eq(invitations.token, req.params.token))
         .limit(1);
       if (!inv) return reply.code(404).send({ error: "invitation introuvable" });
-      if (inv.status === "revoked")
-        return reply.code(410).send({ error: "invitation révoquée" });
+      // Usage unique : une invitation déjà acceptée (ou révoquée) n'est plus une
+      // capacité valide. Sans ça, un lien transféré resterait exploitable par
+      // n'importe quel compte jusqu'à l'expiration.
+      if (inv.status !== "pending")
+        return reply
+          .code(410)
+          .send({ error: "invitation déjà utilisée ou révoquée" });
       if (inv.expiresAt.getTime() < Date.now())
         return reply.code(410).send({ error: "invitation expirée" });
+      // L'invitation est nominative : seul le destinataire (même e-mail) peut
+      // l'accepter — le token ne doit pas onboarder un tiers.
+      if (req.user!.email.trim().toLowerCase() !== inv.email.toLowerCase())
+        return reply.code(403).send({
+          error: "cette invitation est destinée à une autre adresse e-mail",
+        });
 
-      await db.transaction(async (tx) => {
+      // Acceptation atomique : on ne crée l'adhésion que si l'invitation est
+      // toujours « pending » au moment du commit (garde contre le double usage
+      // concurrent). returning() vide ⇒ quelqu'un l'a acceptée entre-temps.
+      const accepted = await db.transaction(async (tx) => {
+        const marked = await tx
+          .update(invitations)
+          .set({
+            status: "accepted",
+            acceptedAt: new Date(),
+            acceptedBy: req.user!.id,
+          })
+          .where(
+            and(
+              eq(invitations.id, inv.id),
+              eq(invitations.status, "pending"),
+            ),
+          )
+          .returning({ id: invitations.id });
+        if (!marked.length) return false;
         await tx
           .insert(memberships)
           .values({ userId: req.user!.id, childId: inv.childId, role: inv.role })
@@ -288,15 +330,12 @@ export async function sharingRoutes(app: FastifyInstance) {
             target: [memberships.userId, memberships.childId],
             set: { role: inv.role },
           });
-        await tx
-          .update(invitations)
-          .set({
-            status: "accepted",
-            acceptedAt: new Date(),
-            acceptedBy: req.user!.id,
-          })
-          .where(eq(invitations.id, inv.id));
+        return true;
       });
+      if (!accepted)
+        return reply
+          .code(410)
+          .send({ error: "invitation déjà utilisée ou révoquée" });
 
       return reply.code(200).send({ childId: inv.childId, role: inv.role });
     },
