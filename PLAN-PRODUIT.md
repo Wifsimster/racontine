@@ -119,8 +119,8 @@ Cohérent avec ton modèle homelab existant :
 ### 3.2 Stack proposée
 | Couche | Choix | Pourquoi |
 |---|---|---|
-| Front | **Vue 3 + PrimeVue + Tailwind** (PWA) | Ton stack habituelle (skill vue-best-practices déjà en place) |
-| Back | **Node/TypeScript (Fastify) ou Python (FastAPI)** | Simple, bon écosystème LLM |
+| Front | **Vite + React + TypeScript + shadcn/ui + Tailwind** (PWA, pas de SSR) | Rendu premium out of the box (produit émotionnel montré aux proches), composants possédés dans le repo (cohérent souveraineté), meilleure vélocité en dev assisté par LLM |
+| Back | **Node/TypeScript (Fastify)** | Simple, homogène avec le front, bon écosystème LLM |
 | Auth | **Better Auth** (invitations, magic links pour les proches) | Skill déjà disponible ; magic link = zéro friction grands-parents |
 | BDD | **PostgreSQL** | Requêtes riches (timeline, recherche plein texte) |
 | Fichiers | Volume local ou MinIO | Homelab |
