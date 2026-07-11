@@ -22,6 +22,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type DraftItem = { type: ItemType; data: Record<string, string>; position: number };
 
@@ -57,6 +67,7 @@ export default function Review() {
   const [date, setDate] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const hydrate = useCallback((e: Entry) => {
@@ -139,7 +150,6 @@ export default function Review() {
   }
 
   async function remove() {
-    if (!confirm("Supprimer cette entrée ?")) return;
     await api.deleteEntry(id);
     nav("/");
   }
@@ -183,10 +193,15 @@ export default function Review() {
           <Button variant="outline" onClick={() => nav("/capture")}>
             Reprendre une photo
           </Button>
-          <Button variant="destructive" onClick={remove}>
+          <Button variant="destructive" onClick={() => setConfirmDelete(true)}>
             <Trash2 /> Supprimer
           </Button>
         </div>
+        <DeleteDialog
+          open={confirmDelete}
+          onOpenChange={setConfirmDelete}
+          onConfirm={remove}
+        />
       </div>
     );
   }
@@ -351,6 +366,39 @@ export default function Review() {
         </div>
       </div>
     </div>
+  );
+}
+
+function DeleteDialog({
+  open,
+  onOpenChange,
+  onConfirm,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Supprimer cette entrée ?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Cette action est définitive. L'entrée et ses photos seront
+            supprimées.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Annuler</AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-destructive text-white hover:bg-destructive/90"
+            onClick={onConfirm}
+          >
+            Supprimer
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
 
