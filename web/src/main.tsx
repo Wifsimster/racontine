@@ -10,6 +10,7 @@ import Review from "./pages/Review";
 import Share from "./pages/Share";
 import Invite from "./pages/Invite";
 import Proches from "./pages/Proches";
+import Settings from "./pages/Settings";
 
 const router = createBrowserRouter([
   { path: "/login", element: <Login /> },
@@ -24,6 +25,7 @@ const router = createBrowserRouter([
       { path: "entries/:id", element: <Review /> },
       { path: "partage", element: <Share /> },
       { path: "proches", element: <Proches /> },
+      { path: "reglages", element: <Settings /> },
     ],
   },
 ]);

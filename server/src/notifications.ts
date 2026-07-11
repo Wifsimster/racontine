@@ -8,6 +8,7 @@ import {
 } from "./db/schema.js";
 import { config } from "./config.js";
 import { sendMail, mailEnabled } from "./mailer.js";
+import { getSettings } from "./settings.js";
 
 /** Échappe le texte destiné à être interpolé dans du HTML d'e-mail. */
 function escapeHtml(s: string): string {
@@ -82,7 +83,10 @@ export async function notifyEntryPublished(params: {
     const body = `La journée du ${dateLabel} vient d'être publiée dans le journal de ${childName}.`;
     const link = `${config.webBaseUrl}/entries/${entryId}`;
 
-    const canEmail = mailEnabled();
+    // E-mail envoyé seulement si SMTP est configuré ET si le propriétaire n'a pas
+    // coupé globalement les e-mails de notification depuis les réglages.
+    const { emailNotificationsEnabled } = await getSettings();
+    const canEmail = mailEnabled() && emailNotificationsEnabled;
 
     // Une notif in-app par abonné, plus un e-mail si activé et SMTP configuré.
     // On persiste d'abord la notification in-app, puis on tente l'e-mail : ainsi

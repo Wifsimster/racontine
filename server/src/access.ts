@@ -1,6 +1,6 @@
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { db } from "./db/index.js";
-import { memberships, entries, type MemberRole } from "./db/schema.js";
+import { memberships, entries, user, type MemberRole } from "./db/schema.js";
 
 /** Hiérarchie des rôles : un rôle « ≥ » englobe les droits des rôles inférieurs. */
 const RANK: Record<MemberRole, number> = {
@@ -45,6 +45,27 @@ export async function hasChildRole(
 ): Promise<boolean> {
   const role = await childRole(userId, childId);
   return role != null && roleAtLeast(role, min);
+}
+
+/**
+ * Propriétaire de l'instance = le premier compte créé (celui qui a installé
+ * Racontine sur son homelab et gère les réglages). Déterministe et auto-amorcé :
+ * pas de colonne d'appartenance à migrer, pas d'étape de bootstrap manuelle.
+ * Départage une éventuelle égalité de `createdAt` par l'id pour rester stable.
+ */
+export async function ownerUserId(): Promise<string | null> {
+  const [row] = await db
+    .select({ id: user.id })
+    .from(user)
+    .orderBy(asc(user.createdAt), asc(user.id))
+    .limit(1);
+  return row?.id ?? null;
+}
+
+/** true si l'utilisateur est le propriétaire de l'instance. */
+export async function isOwner(userId: string): Promise<boolean> {
+  const owner = await ownerUserId();
+  return owner != null && owner === userId;
 }
 
 /** Enfant porteur d'une entrée (pour autoriser par entrée). */

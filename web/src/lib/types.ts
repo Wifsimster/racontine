@@ -131,3 +131,42 @@ export const ITEM_LABELS: Record<ItemType, string> = {
   anecdote: "Anecdote",
   health: "Santé",
 };
+
+/* ------------------------------ Réglages ------------------------------- */
+
+/** Utilisateur courant + s'il est le propriétaire de l'instance. */
+export type Me = {
+  id: string;
+  email: string;
+  name: string;
+  isOwner: boolean;
+};
+
+/** Réglages effectifs de l'instance, modifiables par le propriétaire. */
+export type AppSettings = {
+  appName: string;
+  signupEnabled: boolean;
+  invitationTtlDays: number;
+  vlmModel: string;
+  emailNotificationsEnabled: boolean;
+};
+
+/** État de l'infrastructure (piloté par l'environnement, en lecture seule). */
+export type SettingsMeta = {
+  mailConfigured: boolean;
+  anthropicConfigured: boolean;
+  notifyWebhookConfigured: boolean;
+  webBaseUrl: string;
+  knownVlmModels: string[];
+};
+
+export type SettingsResponse = {
+  settings: AppSettings;
+  meta: SettingsMeta;
+};
+
+/** Réglages publics, exposés sans authentification (écran de connexion). */
+export type PublicSettings = {
+  appName: string;
+  signupEnabled: boolean;
+};

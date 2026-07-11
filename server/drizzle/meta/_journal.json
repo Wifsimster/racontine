@@ -29,6 +29,13 @@
       "when": 1783718979020,
       "tag": "0003_lucky_lorna_dane",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1783781876671,
+      "tag": "0004_perpetual_jack_flag",
+      "breakpoints": true
     }
   ]
 }

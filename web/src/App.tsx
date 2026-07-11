@@ -1,12 +1,30 @@
+import { useEffect, useState } from "react";
 import { Link, Navigate, Outlet, useLocation } from "react-router-dom";
-import { BookOpenText, LogOut, Users, Share2 } from "lucide-react";
+import { BookOpenText, LogOut, Users, Share2, Settings } from "lucide-react";
 import { useSession, signOut } from "@/lib/auth-client";
+import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import NotificationsBell from "@/components/NotificationsBell";
 
 export default function App() {
   const { data: session, isPending } = useSession();
   const location = useLocation();
+  const [isOwner, setIsOwner] = useState(false);
+  const [appName, setAppName] = useState("Racontine");
+
+  // Nom de l'instance + accès aux réglages (le lien n'apparaît qu'au propriétaire).
+  const userId = session?.user.id;
+  useEffect(() => {
+    if (!userId) return;
+    api
+      .me()
+      .then((me) => setIsOwner(me.isOwner))
+      .catch(() => setIsOwner(false));
+    api
+      .publicSettings()
+      .then((s) => setAppName(s.appName))
+      .catch(() => {});
+  }, [userId]);
 
   if (isPending) {
     return (
@@ -26,7 +44,7 @@ export default function App() {
         <Link to="/" className="flex items-center gap-2">
           <BookOpenText className="size-6 text-primary" />
           <span className="font-serif text-xl font-semibold tracking-tight">
-            Racontine
+            {appName}
           </span>
         </Link>
         <div className="flex items-center gap-1">
@@ -36,6 +54,18 @@ export default function App() {
               <Share2 />
             </Link>
           </Button>
+          {isOwner && (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Réglages"
+              asChild
+            >
+              <Link to="/reglages">
+                <Settings />
+              </Link>
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="icon-sm"

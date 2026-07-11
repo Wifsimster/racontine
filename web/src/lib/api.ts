@@ -8,6 +8,10 @@ import type {
   Notification,
   Subscriber,
   SubscriptionStatus,
+  Me,
+  AppSettings,
+  SettingsResponse,
+  PublicSettings,
 } from "./types";
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
@@ -158,4 +162,18 @@ export const api = {
 
   markAllNotificationsRead: () =>
     req<void>("/api/notifications/read-all", { method: "POST" }),
+
+  /* --------------------------- Réglages ------------------------------- */
+
+  me: () => req<Me>("/api/me"),
+
+  publicSettings: () => req<PublicSettings>("/api/settings/public"),
+
+  getSettings: () => req<SettingsResponse>("/api/settings"),
+
+  updateSettings: (patch: Partial<AppSettings>) =>
+    req<SettingsResponse>("/api/settings", {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    }),
 };

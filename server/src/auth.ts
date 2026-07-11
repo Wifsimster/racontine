@@ -1,10 +1,12 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { magicLink } from "better-auth/plugins";
+import { createAuthMiddleware, APIError } from "better-auth/api";
 import { db } from "./db/index.js";
 import * as schema from "./db/schema.js";
 import { config } from "./config.js";
 import { deliverLink } from "./notify.js";
+import { getSettings } from "./settings.js";
 
 export const auth = betterAuth({
   secret: config.auth.secret,
@@ -24,7 +26,22 @@ export const auth = betterAuth({
     enabled: true,
     // Foyer fermé : usage quotidien, pas de vérification email en MVP.
     requireEmailVerification: false,
-    disableSignUp: !config.auth.signupEnabled,
+    // L'ouverture des inscriptions est pilotée à chaud par le réglage
+    // `signupEnabled` (voir le hook `before` ci-dessous), et non figée au
+    // démarrage : le propriétaire peut fermer/rouvrir depuis l'UI.
+  },
+  hooks: {
+    // Bloque l'inscription email/mot de passe quand le propriétaire l'a fermée.
+    // Ne concerne QUE /sign-up/email : les proches invités par magic link
+    // continuent de rejoindre le cercle même inscriptions fermées.
+    before: createAuthMiddleware(async (ctx) => {
+      if (ctx.path !== "/sign-up/email") return;
+      const { signupEnabled } = await getSettings();
+      if (!signupEnabled)
+        throw new APIError("FORBIDDEN", {
+          message: "Les inscriptions sont fermées sur cette instance.",
+        });
+    }),
   },
   plugins: [
     // Magic link : connexion sans mot de passe pour les proches invités —

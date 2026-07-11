@@ -8,6 +8,7 @@ import { entriesRoutes } from "./routes/entries.js";
 import { attachmentsRoutes } from "./routes/attachments.js";
 import { sharingRoutes } from "./routes/sharing.js";
 import { subscriptionsRoutes } from "./routes/subscriptions.js";
+import { settingsRoutes } from "./routes/settings.js";
 
 export async function buildApp() {
   validateConfig();
@@ -38,6 +39,7 @@ export async function buildApp() {
   await app.register(attachmentsRoutes);
   await app.register(sharingRoutes);
   await app.register(subscriptionsRoutes);
+  await app.register(settingsRoutes);
 
   return app;
 }

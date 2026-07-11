@@ -32,8 +32,28 @@ pnpm dev               # server sur :3010, web sur :5173
 ```
 
 Premier lancement : ouvrir `http://localhost:5173`, créer le compte parent
-(puis le co-parent), et passer `SIGNUP_ENABLED=false` pour fermer les
-inscriptions.
+(puis le co-parent), et fermer les inscriptions.
+
+## Réglages (propriétaire)
+
+Le **propriétaire** de l'instance — le premier compte créé — dispose d'un écran
+**Réglages** (icône ⚙️ dans l'en-tête, visible de lui seul) pour piloter
+l'application à chaud, sans redéploiement :
+
+| Réglage | Effet |
+|---|---|
+| **Nom de l'instance** | En-tête et écran de connexion |
+| **Inscriptions ouvertes** | Autorise la création de comptes email/mot de passe (les proches invités par lien restent toujours acceptés) |
+| **Validité des invitations** | Durée avant expiration d'un lien d'invitation |
+| **E-mails de notification** | Interrupteur global des e-mails aux abonnés |
+| **Modèle d'extraction (VLM)** | Modèle Claude vision utilisé pour lire les carnets |
+
+Ces réglages sont stockés en base (table `app_settings`, ligne unique) et
+priment sur les variables d'environnement correspondantes. Une valeur laissée
+vide retombe sur le défaut d'environnement (`SIGNUP_ENABLED`, `INVITATION_TTL_DAYS`,
+`VLM_MODEL`…). Les secrets d'infrastructure (clé API, SMTP, webhook) restent
+pilotés uniquement par l'environnement ; l'écran en affiche l'état en lecture
+seule.
 
 ## Partage avec les proches
 

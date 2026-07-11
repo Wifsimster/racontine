@@ -14,6 +14,7 @@ import { requireUser } from "../plugins/auth.js";
 import { hasChildRole } from "../access.js";
 import { config } from "../config.js";
 import { deliverLink } from "../notify.js";
+import { getSettings } from "../settings.js";
 
 const ROLES: readonly MemberRole[] = ["admin", "contributor", "reader"];
 
@@ -130,8 +131,9 @@ export async function sharingRoutes(app: FastifyInstance) {
       }
 
       const token = randomBytes(24).toString("base64url");
+      const { invitationTtlDays } = await getSettings();
       const expiresAt = new Date(
-        Date.now() + config.invitationTtlDays * 24 * 60 * 60 * 1000,
+        Date.now() + invitationTtlDays * 24 * 60 * 60 * 1000,
       );
       const [invitation] = await db
         .insert(invitations)

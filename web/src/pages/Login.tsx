@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { BookOpenText } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
+import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +14,20 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [appName, setAppName] = useState("Racontine");
+  const [signupEnabled, setSignupEnabled] = useState(true);
+
+  // Nom de l'instance + inscriptions ouvertes ou non (réglages publics).
+  useEffect(() => {
+    api
+      .publicSettings()
+      .then((s) => {
+        setAppName(s.appName);
+        setSignupEnabled(s.signupEnabled);
+        if (!s.signupEnabled) setMode("signin");
+      })
+      .catch(() => {});
+  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -43,7 +58,7 @@ export default function Login() {
         <div className="flex items-center gap-3">
           <BookOpenText className="size-9 text-primary" />
           <h1 className="font-serif text-4xl font-semibold tracking-tight">
-            Racontine
+            {appName}
           </h1>
         </div>
         <p className="text-muted-foreground">
@@ -107,18 +122,25 @@ export default function Login() {
               : "Commencer gratuitement"}
         </Button>
 
-        <button
-          type="button"
-          className="text-sm text-muted-foreground hover:underline"
-          onClick={() => {
-            setMode(mode === "signin" ? "signup" : "signin");
-            setError(null);
-          }}
-        >
-          {mode === "signin"
-            ? "Pas encore de compte ? Créer"
-            : "Déjà un compte ? Se connecter"}
-        </button>
+        {signupEnabled ? (
+          <button
+            type="button"
+            className="text-sm text-muted-foreground hover:underline"
+            onClick={() => {
+              setMode(mode === "signin" ? "signup" : "signin");
+              setError(null);
+            }}
+          >
+            {mode === "signin"
+              ? "Pas encore de compte ? Créer"
+              : "Déjà un compte ? Se connecter"}
+          </button>
+        ) : (
+          <p className="text-center text-xs text-muted-foreground">
+            Les inscriptions sont fermées. Les proches invités reçoivent un lien
+            de connexion par e-mail.
+          </p>
+        )}
       </form>
     </div>
   );
