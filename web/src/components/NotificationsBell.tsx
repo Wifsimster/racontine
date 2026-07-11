@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Bell } from "lucide-react";
 import { api } from "@/lib/api";
@@ -22,6 +22,8 @@ export default function NotificationsBell() {
   const [items, setItems] = useState<Notification[]>([]);
   const [unread, setUnread] = useState(0);
   const panelRef = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const [pos, setPos] = useState<{ top: number; right: number } | null>(null);
 
   async function refresh() {
     try {
@@ -50,6 +52,34 @@ export default function NotificationsBell() {
     }
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+
+  // Positionne le panneau en fixe, calé sur la cloche mais borné à la fenêtre.
+  // La cloche n'est pas au bord droit de l'écran : un simple `right-0` ancré au
+  // bouton faisait déborder le panneau (320 px) hors de l'écran à gauche sur
+  // mobile. On calcule donc une position clampée dans le viewport.
+  useLayoutEffect(() => {
+    if (!open) return;
+    function updatePos() {
+      const btn = btnRef.current;
+      if (!btn) return;
+      const rect = btn.getBoundingClientRect();
+      const margin = 8;
+      const panelWidth = Math.min(320, window.innerWidth - 2 * margin);
+      // Distance depuis le bord droit du viewport pour aligner le panneau sur
+      // le bord droit de la cloche, bornée pour ne pas sortir à gauche ni à droite.
+      let right = window.innerWidth - rect.right;
+      const maxRight = window.innerWidth - panelWidth - margin;
+      right = Math.max(margin, Math.min(right, maxRight));
+      setPos({ top: rect.bottom + margin, right });
+    }
+    updatePos();
+    window.addEventListener("resize", updatePos);
+    window.addEventListener("scroll", updatePos, true);
+    return () => {
+      window.removeEventListener("resize", updatePos);
+      window.removeEventListener("scroll", updatePos, true);
+    };
   }, [open]);
 
   async function onClickItem(n: Notification) {
@@ -87,6 +117,7 @@ export default function NotificationsBell() {
   return (
     <div ref={panelRef} className="relative">
       <Button
+        ref={btnRef}
         variant="ghost"
         size="icon-sm"
         aria-label="Notifications"
@@ -103,8 +134,11 @@ export default function NotificationsBell() {
         )}
       </Button>
 
-      {open && (
-        <div className="absolute right-0 top-full z-20 mt-2 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border bg-popover shadow-lg">
+      {open && pos && (
+        <div
+          style={{ top: pos.top, right: pos.right }}
+          className="fixed z-20 w-80 max-w-[calc(100vw-1rem)] overflow-hidden rounded-xl border bg-popover shadow-lg"
+        >
           <div className="flex items-center justify-between border-b px-3 py-2">
             <span className="text-sm font-semibold">Notifications</span>
             {unread > 0 && (
