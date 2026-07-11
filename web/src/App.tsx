@@ -91,6 +91,9 @@ export default function App() {
       <main>
         <Outlet />
       </main>
+      <footer className="py-6 text-center text-xs text-muted-foreground">
+        v{__APP_VERSION__}
+      </footer>
     </div>
   );
 }
