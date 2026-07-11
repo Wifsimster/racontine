@@ -2,6 +2,13 @@
 
 Toutes les versions notables de Racontine. Format issu des messages de commit conventionnels (`feat`, `fix`, …).
 
+## [1.0.1](https://github.com/Wifsimster/racontine/compare/v1.0.0...v1.0.1) (2026-07-11)
+
+
+### Bug Fixes
+
+* **web:** empêcher le panneau de notifications de déborder de l'écran ([#18](https://github.com/Wifsimster/racontine/issues/18)) ([fc227b5](https://github.com/Wifsimster/racontine/commit/fc227b553aa02046a033158b135286ca25a47d5a))
+
 # 1.0.0 (2026-07-11)
 
 
