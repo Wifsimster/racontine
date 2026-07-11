@@ -123,10 +123,48 @@ Consignes :
 - Plusieurs images correspondent à la même journée (recto/verso ou pages multiples) : fusionne-les en une seule journée.
 Appelle toujours l'outil enregistrer_journee.`;
 
+/**
+ * Erreur d'extraction dont le message est déjà sûr à afficher à l'utilisateur
+ * (stocké tel quel dans `failureReason` et montré dans l'app). Les détails bruts
+ * du fournisseur — corps JSON, request_id, mention de facturation — restent dans
+ * les logs serveur et ne fuitent jamais vers les proches.
+ */
+export class VlmError extends Error {}
+
+/** Traduit une erreur d'appel VLM en message français sûr pour l'utilisateur. */
+function vlmUserMessage(err: unknown): string {
+  if (err instanceof Anthropic.APIError) {
+    const status = err.status ?? 0;
+    const type = err.type ?? "";
+    if (
+      status === 401 ||
+      status === 403 ||
+      type === "authentication_error" ||
+      type === "permission_error"
+    )
+      return "Le service de lecture du carnet est mal configuré. Prévenez l'administrateur.";
+    // Solde de crédits épuisé / facturation : côté fournisseur, non lié à la photo.
+    if (/credit balance|billing|quota|payment/i.test(err.message))
+      return "Le service de lecture du carnet est momentanément indisponible. Réessayez plus tard.";
+    if (status === 429 || type === "rate_limit_error")
+      return "Trop de lectures en cours. Patientez un instant puis réessayez.";
+    if (status === 529 || type === "overloaded_error")
+      return "Le service de lecture est surchargé pour le moment. Réessayez dans quelques minutes.";
+    if (status >= 500)
+      return "Le service de lecture est temporairement indisponible. Réessayez plus tard.";
+    // Autres erreurs de requête (ex. image refusée par l'API).
+    return "La lecture automatique du carnet a échoué. Réessayez avec une photo plus nette.";
+  }
+  if (err instanceof VlmError) return err.message;
+  return "La lecture automatique du carnet a échoué. Réessayez plus tard.";
+}
+
 let client: Anthropic | null = null;
 function getClient(): Anthropic {
   if (!config.anthropicApiKey) {
-    throw new Error("ANTHROPIC_API_KEY manquant : extraction VLM impossible.");
+    throw new VlmError(
+      "Le service de lecture du carnet n'est pas configuré. Prévenez l'administrateur.",
+    );
   }
   if (!client) client = new Anthropic({ apiKey: config.anthropicApiKey });
   return client;
@@ -149,25 +187,35 @@ export async function extractFromImages(
     },
   }));
 
-  const message = await anthropic.messages.create({
-    model: vlmModel,
-    max_tokens: 2048,
-    system: SYSTEM_PROMPT,
-    tools: [EXTRACTION_TOOL],
-    tool_choice: { type: "tool", name: EXTRACTION_TOOL.name },
-    messages: [
-      {
-        role: "user",
-        content: [
-          ...imageBlocks,
-          {
-            type: "text",
-            text: "Voici la ou les pages du carnet de cette journée. Extrais et structure-les.",
-          },
-        ],
-      },
-    ],
-  });
+  let message: Anthropic.Message;
+  try {
+    message = await anthropic.messages.create({
+      model: vlmModel,
+      max_tokens: 2048,
+      system: SYSTEM_PROMPT,
+      tools: [EXTRACTION_TOOL],
+      tool_choice: { type: "tool", name: EXTRACTION_TOOL.name },
+      messages: [
+        {
+          role: "user",
+          content: [
+            ...imageBlocks,
+            {
+              type: "text",
+              text: "Voici la ou les pages du carnet de cette journée. Extrais et structure-les.",
+            },
+          ],
+        },
+      ],
+    });
+  } catch (err) {
+    // Détail brut du fournisseur pour l'opérateur (jamais montré à l'utilisateur).
+    console.error(
+      "Extraction VLM — échec de l'appel Anthropic :",
+      err instanceof Error ? err.message : err,
+    );
+    throw new VlmError(vlmUserMessage(err));
+  }
 
   const toolUse = message.content.find(
     (b): b is Anthropic.ToolUseBlock => b.type === "tool_use",

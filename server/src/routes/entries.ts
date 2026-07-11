@@ -20,7 +20,7 @@ import {
   roleAtLeast,
 } from "../access.js";
 import { storeCarnetImage, resolveUpload, deleteStored } from "../storage.js";
-import { extractFromImages, type Extraction } from "../vlm.js";
+import { extractFromImages, VlmError, type Extraction } from "../vlm.js";
 import { notifyEntryPublished } from "../notifications.js";
 
 async function readStored(relPath: string): Promise<Buffer> {
@@ -137,6 +137,18 @@ async function processEntry(entryId: string, paths: string[]) {
       }
     });
   } catch (err) {
+    // Seuls les VlmError portent un message déjà sûr pour l'utilisateur ; toute
+    // autre erreur (DB, lecture disque…) pourrait divulguer des détails internes,
+    // on la remplace par un message générique et on journalise le brut.
+    if (!(err instanceof VlmError))
+      console.error(
+        "processEntry — échec inattendu :",
+        err instanceof Error ? err.message : err,
+      );
+    const failureReason =
+      err instanceof VlmError
+        ? err.message
+        : "La lecture automatique du carnet a échoué. Réessayez plus tard.";
     // Le write d'échec ne doit jamais rejeter à son tour (l'appel est
     // fire-and-forget) : on l'isole dans son propre try/catch.
     try {
@@ -144,8 +156,7 @@ async function processEntry(entryId: string, paths: string[]) {
         .update(entries)
         .set({
           status: "failed",
-          failureReason:
-            err instanceof Error ? err.message : "Erreur d'extraction VLM.",
+          failureReason,
           updatedAt: new Date(),
         })
         .where(
