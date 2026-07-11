@@ -82,6 +82,24 @@ pnpm --filter server db:generate   # génère la migration SQL dans server/drizz
 pnpm --filter server db:migrate    # l'applique
 ```
 
+## Versioning (semantic-release)
+
+Le versionnement est **automatique**. À chaque merge sur `main`,
+`.github/workflows/release.yml` analyse les messages de commit
+[conventionnels](https://www.conventionalcommits.org/) et calcule la prochaine
+version (SemVer) :
+
+| Préfixe de commit | Effet sur la version |
+|---|---|
+| `fix:` | patch (`0.1.0` → `0.1.1`) |
+| `feat:` | mineure (`0.1.0` → `0.2.0`) |
+| `feat!:` / `BREAKING CHANGE:` | majeure (`0.1.0` → `1.0.0`) |
+| `chore:`, `ci:`, `docs:`, `refactor:`… | aucun release |
+
+La release met à jour les `package.json` du monorepo + `CHANGELOG.md`, taggue le
+dépôt et publie une release GitHub. La version courante est affichée en bas de
+l'application (injectée au build Vite depuis `web/package.json`).
+
 ## Déploiement (homelab, images GHCR)
 
 Les images sont construites et publiées sur **GHCR** par GitHub Actions

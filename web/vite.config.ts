@@ -1,10 +1,20 @@
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
 
+// La version affichée dans l'app provient du package.json, tenu à jour par
+// semantic-release à chaque merge sur main.
+const { version } = JSON.parse(
+  readFileSync(path.resolve(__dirname, "package.json"), "utf8"),
+);
+
 export default defineConfig({
+  define: {
+    __APP_VERSION__: JSON.stringify(version),
+  },
   plugins: [
     react(),
     tailwindcss(),
