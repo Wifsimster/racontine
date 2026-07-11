@@ -39,11 +39,16 @@ export default function Login() {
     <div className="relative min-h-svh flex flex-col items-center justify-center gap-6 p-6 overflow-hidden">
       <LoginBackground />
 
-      <div className="flex items-center gap-3">
-        <BookOpenText className="size-9 text-primary" />
-        <h1 className="font-serif text-4xl font-semibold tracking-tight">
-          Racontine
-        </h1>
+      <div className="flex max-w-sm flex-col items-center gap-3 text-center">
+        <div className="flex items-center gap-3">
+          <BookOpenText className="size-9 text-primary" />
+          <h1 className="font-serif text-4xl font-semibold tracking-tight">
+            Racontine
+          </h1>
+        </div>
+        <p className="text-muted-foreground">
+          Racontez vos histoires du quotidien et gardez-les pour toujours.
+        </p>
       </div>
 
       <form
@@ -99,7 +104,7 @@ export default function Login() {
             ? "…"
             : mode === "signin"
               ? "Se connecter"
-              : "Créer le compte"}
+              : "Commencer gratuitement"}
         </Button>
 
         <button
