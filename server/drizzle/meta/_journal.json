@@ -36,6 +36,13 @@
       "when": 1783781876671,
       "tag": "0004_perpetual_jack_flag",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1783807756430,
+      "tag": "0005_rich_synch",
+      "breakpoints": true
     }
   ]
 }

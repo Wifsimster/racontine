@@ -12,6 +12,8 @@ import type {
   AppSettings,
   SettingsResponse,
   PublicSettings,
+  McpToken,
+  CreatedMcpToken,
 } from "./types";
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
@@ -186,4 +188,17 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify(patch),
     }),
+
+  /* ---------------------------- Jetons MCP ---------------------------- */
+
+  listMcpTokens: () => req<{ tokens: McpToken[] }>("/api/mcp/tokens"),
+
+  createMcpToken: (name: string) =>
+    req<CreatedMcpToken>("/api/mcp/tokens", {
+      method: "POST",
+      body: JSON.stringify({ name }),
+    }),
+
+  revokeMcpToken: (id: string) =>
+    req<void>(`/api/mcp/tokens/${id}`, { method: "DELETE" }),
 };

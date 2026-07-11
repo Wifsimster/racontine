@@ -17,6 +17,7 @@ import type { AppSettings, SettingsMeta } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import McpTokens from "@/components/McpTokens";
 
 /** Interrupteur on/off accessible (pas de composant Switch dans le repo). */
 function Toggle({
@@ -314,6 +315,9 @@ export default function Settings() {
           </select>
         </Row>
       </section>
+
+      {/* Connexion MCP (sessions Claude) */}
+      <McpTokens webBaseUrl={meta.webBaseUrl} />
 
       {/* Infra (lecture seule) */}
       <section className="flex flex-col gap-2 rounded-2xl border bg-card p-5 shadow-sm">

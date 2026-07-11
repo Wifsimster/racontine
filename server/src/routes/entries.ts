@@ -1,5 +1,4 @@
 import type { FastifyInstance } from "fastify";
-import { readFile } from "node:fs/promises";
 import { and, eq, ne, desc, inArray, or } from "drizzle-orm";
 import { db } from "../db/index.js";
 import {
@@ -19,40 +18,14 @@ import {
   hasChildRole,
   roleAtLeast,
 } from "../access.js";
-import { storeCarnetImage, resolveUpload, deleteStored } from "../storage.js";
-import { extractFromImages, VlmError, type Extraction } from "../vlm.js";
+import {
+  ingestCarnetImages,
+  DATE_RE,
+  SOURCES,
+  ITEM_TYPES,
+  type ItemType,
+} from "../ingest.js";
 import { notifyEntryPublished } from "../notifications.js";
-
-async function readStored(relPath: string): Promise<Buffer> {
-  return readFile(resolveUpload(relPath));
-}
-
-const ITEM_TYPES = ["meal", "nap", "activity", "anecdote", "health"] as const;
-type ItemType = (typeof ITEM_TYPES)[number];
-const SOURCES = ["nounou", "mam", "creche", "maison"] as const;
-
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
-/** Extraction VLM → lignes entry_items. */
-function extractionToItems(
-  x: Extraction,
-): { type: ItemType; data: EntryItemData; position: number }[] {
-  const rows: { type: ItemType; data: EntryItemData; position: number }[] = [];
-  let pos = 0;
-  for (const r of x.repas)
-    rows.push({ type: "meal", data: r, position: pos++ });
-  for (const s of x.siestes)
-    rows.push({ type: "nap", data: s, position: pos++ });
-  for (const a of x.activites)
-    rows.push({ type: "activity", data: { label: a }, position: pos++ });
-  for (const a of x.anecdotes)
-    rows.push({ type: "anecdote", data: { text: a }, position: pos++ });
-  if (x.sante && x.sante.trim())
-    rows.push({ type: "health", data: { note: x.sante }, position: pos++ });
-  return rows;
-}
 
 /** Entrée complète (items + pièces jointes) sérialisée pour le front. */
 async function serializeEntry(entryId: string) {
@@ -77,98 +50,6 @@ async function serializeEntry(entryId: string) {
       thumbUrl: `/api/attachments/${a.id}?size=thumb`,
     })),
   };
-}
-
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-
-/**
- * Traitement VLM en arrière-plan : processing → draft | failed.
- * Ré-extrait à partir de TOUTES les pages de l'entrée (chemins disque) pour
- * fusionner correctement un ajout de page à une journée existante.
- */
-async function processEntry(entryId: string, paths: string[]) {
-  try {
-    const jpegs = await Promise.all(paths.map((p) => readStored(p)));
-    const x = await extractFromImages(jpegs);
-    if (x.illisible) {
-      // Compare-and-set : ne marquer « failed » que si l'entrée est toujours en
-      // cours de traitement (un PATCH utilisateur a pu la relire/publier).
-      await db
-        .update(entries)
-        .set({
-          status: "failed",
-          failureReason:
-            "Photo illisible : aucun contenu de carnet exploitable détecté.",
-          updatedAt: new Date(),
-        })
-        .where(
-          and(eq(entries.id, entryId), eq(entries.status, "processing")),
-        );
-      return;
-    }
-    const items = extractionToItems(x);
-    await db.transaction(async (tx) => {
-      // On n'écrase le contenu que si l'entrée est encore en « processing » :
-      // sinon une relecture humaine (PATCH) faite pendant l'extraction serait
-      // silencieusement écrasée par la sortie VLM.
-      const moved = await tx
-        .update(entries)
-        .set({
-          status: "draft",
-          mood: x.humeur,
-          title: x.titre,
-          story: x.recit,
-          highlight: x.temps_fort,
-          transcription: x.transcription_integrale,
-          uncertainties: x.incertitudes,
-          failureReason: null,
-          updatedAt: new Date(),
-        })
-        .where(
-          and(eq(entries.id, entryId), eq(entries.status, "processing")),
-        )
-        .returning({ id: entries.id });
-      if (!moved.length) return;
-      await tx.delete(entryItems).where(eq(entryItems.entryId, entryId));
-      if (items.length) {
-        await tx
-          .insert(entryItems)
-          .values(items.map((it) => ({ ...it, entryId })));
-      }
-    });
-  } catch (err) {
-    // Seuls les VlmError portent un message déjà sûr pour l'utilisateur ; toute
-    // autre erreur (DB, lecture disque…) pourrait divulguer des détails internes,
-    // on la remplace par un message générique et on journalise le brut.
-    if (!(err instanceof VlmError))
-      console.error(
-        "processEntry — échec inattendu :",
-        err instanceof Error ? err.message : err,
-      );
-    const failureReason =
-      err instanceof VlmError
-        ? err.message
-        : "La lecture automatique du carnet a échoué. Réessayez plus tard.";
-    // Le write d'échec ne doit jamais rejeter à son tour (l'appel est
-    // fire-and-forget) : on l'isole dans son propre try/catch.
-    try {
-      await db
-        .update(entries)
-        .set({
-          status: "failed",
-          failureReason,
-          updatedAt: new Date(),
-        })
-        .where(
-          and(eq(entries.id, entryId), eq(entries.status, "processing")),
-        );
-    } catch (writeErr) {
-      console.error(
-        "Échec de l'enregistrement de l'état 'failed' :",
-        writeErr instanceof Error ? writeErr.message : writeErr,
-      );
-    }
-  }
 }
 
 export async function entriesRoutes(app: FastifyInstance) {
@@ -231,26 +112,19 @@ export async function entriesRoutes(app: FastifyInstance) {
 
   app.post("/api/entries/ingest", async (req, reply) => {
     let childId: string | undefined;
-    let date = todayIso();
-    let source: (typeof SOURCES)[number] = "nounou";
-    const stored: Awaited<ReturnType<typeof storeCarnetImage>>[] = [];
+    let date: string | undefined;
+    let source: string | undefined;
+    const images: Buffer[] = [];
 
     try {
       for await (const part of req.parts()) {
         if (part.type === "file") {
-          const buf = await part.toBuffer();
-          const img = await storeCarnetImage(buf);
-          stored.push(img);
+          images.push(await part.toBuffer());
         } else {
           const value = String(part.value);
           if (part.fieldname === "childId") childId = value;
-          else if (part.fieldname === "date" && DATE_RE.test(value))
-            date = value;
-          else if (
-            part.fieldname === "source" &&
-            (SOURCES as readonly string[]).includes(value)
-          )
-            source = value as (typeof SOURCES)[number];
+          else if (part.fieldname === "date") date = value;
+          else if (part.fieldname === "source") source = value;
         }
       }
     } catch (err) {
@@ -263,130 +137,26 @@ export async function entriesRoutes(app: FastifyInstance) {
       });
     }
 
-    if (!stored.length)
-      return reply.code(400).send({ error: "aucune photo fournie" });
+    // Le formulaire multipart reste tolérant : une date/source mal formée est
+    // ignorée (défaut appliqué), comme historiquement. La validation stricte du
+    // service (400 explicite) est réservée aux appels programmatiques (MCP).
+    const result = await ingestCarnetImages({
+      userId: req.user!.id,
+      images,
+      childId,
+      date: date && DATE_RE.test(date) ? date : undefined,
+      source:
+        source && (SOURCES as readonly string[]).includes(source)
+          ? source
+          : undefined,
+    });
 
-    // childId facultatif si l'utilisateur ne suit qu'un seul enfant.
-    if (!childId) {
-      const ids = await accessibleChildIds(req.user!.id);
-      if (ids.length === 1) childId = ids[0];
-      else
-        return reply
-          .code(400)
-          .send({ error: "childId requis (plusieurs enfants)" });
-    }
-
-    // Contribuer exige le rôle contributor (ou admin) sur cet enfant. On ne
-    // divulgue pas l'existence d'un enfant non partagé : 403 uniforme.
-    if (!(await hasChildRole(req.user!.id, childId, "contributor")))
+    if (!result.ok)
       return reply
-        .code(403)
-        .send({ error: "accès refusé à cet enfant" });
+        .code(result.httpCode)
+        .send({ error: result.error, ...(result.id ? { id: result.id } : {}) });
 
-    // Find-or-create sûr face aux requêtes concurrentes : INSERT … ON CONFLICT
-    // DO NOTHING, puis relecture si l'entrée existait déjà. Si une écriture DB
-    // échoue, on supprime les fichiers déjà stockés pour ne pas laisser
-    // d'orphelins non référencés sur le disque.
-    // Une fois les pièces jointes enregistrées, les fichiers sont référencés en
-    // base : on ne doit plus les supprimer en cas d'erreur (sinon lignes
-    // orphelines pointant vers des fichiers absents).
-    let attachmentsCommitted = false;
-    try {
-      const [inserted] = await db
-        .insert(entries)
-        .values({
-          childId,
-          date,
-          source,
-          status: "processing",
-          createdBy: req.user?.id ?? null,
-        })
-        .onConflictDoNothing({
-          target: [entries.childId, entries.date, entries.source],
-        })
-        .returning();
-
-      let entry = inserted;
-      if (!entry) {
-        const [existing] = await db
-          .select()
-          .from(entries)
-          .where(
-            and(
-              eq(entries.childId, childId),
-              eq(entries.date, date),
-              eq(entries.source, source),
-            ),
-          )
-          .limit(1);
-        // Ne pas écraser une journée déjà relue et publiée : les fichiers venant
-        // d'être écrits ne seront rattachés à aucune entrée, on les supprime.
-        if (existing.status === "published") {
-          await Promise.all(stored.map((img) => deleteStored(img)));
-          return reply.code(409).send({
-            error:
-              "Cette journée est déjà publiée. Modifiez ou supprimez l'entrée existante avant de re-photographier.",
-            id: existing.id,
-          });
-        }
-        await db
-          .update(entries)
-          .set({ status: "processing", updatedAt: new Date() })
-          .where(eq(entries.id, existing.id));
-        entry = existing;
-      }
-      const entryId = entry.id;
-
-      // Positions à la suite des pages déjà rattachées (fusion multi-requêtes).
-      const existingAtts = await db
-        .select({ position: attachments.position })
-        .from(attachments)
-        .where(eq(attachments.entryId, entryId));
-      const basePos = existingAtts.reduce(
-        (max, a) => Math.max(max, a.position + 1),
-        0,
-      );
-
-      await db.insert(attachments).values(
-        stored.map((img, i) => ({
-          entryId,
-          kind: "carnet" as const,
-          originalPath: img.originalPath,
-          thumbPath: img.thumbPath,
-          mime: img.mime,
-          width: img.width,
-          height: img.height,
-          position: basePos + i,
-        })),
-      );
-      attachmentsCommitted = true;
-
-      // Ré-extraction sur TOUTES les pages de l'entrée (existantes + nouvelles).
-      const allAtts = await db
-        .select({ path: attachments.originalPath })
-        .from(attachments)
-        .where(eq(attachments.entryId, entryId))
-        .orderBy(attachments.position);
-
-      // Extraction en arrière-plan : la requête répond tout de suite. Le .catch
-      // final est un garde-fou : processEntry gère déjà ses erreurs, mais on ne
-      // veut aucune promesse rejetée non gérée sur un appel fire-and-forget.
-      void processEntry(
-        entryId,
-        allAtts.map((a) => a.path),
-      ).catch((err) => {
-        console.error(
-          "processEntry a échoué de façon inattendue :",
-          err instanceof Error ? err.message : err,
-        );
-      });
-
-      return reply.code(202).send({ id: entryId, status: "processing" });
-    } catch (err) {
-      if (!attachmentsCommitted)
-        await Promise.all(stored.map((img) => deleteStored(img)));
-      throw err;
-    }
+    return reply.code(202).send({ id: result.id, status: result.status });
   });
 
   /* --------------------------------- Timeline --------------------------- */

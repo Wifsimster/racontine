@@ -361,6 +361,32 @@ export const appSettings = pgTable("app_settings", {
   }),
 });
 
+/**
+ * Jeton d'accès personnel pour connecter un client MCP (session Claude cloud,
+ * Claude Desktop, Claude Code…) au serveur. Le jeton porte les droits de
+ * l'utilisateur qui l'a créé (mêmes rôles par enfant). On ne stocke que le
+ * hash SHA-256 : la valeur en clair n'est montrée qu'une fois, à la création.
+ */
+export const mcpTokens = pgTable(
+  "mcp_tokens",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    /** Libellé lisible choisi par l'utilisateur (ex. « Session Claude cloud »). */
+    name: text("name").notNull(),
+    /** SHA-256 (hex) du jeton — jamais la valeur en clair. */
+    tokenHash: text("token_hash").notNull().unique(),
+    /** Préfixe lisible pour identifier le jeton dans l'UI (ex. « rac_mcp_ab12 »). */
+    tokenPrefix: text("token_prefix").notNull(),
+    /** Dernière utilisation du jeton (null tant qu'il n'a jamais servi). */
+    lastUsedAt: timestamp("last_used_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [index("mcp_tokens_user_idx").on(t.userId)],
+);
+
 /* ----------------------------------- Relations --------------------------- */
 
 export const childrenRelations = relations(children, ({ many }) => ({
@@ -443,3 +469,4 @@ export type MemberRole = (typeof memberRole.enumValues)[number];
 export type Subscription = typeof subscriptions.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
 export type AppSettings = typeof appSettings.$inferSelect;
+export type McpToken = typeof mcpTokens.$inferSelect;
