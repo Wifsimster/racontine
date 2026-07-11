@@ -15,16 +15,26 @@ import type {
 } from "./types";
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(path, {
-    credentials: "include",
-    ...init,
-    headers: {
-      ...(init?.body && !(init.body instanceof FormData)
-        ? { "Content-Type": "application/json" }
-        : {}),
-      ...init?.headers,
-    },
-  });
+  let res: Response;
+  try {
+    res = await fetch(path, {
+      credentials: "include",
+      ...init,
+      headers: {
+        ...(init?.body && !(init.body instanceof FormData)
+          ? { "Content-Type": "application/json" }
+          : {}),
+        ...init?.headers,
+      },
+    });
+  } catch {
+    // fetch ne rejette (TypeError « Failed to fetch ») que si aucune réponse
+    // n'est arrivée : réseau coupé, requête trop volumineuse rejetée par le
+    // proxy, etc. On remonte un message lisible plutôt que l'erreur brute.
+    throw new Error(
+      "Connexion interrompue. Vérifiez votre réseau et réessayez.",
+    );
+  }
   if (!res.ok) {
     let message = `Erreur ${res.status}`;
     try {

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Camera, X } from "lucide-react";
 import { api } from "@/lib/api";
+import { compressImage } from "@/lib/image";
 import { type Child, type EntrySource, SOURCE_LABELS } from "@/lib/types";
 import {
   addPhotos,
@@ -127,10 +128,14 @@ export default function Capture() {
         const child = await api.createChild("Mon enfant");
         cid = child.id;
       }
-      const res = await api.ingest(
-        shots.map((s) => s.file),
-        { childId: cid || undefined, source, date: localDate() },
-      );
+      // Réduit chaque page avant l'envoi : évite de dépasser la limite de
+      // taille du proxy (upload « Failed to fetch ») et accélère l'envoi en 4G.
+      const files = await Promise.all(shots.map((s) => compressImage(s.file)));
+      const res = await api.ingest(files, {
+        childId: cid || undefined,
+        source,
+        date: localDate(),
+      });
       // Envoi réussi : le brouillon local n'a plus de raison d'être.
       await clearPhotos();
       nav(`/entries/${res.id}`);
