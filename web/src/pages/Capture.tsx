@@ -3,12 +3,21 @@ import { useNavigate } from "react-router-dom";
 import { Camera, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { type Child, type EntrySource, SOURCE_LABELS } from "@/lib/types";
+import {
+  addPhotos,
+  clearPhotos,
+  getDraftMeta,
+  getPhotos,
+  removePhoto,
+  saveDraftMeta,
+} from "@/lib/photo-store";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 
 const SOURCES: EntrySource[] = ["nounou", "mam", "creche", "maison"];
 
-type Shot = { file: File; url: string };
+/** `id` référence l'enregistrement persisté ; `file` sert à l'envoi. */
+type Shot = { id: string; file: File; url: string };
 
 /** Date locale du téléphone au format AAAA-MM-JJ (le carnet est photographié le soir). */
 function localDate(): string {
@@ -26,15 +35,42 @@ export default function Capture() {
   const [shots, setShots] = useState<Shot[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [restored, setRestored] = useState(false);
+  const restoredMeta = useRef(getDraftMeta());
 
   useEffect(() => {
     api
       .listChildren()
       .then((kids) => {
         setChildren(kids);
-        if (kids.length) setChildId(kids[0].id);
+        // Restaure l'enfant sélectionné s'il est toujours accessible.
+        const savedChild = restoredMeta.current?.childId;
+        if (savedChild && kids.some((k) => k.id === savedChild))
+          setChildId(savedChild);
+        else if (kids.length) setChildId(kids[0].id);
       })
       .catch(() => setChildren([]));
+  }, []);
+
+  // Recharge les photos d'un brouillon non envoyé (échec précédent ou refresh).
+  useEffect(() => {
+    let alive = true;
+    const meta = restoredMeta.current;
+    if (meta?.source && SOURCES.includes(meta.source as EntrySource))
+      setSource(meta.source as EntrySource);
+    getPhotos().then((saved) => {
+      if (!alive || !saved.length) return;
+      const restoredShots = saved.map((s) => ({
+        id: s.id,
+        file: new File([s.blob], s.name, { type: s.type }),
+        url: URL.createObjectURL(s.blob),
+      }));
+      setShots(restoredShots);
+      setRestored(true);
+    });
+    return () => {
+      alive = false;
+    };
   }, []);
 
   // Libère les aperçus (object URLs) au démontage.
@@ -47,20 +83,32 @@ export default function Capture() {
     };
   }, []);
 
-  function onPick(e: React.ChangeEvent<HTMLInputElement>) {
+  // Mémorise les réglages de la journée pour les restaurer avec les photos.
+  useEffect(() => {
+    saveDraftMeta({ childId: childId || undefined, source });
+  }, [childId, source]);
+
+  async function onPick(e: React.ChangeEvent<HTMLInputElement>) {
     if (!e.target.files) return;
-    const added = Array.from(e.target.files).map((file) => ({
-      file,
-      url: URL.createObjectURL(file),
+    const files = Array.from(e.target.files);
+    e.target.value = ""; // permet de re-sélectionner le même fichier
+    // Persiste d'abord : on ne perd rien même si l'app est fermée aussitôt.
+    const records = await addPhotos(files);
+    const added = records.map((r, i) => ({
+      id: r.id,
+      file: files[i],
+      url: URL.createObjectURL(files[i]),
     }));
     setShots((prev) => [...prev, ...added]);
-    e.target.value = ""; // permet de re-sélectionner le même fichier
   }
 
   function removeShot(idx: number) {
     setShots((prev) => {
       const s = prev[idx];
-      if (s) URL.revokeObjectURL(s.url);
+      if (s) {
+        URL.revokeObjectURL(s.url);
+        void removePhoto(s.id);
+      }
       return prev.filter((_, j) => j !== idx);
     });
   }
@@ -83,8 +131,11 @@ export default function Capture() {
         shots.map((s) => s.file),
         { childId: cid || undefined, source, date: localDate() },
       );
+      // Envoi réussi : le brouillon local n'a plus de raison d'être.
+      await clearPhotos();
       nav(`/entries/${res.id}`);
     } catch (err) {
+      // Échec : on garde les photos persistées, elles restent récupérables.
       setError(err instanceof Error ? err.message : "Échec de l'envoi");
       setSubmitting(false);
     }
@@ -149,6 +200,13 @@ export default function Capture() {
         <Camera />
         Ajouter une ou plusieurs pages
       </Button>
+
+      {restored && shots.length > 0 && (
+        <p className="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
+          Photos d'une journée non envoyée restaurées. Vous pouvez terminer
+          l'envoi ou les retirer.
+        </p>
+      )}
 
       {shots.length > 0 && (
         <div className="grid grid-cols-3 gap-2">
