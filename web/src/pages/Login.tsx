@@ -4,6 +4,7 @@ import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { LoginBackground } from "@/components/LoginBackground";
 
 export default function Login() {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
@@ -35,7 +36,9 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-svh flex flex-col items-center justify-center gap-6 p-6">
+    <div className="relative min-h-svh flex flex-col items-center justify-center gap-6 p-6 overflow-hidden">
+      <LoginBackground />
+
       <div className="flex items-center gap-3">
         <BookOpenText className="size-9 text-primary" />
         <h1 className="font-serif text-4xl font-semibold tracking-tight">

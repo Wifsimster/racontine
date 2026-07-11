@@ -168,4 +168,34 @@
     background: var(--primary);
     opacity: 0.45;
   }
+
+  /* Encre qui dérive doucement derrière l'écran de connexion. */
+  .animate-login-drift {
+    animation-name: login-drift;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .animate-login-drift {
+      animation: none;
+    }
+  }
+}
+
+@keyframes login-drift {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  25% {
+    transform: translate(3%, -4%) scale(1.06);
+  }
+  50% {
+    transform: translate(-2%, 3%) scale(0.96);
+  }
+  75% {
+    transform: translate(-4%, -2%) scale(1.04);
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
 }
