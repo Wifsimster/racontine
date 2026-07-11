@@ -336,6 +336,31 @@ export const notifications = pgTable(
   (t) => [index("notifications_user_idx").on(t.userId, t.createdAt)],
 );
 
+/**
+ * Réglages de l'instance, modifiables à chaud par le propriétaire depuis l'UI
+ * (sans redéploiement ni édition de variables d'environnement). Table singleton :
+ * une seule ligne, `id = "singleton"`. Une colonne à `null` retombe sur le défaut
+ * d'environnement (config.ts) — voir `settings.ts`.
+ */
+export const appSettings = pgTable("app_settings", {
+  id: text("id").primaryKey().default("singleton"),
+  /** Nom d'affichage de l'instance (en-tête, écran de connexion). */
+  appName: text("app_name"),
+  /** Inscription email/mot de passe ouverte (fermer une fois le foyer créé). */
+  signupEnabled: boolean("signup_enabled"),
+  /** Durée de validité d'une invitation (jours). */
+  invitationTtlDays: integer("invitation_ttl_days"),
+  /** Modèle VLM utilisé pour l'extraction des carnets. */
+  vlmModel: text("vlm_model"),
+  /** Envoi global des e-mails de notification aux abonnés (in-app toujours actif). */
+  emailNotificationsEnabled: boolean("email_notifications_enabled"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  /** Dernier propriétaire ayant modifié les réglages. */
+  updatedBy: text("updated_by").references(() => user.id, {
+    onDelete: "set null",
+  }),
+});
+
 /* ----------------------------------- Relations --------------------------- */
 
 export const childrenRelations = relations(children, ({ many }) => ({
@@ -417,3 +442,4 @@ export type Invitation = typeof invitations.$inferSelect;
 export type MemberRole = (typeof memberRole.enumValues)[number];
 export type Subscription = typeof subscriptions.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
+export type AppSettings = typeof appSettings.$inferSelect;

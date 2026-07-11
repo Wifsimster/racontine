@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { config } from "./config.js";
+import { getSettings } from "./settings.js";
 
 export type Extraction = {
   date: string | null;
@@ -136,6 +137,8 @@ export async function extractFromImages(
   jpegs: Buffer[],
 ): Promise<Extraction> {
   const anthropic = getClient();
+  // Modèle piloté par les réglages (défaut : VLM_MODEL de l'environnement).
+  const { vlmModel } = await getSettings();
 
   const imageBlocks: Anthropic.ImageBlockParam[] = jpegs.map((buf) => ({
     type: "image",
@@ -147,7 +150,7 @@ export async function extractFromImages(
   }));
 
   const message = await anthropic.messages.create({
-    model: config.vlmModel,
+    model: vlmModel,
     max_tokens: 2048,
     system: SYSTEM_PROMPT,
     tools: [EXTRACTION_TOOL],
