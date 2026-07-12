@@ -1,5 +1,4 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { config } from "./config.js";
 import { getSettings } from "./settings.js";
 
 export type Extraction = {
@@ -142,10 +141,10 @@ function vlmUserMessage(err: unknown): string {
       type === "authentication_error" ||
       type === "permission_error"
     )
-      return "Le service de lecture du carnet est mal configuré. Prévenez l'administrateur.";
-    // Solde de crédits épuisé / facturation : côté fournisseur, non lié à la photo.
+      return "Votre clé API Anthropic est invalide ou révoquée. Vérifiez-la dans les réglages.";
+    // Solde de crédits épuisé / facturation : lié au compte Anthropic de l'utilisateur.
     if (/credit balance|billing|quota|payment/i.test(err.message))
-      return "Le service de lecture du carnet est momentanément indisponible. Réessayez plus tard.";
+      return "Le solde de crédits de votre compte Anthropic est insuffisant. Rechargez-le puis réessayez.";
     if (status === 429 || type === "rate_limit_error")
       return "Trop de lectures en cours. Patientez un instant puis réessayez.";
     if (status === 529 || type === "overloaded_error")
@@ -159,23 +158,29 @@ function vlmUserMessage(err: unknown): string {
   return "La lecture automatique du carnet a échoué. Réessayez plus tard.";
 }
 
-let client: Anthropic | null = null;
-function getClient(): Anthropic {
-  if (!config.anthropicApiKey) {
+/**
+ * Construit un client Anthropic pour la clé fournie. La clé appartient à
+ * l'utilisateur qui téléverse (chacun apporte la sienne) — on ne met donc rien
+ * en cache entre appels, pour ne jamais mélanger les clés de deux comptes.
+ */
+function clientFor(apiKey: string): Anthropic {
+  if (!apiKey.trim())
     throw new VlmError(
-      "Le service de lecture du carnet n'est pas configuré. Prévenez l'administrateur.",
+      "Aucune clé API Anthropic configurée. Ajoutez la vôtre dans les réglages.",
     );
-  }
-  if (!client) client = new Anthropic({ apiKey: config.anthropicApiKey });
-  return client;
+  return new Anthropic({ apiKey });
 }
 
-/** Envoie les pages (JPEG) au modèle vision et renvoie l'extraction structurée. */
+/**
+ * Envoie les pages (JPEG) au modèle vision et renvoie l'extraction structurée.
+ * `apiKey` est la clé Anthropic de l'utilisateur au nom duquel on lit le carnet.
+ */
 export async function extractFromImages(
   jpegs: Buffer[],
+  apiKey: string,
 ): Promise<Extraction> {
-  const anthropic = getClient();
-  // Modèle piloté par les réglages (défaut : VLM_MODEL de l'environnement).
+  const anthropic = clientFor(apiKey);
+  // Modèle piloté par les réglages d'instance (défaut : VLM_MODEL de l'env).
   const { vlmModel } = await getSettings();
 
   const imageBlocks: Anthropic.ImageBlockParam[] = jpegs.map((buf) => ({

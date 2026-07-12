@@ -40,7 +40,9 @@ export const config = {
   port: parseIntEnv(process.env.PORT, 3010),
   host: process.env.HOST ?? "0.0.0.0",
   databaseUrl: process.env.DATABASE_URL ?? DEFAULT_DATABASE_URL,
-  anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+  // La lecture des carnets utilise la clé API Anthropic PROPRE à chaque
+  // utilisateur (réglages > clé API), chiffrée en base. Il n'y a plus de clé
+  // partagée d'instance : ANTHROPIC_API_KEY n'est plus lue par le serveur.
   vlmModel: process.env.VLM_MODEL ?? "claude-sonnet-5",
   uploadsDir: process.env.UPLOADS_DIR ?? "./uploads",
   auth: {

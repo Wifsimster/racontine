@@ -14,6 +14,7 @@ import type {
   PublicSettings,
   McpToken,
   CreatedMcpToken,
+  UserLlm,
 } from "./types";
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
@@ -178,6 +179,18 @@ export const api = {
   /* --------------------------- Réglages ------------------------------- */
 
   me: () => req<Me>("/api/me"),
+
+  /* --------------------- Clé API LLM (par utilisateur) ---------------- */
+
+  getLlmKey: () => req<UserLlm>("/api/me/llm"),
+
+  setLlmKey: (anthropicApiKey: string) =>
+    req<UserLlm>("/api/me/llm", {
+      method: "PUT",
+      body: JSON.stringify({ anthropicApiKey }),
+    }),
+
+  clearLlmKey: () => req<UserLlm>("/api/me/llm", { method: "DELETE" }),
 
   publicSettings: () => req<PublicSettings>("/api/settings/public"),
 

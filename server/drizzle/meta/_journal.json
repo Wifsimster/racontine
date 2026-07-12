@@ -43,6 +43,13 @@
       "when": 1783807756430,
       "tag": "0005_rich_synch",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1783846089247,
+      "tag": "0006_amused_ghost_rider",
+      "breakpoints": true
     }
   ]
 }

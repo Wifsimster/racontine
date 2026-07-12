@@ -387,6 +387,24 @@ export const mcpTokens = pgTable(
   (t) => [index("mcp_tokens_user_idx").on(t.userId)],
 );
 
+/**
+ * Réglages LLM propres à chaque utilisateur. Chaque contributeur apporte SA
+ * propre clé API Anthropic (facturation individuelle, pas de clé partagée
+ * d'instance). La clé n'est jamais stockée en clair : on conserve un blob
+ * chiffré (AES-256-GCM, voir crypto.ts) et un indice non sensible (4 derniers
+ * caractères) pour l'affichage. Une ligne par utilisateur.
+ */
+export const userLlmSettings = pgTable("user_llm_settings", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => user.id, { onDelete: "cascade" }),
+  /** Clé API Anthropic chiffrée (AES-256-GCM), ou null si non configurée. */
+  anthropicKeyEnc: text("anthropic_key_enc"),
+  /** Indice d'affichage : les 4 derniers caractères de la clé (jamais la clé). */
+  anthropicKeyHint: text("anthropic_key_hint"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 /* ----------------------------------- Relations --------------------------- */
 
 export const childrenRelations = relations(children, ({ many }) => ({
@@ -470,3 +488,4 @@ export type Subscription = typeof subscriptions.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
 export type AppSettings = typeof appSettings.$inferSelect;
 export type McpToken = typeof mcpTokens.$inferSelect;
+export type UserLlmSettings = typeof userLlmSettings.$inferSelect;

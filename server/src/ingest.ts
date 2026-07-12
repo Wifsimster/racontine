@@ -15,6 +15,7 @@ import {
   type StoredImage,
 } from "./storage.js";
 import { extractFromImages, VlmError, type Extraction } from "./vlm.js";
+import { getUserAnthropicKey } from "./llm-keys.js";
 
 /** Où la journée a été passée — dimension de l'entrée (child + date + source). */
 export const SOURCES = ["nounou", "mam", "creche", "maison"] as const;
@@ -61,12 +62,22 @@ function extractionToItems(
 /**
  * Traitement VLM en arrière-plan : processing → draft | failed.
  * Ré-extrait à partir de TOUTES les pages de l'entrée (chemins disque) pour
- * fusionner correctement un ajout de page à une journée existante.
+ * fusionner correctement un ajout de page à une journée existante. La lecture
+ * utilise la clé API de `userId` (l'utilisateur qui a déclenché l'import).
  */
-export async function processEntry(entryId: string, paths: string[]) {
+export async function processEntry(
+  entryId: string,
+  paths: string[],
+  userId: string,
+) {
   try {
+    const apiKey = await getUserAnthropicKey(userId);
+    if (!apiKey)
+      throw new VlmError(
+        "Aucune clé API Anthropic configurée. Ajoutez la vôtre dans les réglages puis réimportez le carnet.",
+      );
     const jpegs = await Promise.all(paths.map((p) => readStored(p)));
-    const x = await extractFromImages(jpegs);
+    const x = await extractFromImages(jpegs, apiKey);
     if (x.illisible) {
       // Compare-and-set : ne marquer « failed » que si l'entrée est toujours en
       // cours de traitement (un PATCH utilisateur a pu la relire/publier).
@@ -194,6 +205,16 @@ export async function ingestCarnetImages(
   if (!input.images.length)
     return { ok: false, httpCode: 400, error: "aucune photo fournie" };
 
+  // Chaque contributeur apporte sa propre clé API Anthropic : sans clé, on ne
+  // stocke rien et on répond tout de suite (plutôt qu'un échec en arrière-plan).
+  if (!(await getUserAnthropicKey(input.userId)))
+    return {
+      ok: false,
+      httpCode: 400,
+      error:
+        "Aucune clé API Anthropic configurée. Ajoutez la vôtre dans les réglages avant d'importer un carnet.",
+    };
+
   // childId facultatif si l'utilisateur ne suit qu'un seul enfant.
   let childId = input.childId;
   if (!childId) {
@@ -316,6 +337,7 @@ export async function ingestCarnetImages(
     void processEntry(
       entryId,
       allAtts.map((a) => a.path),
+      input.userId,
     ).catch((err) => {
       console.error(
         "processEntry a échoué de façon inattendue :",

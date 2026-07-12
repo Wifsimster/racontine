@@ -21,7 +21,7 @@ Photographiez le carnet papier de la nounou / MAM / crèche → un LLM vision li
 docker compose up -d db
 
 # 2. Env
-cp .env.example .env   # renseigner ANTHROPIC_API_KEY et BETTER_AUTH_SECRET
+cp .env.example .env   # renseigner BETTER_AUTH_SECRET (la clé Anthropic se règle par utilisateur dans l'app)
 
 # 3. Install & migrations
 pnpm install
@@ -47,13 +47,16 @@ l'application à chaud, sans redéploiement :
 | **Validité des invitations** | Durée avant expiration d'un lien d'invitation |
 | **E-mails de notification** | Interrupteur global des e-mails aux abonnés |
 | **Modèle d'extraction (VLM)** | Modèle Claude vision utilisé pour lire les carnets |
+| **Clé API d'extraction (Anthropic)** | Par utilisateur : chacun enregistre sa propre clé (facturée sur son compte), stockée chiffrée |
 
 Ces réglages sont stockés en base (table `app_settings`, ligne unique) et
 priment sur les variables d'environnement correspondantes. Une valeur laissée
 vide retombe sur le défaut d'environnement (`SIGNUP_ENABLED`, `INVITATION_TTL_DAYS`,
-`VLM_MODEL`…). Les secrets d'infrastructure (clé API, SMTP, webhook) restent
-pilotés uniquement par l'environnement ; l'écran en affiche l'état en lecture
-seule.
+`VLM_MODEL`…). Les secrets d'infrastructure (SMTP, webhook) restent pilotés par
+l'environnement ; l'écran en affiche l'état en lecture seule. La **clé API
+Anthropic** est en revanche propre à chaque utilisateur (Réglages > Clé API
+d'extraction) : elle est chiffrée en base (AES-256-GCM via `BETTER_AUTH_SECRET`)
+et jamais réaffichée. Sans clé enregistrée, l'import de carnets est refusé.
 
 ## Partage avec les proches
 
@@ -135,7 +138,7 @@ Les images sont construites et publiées sur **GHCR** par GitHub Actions
 il tire les images.
 
 ```bash
-cp .env.example .env         # POSTGRES_PASSWORD, BETTER_AUTH_SECRET, ANTHROPIC_API_KEY, BETTER_AUTH_URL, CORS_ORIGINS
+cp .env.example .env         # POSTGRES_PASSWORD, BETTER_AUTH_SECRET, BETTER_AUTH_URL, CORS_ORIGINS (clé Anthropic : par utilisateur, dans l'app)
 docker login ghcr.io         # PAT read:packages si les packages sont privés
 docker compose -f docker-compose.prod.yml pull
 docker compose -f docker-compose.prod.yml up -d

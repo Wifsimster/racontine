@@ -9,6 +9,12 @@ import {
 } from "../settings.js";
 import { config } from "../config.js";
 import { mailEnabled } from "../mailer.js";
+import {
+  getUserLlmMeta,
+  setUserAnthropicKey,
+  clearUserAnthropicKey,
+  looksLikeAnthropicKey,
+} from "../llm-keys.js";
 
 /** Garde : l'appelant doit être le propriétaire de l'instance, sinon 403. */
 async function requireOwner(
@@ -30,7 +36,6 @@ async function requireOwner(
 function infraMeta() {
   return {
     mailConfigured: mailEnabled(),
-    anthropicConfigured: !!config.anthropicApiKey,
     notifyWebhookConfigured: !!config.notifyWebhookUrl,
     webBaseUrl: config.webBaseUrl,
     knownVlmModels: KNOWN_VLM_MODELS,
@@ -59,6 +64,33 @@ export async function settingsRoutes(app: FastifyInstance) {
       name: req.user!.name,
       isOwner: await isOwner(req.user!.id),
     }),
+  );
+
+  /* -------------------- Clé API LLM (par utilisateur) ------------------- */
+  // Chaque contributeur gère SA propre clé API Anthropic (facturation
+  // individuelle). Accessible à tout utilisateur connecté, pas seulement au
+  // propriétaire. La clé n'est jamais renvoyée : seul un indice (4 derniers
+  // caractères) l'est, pour confirmation visuelle.
+
+  app.get("/api/me/llm", { preHandler: requireUser }, async (req) =>
+    getUserLlmMeta(req.user!.id),
+  );
+
+  app.put<{ Body: { anthropicApiKey?: unknown } }>(
+    "/api/me/llm",
+    { preHandler: requireUser },
+    async (req, reply) => {
+      const raw = (req.body ?? {}).anthropicApiKey;
+      if (typeof raw !== "string" || !looksLikeAnthropicKey(raw))
+        return reply
+          .code(400)
+          .send({ error: "Clé API Anthropic invalide (attendu « sk-ant-… »)." });
+      return setUserAnthropicKey(req.user!.id, raw);
+    },
+  );
+
+  app.delete("/api/me/llm", { preHandler: requireUser }, async (req) =>
+    clearUserAnthropicKey(req.user!.id),
   );
 
   /* ------------------------- Réglages (propriétaire) -------------------- */

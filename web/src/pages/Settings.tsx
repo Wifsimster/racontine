@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import McpTokens from "@/components/McpTokens";
+import LlmKey from "@/components/LlmKey";
 
 /** Interrupteur on/off accessible (pas de composant Switch dans le repo). */
 function Toggle({
@@ -289,16 +290,15 @@ export default function Settings() {
         </Row>
       </section>
 
+      {/* Clé API LLM propre à l'utilisateur courant */}
+      <LlmKey />
+
       {/* Extraction */}
       <section className="rounded-2xl border bg-card px-5 shadow-sm">
         <Row
           icon={<Sparkles className="size-4" />}
           title="Modèle d'extraction (VLM)"
-          hint={
-            meta.anthropicConfigured
-              ? "Modèle Claude vision utilisé pour lire les carnets."
-              : "Clé ANTHROPIC_API_KEY absente : l'extraction est indisponible."
-          }
+          hint="Modèle Claude vision utilisé pour lire les carnets, avec la clé API de chaque contributeur."
           htmlFor="vlmModel"
         >
           <select
@@ -329,7 +329,6 @@ export default function Settings() {
           Piloté par les variables d'environnement du serveur (lecture seule).
         </p>
         <div className="mt-1 flex flex-col gap-2">
-          <StatusPill ok={meta.anthropicConfigured} label="Clé API Claude" />
           <StatusPill ok={meta.mailConfigured} label="Serveur e-mail (SMTP)" />
           <StatusPill
             ok={meta.notifyWebhookConfigured}

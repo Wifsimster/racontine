@@ -154,10 +154,18 @@ export type AppSettings = {
 /** État de l'infrastructure (piloté par l'environnement, en lecture seule). */
 export type SettingsMeta = {
   mailConfigured: boolean;
-  anthropicConfigured: boolean;
   notifyWebhookConfigured: boolean;
   webBaseUrl: string;
   knownVlmModels: string[];
+};
+
+/**
+ * État de la clé API LLM propre à l'utilisateur courant. La clé n'est jamais
+ * renvoyée : seul un indice (4 derniers caractères) sert à la confirmation.
+ */
+export type UserLlm = {
+  configured: boolean;
+  hint: string | null;
 };
 
 export type SettingsResponse = {
