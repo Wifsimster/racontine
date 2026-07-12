@@ -7,6 +7,7 @@ import {
   listMcpTokens,
   revokeMcpToken,
 } from "../mcp-tokens.js";
+import { MAX_STAGED_BYTES, stageUpload } from "../mcp-uploads.js";
 import { buildMcpServer } from "../mcp.js";
 
 // Les images arrivent en base64 dans le corps JSON (une page ~2400px pèse
@@ -65,6 +66,45 @@ export async function mcpRoutes(app: FastifyInstance) {
       }
     },
   });
+
+  /* -------------- Mise en attente d'une page (octets bruts) ------------- */
+
+  // Contourne la limite du base64 inline : un client MCP capable d'exécuter un
+  // shell téléverse les octets bruts d'une page en une requête (le fichier est
+  // lu du disque par `curl`, rien ne passe par le contexte du modèle), reçoit un
+  // `id` court, puis appelle l'outil `upload_daily_note` avec `imageIds`.
+  // Le corps est le fichier brut (Content-Type: application/octet-stream) —
+  // parseur enregistré dans app.ts.
+  app.post(
+    "/api/mcp/uploads",
+    { bodyLimit: MCP_BODY_LIMIT },
+    async (req, reply) => {
+      const user = await authenticateMcpToken(req.headers.authorization);
+      if (!user)
+        return reply
+          .code(401)
+          .header("WWW-Authenticate", "Bearer")
+          .send({ error: "jeton MCP invalide ou absent" });
+
+      const body = req.body;
+      if (!Buffer.isBuffer(body) || body.length === 0)
+        return reply.code(400).send({
+          error:
+            "Corps vide ou non binaire. Envoyez les octets bruts de la photo (Content-Type: application/octet-stream).",
+        });
+      if (body.length > MAX_STAGED_BYTES)
+        return reply
+          .code(413)
+          .send({ error: "Photo trop volumineuse (max 20 Mo par page)." });
+
+      const staged = await stageUpload(user.id, body);
+      return reply.code(201).send({
+        uploadId: staged.id,
+        byteSize: staged.byteSize,
+        expiresAt: staged.expiresAt.toISOString(),
+      });
+    },
+  );
 
   /* ---------------- Gestion des jetons (session utilisateur) ------------ */
 

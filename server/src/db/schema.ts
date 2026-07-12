@@ -388,6 +388,35 @@ export const mcpTokens = pgTable(
 );
 
 /**
+ * Fichier brut mis en attente par un client MCP avant création de la journée.
+ * Résout le problème du base64 inline : un client shell téléverse les octets
+ * bruts d'une photo via `POST /api/mcp/uploads` (aucun base64 à faire transiter
+ * par les arguments d'outil), récupère un `id` court, puis appelle
+ * `upload_daily_note` avec cet identifiant. Le fichier vit sous
+ * `UPLOADS_DIR/staging/…` et est supprimé après ingestion (ou à l'expiration).
+ */
+export const mcpUploads = pgTable(
+  "mcp_uploads",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    /** Chemin relatif à UPLOADS_DIR du fichier brut mis en attente. */
+    path: text("path").notNull(),
+    /** Taille du fichier brut (octets) — indice d'affichage / diagnostic. */
+    byteSize: integer("byte_size").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    /** Au-delà, l'upload est considéré périmé et balayé (fichier + ligne). */
+    expiresAt: timestamp("expires_at").notNull(),
+  },
+  (t) => [
+    index("mcp_uploads_user_idx").on(t.userId),
+    index("mcp_uploads_expires_idx").on(t.expiresAt),
+  ],
+);
+
+/**
  * Réglages LLM propres à chaque utilisateur. Chaque contributeur apporte SA
  * propre clé API Anthropic (facturation individuelle, pas de clé partagée
  * d'instance). La clé n'est jamais stockée en clair : on conserve un blob
@@ -488,4 +517,5 @@ export type Subscription = typeof subscriptions.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
 export type AppSettings = typeof appSettings.$inferSelect;
 export type McpToken = typeof mcpTokens.$inferSelect;
+export type McpUpload = typeof mcpUploads.$inferSelect;
 export type UserLlmSettings = typeof userLlmSettings.$inferSelect;

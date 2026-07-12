@@ -7,6 +7,10 @@ import { children, entries, memberships } from "./db/schema.js";
 import { childRole, roleAtLeast } from "./access.js";
 import { ingestCarnetImages, SOURCES } from "./ingest.js";
 import type { McpTokenUser } from "./mcp-tokens.js";
+import { consumeStagedUploads, resolveStagedUploads } from "./mcp-uploads.js";
+
+/** Nombre maximum de pages par journée (aligné sur la limite du formulaire web). */
+const MAX_PAGES = 12;
 
 // Version alignée sur le package (évite une valeur figée qui dérive à chaque
 // release). `require` résout `../package.json` aussi bien depuis `src/` (tsx) que
@@ -87,14 +91,21 @@ export function buildMcpServer(user: McpTokenUser): McpServer {
     {
       title: "Téléverser une page de carnet",
       description:
-        "Téléverse une ou plusieurs photos d'une page du carnet de liaison pour une journée. Le serveur les lit avec un modèle vision et crée un brouillon de journée à relire puis publier dans Racontine. Les pages d'une même journée (même enfant / date / lieu) sont fusionnées automatiquement.",
+        "Téléverse une ou plusieurs photos d'une page du carnet de liaison pour une journée. Le serveur les lit avec un modèle vision et crée un brouillon de journée à relire puis publier dans Racontine. Les pages d'une même journée (même enfant / date / lieu) sont fusionnées automatiquement. Fournir les pages via `images` (base64 inline) OU `imageIds` (pré-téléversées). Pour des photos réelles, préférer `imageIds` : le base64 d'une page pèse des centaines de Ko et ne passe pas par les arguments d'outil.",
       inputSchema: {
         images: z
           .array(z.string())
-          .min(1)
-          .max(12)
+          .max(MAX_PAGES)
+          .optional()
           .describe(
-            "Pages du carnet, chacune encodée en base64 (JPEG/PNG/HEIC/WebP). Le préfixe `data:…;base64,` est accepté.",
+            "Pages du carnet, chacune encodée en base64 (JPEG/PNG/HEIC/WebP). Le préfixe `data:…;base64,` est accepté. À réserver aux petites images : pour une photo réelle, utiliser plutôt `imageIds`.",
+          ),
+        imageIds: z
+          .array(z.string())
+          .max(MAX_PAGES)
+          .optional()
+          .describe(
+            "Identifiants de pages pré-téléversées en octets bruts via `POST /api/mcp/uploads` (en-tête `Authorization: Bearer <jeton MCP>`, corps = fichier). Alternative recommandée à `images` : évite de faire transiter le base64 par le contexte. Exemple : `curl -H \"Authorization: Bearer $TOKEN\" --data-binary @page.jpg <hôte>/api/mcp/uploads` renvoie l'`uploadId` à passer ici.",
           ),
         childId: z
           .string()
@@ -115,16 +126,35 @@ export function buildMcpServer(user: McpTokenUser): McpServer {
           ),
       },
     },
-    async ({ images, childId, date, source }) => {
+    async ({ images, imageIds, childId, date, source }) => {
       const buffers: Buffer[] = [];
-      for (const [i, img] of images.entries()) {
-        const buf = decodeBase64Image(img);
-        if (!buf)
-          return errorContent(
-            `Image ${i + 1} invalide : chaîne base64 non décodable.`,
-          );
-        buffers.push(buf);
+
+      // Pages pré-téléversées (octets bruts) d'abord, puis base64 inline. On
+      // conserve l'ordre demandé pour la fusion/positions des pages.
+      if (imageIds?.length) {
+        const resolved = await resolveStagedUploads(user.id, imageIds);
+        if (!resolved.ok) return errorContent(resolved.error);
+        buffers.push(...resolved.buffers);
       }
+      if (images?.length) {
+        for (const [i, img] of images.entries()) {
+          const buf = decodeBase64Image(img);
+          if (!buf)
+            return errorContent(
+              `Image ${i + 1} invalide : chaîne base64 non décodable.`,
+            );
+          buffers.push(buf);
+        }
+      }
+
+      if (!buffers.length)
+        return errorContent(
+          "Aucune page fournie : renseignez `images` (base64) ou `imageIds` (pré-téléversées via POST /api/mcp/uploads).",
+        );
+      if (buffers.length > MAX_PAGES)
+        return errorContent(
+          `Trop de pages (max ${MAX_PAGES} par journée).`,
+        );
 
       const result = await ingestCarnetImages({
         userId: user.id,
@@ -135,6 +165,10 @@ export function buildMcpServer(user: McpTokenUser): McpServer {
       });
 
       if (!result.ok) return errorContent(result.error);
+
+      // Ingestion réussie : les octets bruts en attente ne servent plus. En cas
+      // d'échec on les laisse (l'appelant peut réessayer jusqu'à l'expiration).
+      if (imageIds?.length) await consumeStagedUploads(user.id, imageIds);
 
       return jsonContent({
         id: result.id,

@@ -95,13 +95,34 @@ moment. Outils exposés :
 | Outil | Rôle |
 |---|---|
 | `list_children` | Liste les enfants auxquels le compte peut contribuer (récupère le `childId`) |
-| `upload_daily_note` | Téléverse une ou plusieurs pages (base64) d'une journée → crée un brouillon lu par le VLM, à relire puis publier |
+| `upload_daily_note` | Téléverse une ou plusieurs pages d'une journée (`images` en base64 **ou** `imageIds` pré-téléversées) → crée un brouillon lu par le VLM, à relire puis publier |
 | `list_daily_notes` | Liste les journées récentes d'un enfant (récupère leur `id`) — un lecteur ne voit que le publié |
 | `get_daily_note` | Détail complet d'une journée : récit, temps fort, repas, siestes, activités, anecdotes, santé, transcription |
 
 Comme via l'app, plusieurs pages d'une même journée (même enfant / date / lieu)
 sont fusionnées, et la lecture VLM tourne en arrière-plan : la journée apparaît
 en **brouillon** à relire puis publier.
+
+#### Pages volumineuses : pré-téléverser les octets bruts
+
+Une photo réelle pèse plusieurs Mo ; encodée en base64 pour l'argument `images`,
+elle représente des centaines de milliers de caractères — trop pour transiter
+par le contexte du modèle. Un client capable d'exécuter un shell contourne la
+limite en téléversant les **octets bruts** en une requête, puis en passant le
+seul identifiant renvoyé à l'outil :
+
+```bash
+# 1. Téléverser le fichier brut (aucun base64) → renvoie un uploadId court
+curl -sS -X POST "<votre-instance>/api/mcp/uploads" \
+  -H "Authorization: Bearer <jeton>" \
+  -H "Content-Type: application/octet-stream" \
+  --data-binary @page.jpg
+# → {"uploadId":"…","byteSize":1234567,"expiresAt":"…"}
+```
+
+Appelez ensuite `upload_daily_note` avec `imageIds: ["<uploadId>"]` (au lieu de
+`images`). Les uploads sont propres au porteur du jeton, plafonnés à 20 Mo par
+page, et expirent au bout de 30 min s'ils ne sont pas rattachés à une journée.
 
 ### Base de données
 
