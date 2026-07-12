@@ -2,6 +2,13 @@
 
 Toutes les versions notables de Racontine. Format issu des messages de commit conventionnels (`feat`, `fix`, …).
 
+# [1.3.0](https://github.com/Wifsimster/racontine/compare/v1.2.0...v1.3.0) (2026-07-12)
+
+
+### Features
+
+* **llm:** clé API Anthropic par utilisateur (fin de la clé partagée d'instance) ([65ae67d](https://github.com/Wifsimster/racontine/commit/65ae67da7fdcf328f3def2c233d7192fc1f54180))
+
 # [1.2.0](https://github.com/Wifsimster/racontine/compare/v1.1.0...v1.2.0) (2026-07-12)
 
 
