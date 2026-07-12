@@ -27,6 +27,15 @@ export async function buildApp() {
     },
   });
 
+  // Corps binaire brut pour la mise en attente d'une page (POST /api/mcp/uploads) :
+  // le client envoie les octets tels quels, sans multipart ni base64. Aucune
+  // autre route n'attend ce type de contenu, le parseur global est donc sûr.
+  app.addContentTypeParser(
+    "application/octet-stream",
+    { parseAs: "buffer", bodyLimit: 32 * 1024 * 1024 },
+    (_req, body, done) => done(null, body),
+  );
+
   app.get("/api/health", async () => ({
     status: "ok",
     db: (await dbHealthy()) ? "up" : "down",

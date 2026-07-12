@@ -50,6 +50,13 @@
       "when": 1783846089247,
       "tag": "0006_amused_ghost_rider",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1783878855029,
+      "tag": "0007_foamy_speed",
+      "breakpoints": true
     }
   ]
 }
