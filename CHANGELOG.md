@@ -2,6 +2,13 @@
 
 Toutes les versions notables de Racontine. Format issu des messages de commit conventionnels (`feat`, `fix`, …).
 
+# [1.5.0](https://github.com/Wifsimster/racontine/compare/v1.4.0...v1.5.0) (2026-07-12)
+
+
+### Features
+
+* **mcp:** pré-téléversement d'octets bruts pour les grosses pages ([#22](https://github.com/Wifsimster/racontine/issues/22)) ([de0c632](https://github.com/Wifsimster/racontine/commit/de0c63257fcaff11a9df9bc0a8ee4dc49aa1bdae))
+
 # [1.4.0](https://github.com/Wifsimster/racontine/compare/v1.3.1...v1.4.0) (2026-07-12)
 
 
