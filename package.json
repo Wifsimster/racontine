@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "pnpm --parallel --filter server --filter web dev",
     "build": "pnpm --filter server --filter web build",
-    "typecheck": "pnpm --filter server --filter web typecheck"
+    "typecheck": "pnpm --filter server --filter web typecheck",
+    "test": "pnpm --filter server test"
   },
   "engines": {
     "node": ">=22"

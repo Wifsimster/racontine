@@ -93,6 +93,8 @@ moment. Outils exposés :
 |---|---|
 | `list_children` | Liste les enfants auxquels le compte peut contribuer (récupère le `childId`) |
 | `upload_daily_note` | Téléverse une ou plusieurs pages (base64) d'une journée → crée un brouillon lu par le VLM, à relire puis publier |
+| `list_daily_notes` | Liste les journées récentes d'un enfant (récupère leur `id`) — un lecteur ne voit que le publié |
+| `get_daily_note` | Détail complet d'une journée : récit, temps fort, repas, siestes, activités, anecdotes, santé, transcription |
 
 Comme via l'app, plusieurs pages d'une même journée (même enfant / date / lieu)
 sont fusionnées, et la lecture VLM tourne en arrière-plan : la journée apparaît
