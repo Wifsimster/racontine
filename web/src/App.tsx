@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate, Outlet, useLocation } from "react-router-dom";
-import { BookOpenText, LogOut, Users, Share2, Settings } from "lucide-react";
+import {
+  BookOpenText,
+  LogOut,
+  Users,
+  Share2,
+  Settings,
+  CircleUser,
+} from "lucide-react";
 import { useSession, signOut } from "@/lib/auth-client";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -52,6 +59,16 @@ export default function App() {
           <Button variant="ghost" size="icon-sm" aria-label="Partager" asChild>
             <Link to="/partage">
               <Share2 />
+            </Link>
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Mon compte"
+            asChild
+          >
+            <Link to="/compte">
+              <CircleUser />
             </Link>
           </Button>
           {isOwner && (

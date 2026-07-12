@@ -67,7 +67,7 @@ function fmtDate(iso: string | null): string {
  * Gestion des jetons MCP : créer un jeton pour connecter une session Claude
  * (cloud, Desktop, Claude Code) qui pourra téléverser des photos de carnet.
  */
-export default function McpTokens({ webBaseUrl }: { webBaseUrl: string }) {
+export default function McpTokens({ webBaseUrl }: { webBaseUrl?: string }) {
   const [tokens, setTokens] = useState<McpToken[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState("");
@@ -76,7 +76,10 @@ export default function McpTokens({ webBaseUrl }: { webBaseUrl: string }) {
   const [secret, setSecret] = useState<string | null>(null);
   const [toRevoke, setToRevoke] = useState<McpToken | null>(null);
 
-  const endpoint = `${webBaseUrl.replace(/\/$/, "")}/api/mcp`;
+  // Base publique fournie par les réglages (propriétaire) ou, à défaut,
+  // l'origine courante — l'app est servie depuis la même URL que l'API.
+  const base = webBaseUrl ?? window.location.origin;
+  const endpoint = `${base.replace(/\/$/, "")}/api/mcp`;
 
   useEffect(() => {
     api
