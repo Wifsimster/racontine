@@ -6,7 +6,7 @@ COPY package.json pnpm-lock.yaml* ./
 # le lockfile du monorepo, donc pnpm refait un résolveur « propre » et bloque les
 # scripts d'installation (esbuild) sauf approbation explicite.
 RUN pnpm install --no-frozen-lockfile --config.dangerouslyAllowAllBuilds=true
-COPY tsconfig.json drizzle.config.ts ./
+COPY tsconfig.json tsconfig.build.json drizzle.config.ts ./
 COPY src ./src
 RUN pnpm build
 
