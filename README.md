@@ -73,6 +73,31 @@ magic link. Le proche ouvre le lien, se connecte **sans mot de passe** (magic
 link) et rejoint le cercle — même quand `SIGNUP_ENABLED=false`. La visibilité et
 les droits sont vérifiés côté serveur, par enfant, sur chaque route.
 
+## Connexion MCP (sessions Claude)
+
+Racontine expose un **serveur MCP** (Model Context Protocol) permettant de
+connecter une session **Claude** (cloud, Desktop ou Claude Code) à votre
+instance pour **téléverser des photos de carnet** sans passer par l'app.
+
+Depuis l'écran **Réglages** (⚙️), section **Connexion MCP**, créez un **jeton**
+(affiché une seule fois) puis ajoutez le serveur à Claude :
+
+- **Adresse** : `<votre-instance>/api/mcp` (transport *HTTP*)
+- **Authentification** : en-tête `Authorization: Bearer <jeton>`
+
+Le jeton porte les droits de l'utilisateur qui l'a créé (mêmes rôles par
+enfant). Seul le hash SHA-256 est stocké ; un jeton peut être révoqué à tout
+moment. Outils exposés :
+
+| Outil | Rôle |
+|---|---|
+| `list_children` | Liste les enfants auxquels le compte peut contribuer (récupère le `childId`) |
+| `upload_daily_note` | Téléverse une ou plusieurs pages (base64) d'une journée → crée un brouillon lu par le VLM, à relire puis publier |
+
+Comme via l'app, plusieurs pages d'une même journée (même enfant / date / lieu)
+sont fusionnées, et la lecture VLM tourne en arrière-plan : la journée apparaît
+en **brouillon** à relire puis publier.
+
 ### Base de données
 
 Schéma géré par **Drizzle**. Après modification de `server/src/db/schema.ts` :

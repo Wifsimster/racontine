@@ -170,3 +170,20 @@ export type PublicSettings = {
   appName: string;
   signupEnabled: boolean;
 };
+
+/* --------------------------- Jetons MCP -------------------------------- */
+
+/** Jeton d'accès MCP (sans le secret, jamais renvoyé après la création). */
+export type McpToken = {
+  id: string;
+  name: string;
+  tokenPrefix: string;
+  lastUsedAt: string | null;
+  createdAt: string;
+};
+
+/** Réponse de création : le secret en clair n'est renvoyé qu'ici, une fois. */
+export type CreatedMcpToken = {
+  token: McpToken;
+  secret: string;
+};
