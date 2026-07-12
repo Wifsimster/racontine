@@ -2,6 +2,13 @@
 
 Toutes les versions notables de Racontine. Format issu des messages de commit conventionnels (`feat`, `fix`, …).
 
+# [1.1.0](https://github.com/Wifsimster/racontine/compare/v1.0.1...v1.1.0) (2026-07-12)
+
+
+### Features
+
+* serveur MCP pour téléverser des photos de carnet depuis Claude ([#20](https://github.com/Wifsimster/racontine/issues/20)) ([874d799](https://github.com/Wifsimster/racontine/commit/874d7991672af10f34e223cece9ea9f21d757380))
+
 ## [1.0.1](https://github.com/Wifsimster/racontine/compare/v1.0.0...v1.0.1) (2026-07-11)
 
 
