@@ -2,6 +2,13 @@
 
 Toutes les versions notables de Racontine. Format issu des messages de commit conventionnels (`feat`, `fix`, …).
 
+# [1.6.0](https://github.com/Wifsimster/racontine/compare/v1.5.0...v1.6.0) (2026-07-13)
+
+
+### Features
+
+* **mcp:** outil create_daily_note pour une journée déjà transcrite ([#23](https://github.com/Wifsimster/racontine/issues/23)) ([c5bc6bb](https://github.com/Wifsimster/racontine/commit/c5bc6bbae8b95f460e621c54ec10818c2f0f4c71))
+
 # [1.5.0](https://github.com/Wifsimster/racontine/compare/v1.4.0...v1.5.0) (2026-07-12)
 
 
