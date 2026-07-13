@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { DATE_RE, ingestCarnetImages, SOURCES, todayIso } from "./ingest.js";
+import {
+  createTranscribedEntry,
+  DATE_RE,
+  ingestCarnetImages,
+  SOURCES,
+  todayIso,
+} from "./ingest.js";
 
 test("todayIso renvoie une date AAAA-MM-JJ", () => {
   assert.match(todayIso(), DATE_RE);
@@ -54,4 +60,34 @@ test("ingestCarnetImages rejette une absence de photo (400)", async () => {
     httpCode: 400,
     error: "aucune photo fournie",
   });
+});
+
+// Les validations date/source de `createTranscribedEntry` précèdent, elles aussi,
+// tout accès base : ces cas d'erreur ne dépendent d'aucune connexion Postgres.
+
+test("createTranscribedEntry rejette une date mal formée (400) sans toucher la base", async () => {
+  const res = await createTranscribedEntry({
+    userId: "u1",
+    date: "12-07-2026",
+    story: "Belle journée.",
+  });
+  assert.deepEqual(res, {
+    ok: false,
+    httpCode: 400,
+    error: "date invalide (attendu AAAA-MM-JJ)",
+  });
+});
+
+test("createTranscribedEntry rejette une source inconnue (400) sans toucher la base", async () => {
+  const res = await createTranscribedEntry({
+    userId: "u1",
+    date: "2026-07-12",
+    source: "ecole",
+    story: "Belle journée.",
+  });
+  assert.equal(res.ok, false);
+  if (!res.ok) {
+    assert.equal(res.httpCode, 400);
+    assert.match(res.error, /source invalide/);
+  }
 });
