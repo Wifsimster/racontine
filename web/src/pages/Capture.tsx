@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Camera, X } from "lucide-react";
+import { Camera, Images, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { compressImage } from "@/lib/image";
 import { type Child, type EntrySource, SOURCE_LABELS } from "@/lib/types";
@@ -29,7 +29,8 @@ function localDate(): string {
 
 export default function Capture() {
   const nav = useNavigate();
-  const inputRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const albumRef = useRef<HTMLInputElement>(null);
   const [children, setChildren] = useState<Child[]>([]);
   const [childId, setChildId] = useState<string>("");
   const [source, setSource] = useState<EntrySource>("nounou");
@@ -191,8 +192,11 @@ export default function Capture() {
         </div>
       </div>
 
+      {/* Deux entrées distinctes : `capture` ouvre l'appareil photo, son
+          absence laisse choisir des images déjà dans l'album (carnet
+          photographié plus tôt, capture d'écran d'un message…). */}
       <input
-        ref={inputRef}
+        ref={cameraRef}
         type="file"
         accept="image/*"
         capture="environment"
@@ -200,11 +204,25 @@ export default function Capture() {
         className="hidden"
         onChange={onPick}
       />
+      <input
+        ref={albumRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={onPick}
+      />
 
-      <Button variant="outline" onClick={() => inputRef.current?.click()}>
-        <Camera />
-        Ajouter une ou plusieurs pages
-      </Button>
+      <div className="grid grid-cols-2 gap-2">
+        <Button variant="outline" onClick={() => cameraRef.current?.click()}>
+          <Camera />
+          Photographier
+        </Button>
+        <Button variant="outline" onClick={() => albumRef.current?.click()}>
+          <Images />
+          Depuis l'album
+        </Button>
+      </div>
 
       {restored && shots.length > 0 && (
         <p className="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
