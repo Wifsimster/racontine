@@ -48,13 +48,13 @@ export default function App() {
   return (
     <div className="min-h-svh">
       <header className="sticky top-0 z-10 flex items-center justify-between border-b bg-background/95 px-4 py-3 backdrop-blur">
-        <Link to="/" className="flex items-center gap-2">
-          <BookOpenText className="size-6 text-primary" />
-          <span className="font-serif text-xl font-semibold tracking-tight">
+        <Link to="/" className="flex min-w-0 items-center gap-2">
+          <BookOpenText className="size-6 shrink-0 text-primary" />
+          <span className="truncate font-serif text-xl font-semibold tracking-tight">
             {appName}
           </span>
         </Link>
-        <div className="flex items-center gap-1">
+        <div className="flex shrink-0 items-center gap-0.5">
           <NotificationsBell />
           <Button variant="ghost" size="icon-sm" aria-label="Partager" asChild>
             <Link to="/partage">
@@ -93,6 +93,7 @@ export default function App() {
               <Users />
             </Link>
           </Button>
+          <span className="mx-0.5 h-5 w-px bg-border" aria-hidden="true" />
           <Button
             variant="ghost"
             size="icon-sm"
