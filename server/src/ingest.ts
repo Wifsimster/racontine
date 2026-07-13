@@ -5,7 +5,10 @@ import {
   entries,
   entryItems,
   attachments,
+  children,
   type EntryItemData,
+  type MealData,
+  type NapData,
 } from "./db/schema.js";
 import { accessibleChildIds, hasChildRole } from "./access.js";
 import {
@@ -16,6 +19,7 @@ import {
 } from "./storage.js";
 import { extractFromImages, VlmError, type Extraction } from "./vlm.js";
 import { getUserAnthropicKey } from "./llm-keys.js";
+import { notifyEntryPublished } from "./notifications.js";
 
 /** Où la journée a été passée — dimension de l'entrée (child + date + source). */
 export const SOURCES = ["nounou", "mam", "creche", "maison"] as const;
@@ -351,4 +355,195 @@ export async function ingestCarnetImages(
       await Promise.all(stored.map((img) => deleteStored(img)));
     throw err;
   }
+}
+
+/**
+ * Contenu déjà transcrit d'une journée, fourni directement (sans photo ni VLM).
+ * Les champs texte sont libres ; les listes structurées deviennent des
+ * `entry_items` typés, dans l'ordre repas → siestes → activités → anecdotes →
+ * santé (comme la sortie du VLM).
+ */
+export type TranscribedNote = {
+  title?: string | null;
+  story?: string | null;
+  highlight?: string | null;
+  mood?: string | null;
+  transcription?: string | null;
+  uncertainties?: string[];
+  meals?: MealData[];
+  naps?: NapData[];
+  activities?: string[];
+  anecdotes?: string[];
+  health?: string[];
+};
+
+export type CreateNoteInput = TranscribedNote & {
+  /** Utilisateur au nom duquel on crée (droits vérifiés par enfant). */
+  userId: string;
+  /** Facultatif si l'utilisateur ne suit qu'un seul enfant. */
+  childId?: string;
+  /** AAAA-MM-JJ. Défaut : aujourd'hui. Rejeté (400) si mal formé. */
+  date?: string;
+  /** Lieu de la journée. Défaut : nounou. Rejeté (400) si inconnu. */
+  source?: string;
+  /** Publier directement plutôt que de laisser en brouillon (défaut : brouillon). */
+  publish?: boolean;
+};
+
+/** Résultat de la création d'une journée déjà transcrite. */
+export type CreateNoteResult =
+  | { ok: true; id: string; status: "draft" | "published" }
+  | { ok: false; httpCode: number; error: string; id?: string };
+
+/** Listes structurées d'une journée transcrite → lignes entry_items ordonnées. */
+function transcribedToItems(
+  note: TranscribedNote,
+): { type: ItemType; data: EntryItemData; position: number }[] {
+  const rows: { type: ItemType; data: EntryItemData; position: number }[] = [];
+  let pos = 0;
+  for (const m of note.meals ?? [])
+    rows.push({ type: "meal", data: m, position: pos++ });
+  for (const n of note.naps ?? [])
+    rows.push({ type: "nap", data: n, position: pos++ });
+  for (const a of note.activities ?? [])
+    rows.push({ type: "activity", data: { label: a }, position: pos++ });
+  for (const a of note.anecdotes ?? [])
+    rows.push({ type: "anecdote", data: { text: a }, position: pos++ });
+  for (const h of note.health ?? [])
+    rows.push({ type: "health", data: { note: h }, position: pos++ });
+  return rows;
+}
+
+/**
+ * Crée une journée à partir d'un contenu **déjà transcrit** (texte + listes
+ * structurées), sans photo ni lecture VLM. Contrepartie de `ingestCarnetImages`
+ * pour les clients qui disposent déjà du récit (transcription manuelle, autre
+ * OCR, saisie assistée…) : aucune clé Anthropic n'est requise.
+ *
+ * Applique les mêmes règles que l'ingestion (validation date/source, résolution
+ * de `childId`, rôle contributor+) et respecte l'unicité (enfant, date, source) :
+ * si une journée existe déjà, renvoie 409 avec son `id` — la modifier passe par
+ * l'app (relecture) et non par cet outil.
+ *
+ * Ne lève pas pour les erreurs métier : renvoie un `CreateNoteResult`.
+ */
+export async function createTranscribedEntry(
+  input: CreateNoteInput,
+): Promise<CreateNoteResult> {
+  let date = todayIso();
+  if (input.date !== undefined) {
+    if (!DATE_RE.test(input.date))
+      return {
+        ok: false,
+        httpCode: 400,
+        error: "date invalide (attendu AAAA-MM-JJ)",
+      };
+    date = input.date;
+  }
+
+  let source: Source = "nounou";
+  if (input.source !== undefined) {
+    if (!(SOURCES as readonly string[]).includes(input.source))
+      return {
+        ok: false,
+        httpCode: 400,
+        error: "source invalide (nounou, mam, creche ou maison)",
+      };
+    source = input.source as Source;
+  }
+
+  // childId facultatif si l'utilisateur ne suit qu'un seul enfant.
+  let childId = input.childId;
+  if (!childId) {
+    const ids = await accessibleChildIds(input.userId);
+    if (ids.length === 1) childId = ids[0];
+    else
+      return {
+        ok: false,
+        httpCode: 400,
+        error: "childId requis (plusieurs enfants)",
+      };
+  }
+
+  // Contribuer exige le rôle contributor (ou admin) sur cet enfant. On ne
+  // divulgue pas l'existence d'un enfant non partagé : 403 uniforme.
+  if (!(await hasChildRole(input.userId, childId, "contributor")))
+    return { ok: false, httpCode: 403, error: "accès refusé à cet enfant" };
+
+  const publish = input.publish === true;
+  const items = transcribedToItems(input);
+
+  // Insertion atomique respectant l'unicité (enfant, date, source) : on ne
+  // fusionne PAS ici (contrairement à l'ajout de pages photo) — un contenu déjà
+  // transcrit remplacerait silencieusement une journée existante. En cas de
+  // conflit, on renvoie 409 avec l'id existant : l'appelant modifie via l'app.
+  const { id, status } = await db.transaction(async (tx) => {
+    const [inserted] = await tx
+      .insert(entries)
+      .values({
+        childId: childId!,
+        date,
+        source,
+        status: publish ? "published" : "draft",
+        mood: input.mood ?? null,
+        title: input.title ?? null,
+        story: input.story ?? null,
+        highlight: input.highlight ?? null,
+        transcription: input.transcription ?? null,
+        uncertainties: input.uncertainties ?? [],
+        createdBy: input.userId,
+        publishedAt: publish ? new Date() : null,
+      })
+      .onConflictDoNothing({
+        target: [entries.childId, entries.date, entries.source],
+      })
+      .returning({ id: entries.id, status: entries.status });
+    if (!inserted) return { id: null as string | null, status: null };
+    if (items.length)
+      await tx
+        .insert(entryItems)
+        .values(items.map((it) => ({ ...it, entryId: inserted.id })));
+    return { id: inserted.id, status: inserted.status };
+  });
+
+  if (!id) {
+    const [existing] = await db
+      .select({ id: entries.id })
+      .from(entries)
+      .where(
+        and(
+          eq(entries.childId, childId),
+          eq(entries.date, date),
+          eq(entries.source, source),
+        ),
+      )
+      .limit(1);
+    return {
+      ok: false,
+      httpCode: 409,
+      error:
+        "Une journée existe déjà pour cet enfant à cette date et cette source. Modifiez-la depuis Racontine.",
+      id: existing?.id,
+    };
+  }
+
+  // Publication directe : notifier les abonnés en arrière-plan (comme le PATCH
+  // web). Effet de bord isolé — n'impacte ni la réponse ni la création.
+  if (publish) {
+    const [child] = await db
+      .select({ name: children.name })
+      .from(children)
+      .where(eq(children.id, childId))
+      .limit(1);
+    if (child)
+      void notifyEntryPublished({
+        entryId: id,
+        childId,
+        childName: child.name,
+        date,
+        actorUserId: input.userId,
+      });
+  }
+
+  return { ok: true, id, status: status as "draft" | "published" };
 }
