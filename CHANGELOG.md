@@ -2,6 +2,13 @@
 
 Toutes les versions notables de Racontine. Format issu des messages de commit conventionnels (`feat`, `fix`, …).
 
+# [1.7.0](https://github.com/Wifsimster/racontine/compare/v1.6.0...v1.7.0) (2026-07-13)
+
+
+### Features
+
+* **web:** ajouter des images depuis l'album ([#24](https://github.com/Wifsimster/racontine/issues/24)) ([47b6101](https://github.com/Wifsimster/racontine/commit/47b6101b07d8f73403b438d441d4de8c3a8be5d0))
+
 # [1.6.0](https://github.com/Wifsimster/racontine/compare/v1.5.0...v1.6.0) (2026-07-13)
 
 
