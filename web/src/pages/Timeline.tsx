@@ -3,11 +3,15 @@ import { Link } from "react-router-dom";
 import {
   Camera,
   Soup,
+  Sunrise,
+  Sun,
+  Cookie,
   Moon,
   Sparkles,
   HeartPulse,
   Baby,
   Star,
+  Smile,
   ChevronDown,
   Pencil,
   BookHeart,
@@ -46,8 +50,20 @@ function formatDate(iso: string): string {
   });
 }
 
-function Chip({ type }: { type: ItemType }) {
-  const Icon = ITEM_ICON[type];
+/** Icône de repas selon le moment de la journée (à défaut, un bol). */
+function mealIcon(moment?: string): typeof Soup {
+  const m = (moment ?? "").toLowerCase();
+  if (m.includes("matin") || m.includes("réveil") || m.includes("petit-déj"))
+    return Sunrise;
+  if (m.includes("midi") || m.includes("déjeun") || m.includes("dîner"))
+    return Sun;
+  if (m.includes("goûter") || m.includes("gouter") || m.includes("collation"))
+    return Cookie;
+  return Soup;
+}
+
+function Chip({ type, icon }: { type: ItemType; icon?: typeof Soup }) {
+  const Icon = icon ?? ITEM_ICON[type];
   return (
     <span
       className={cn(
@@ -65,7 +81,7 @@ function ItemLine({ item }: { item: EntryItem }) {
     const d = item.data as MealData;
     return (
       <li className="flex items-start gap-2.5 text-sm">
-        <Chip type="meal" />
+        <Chip type="meal" icon={mealIcon(d.moment)} />
         <span className="pt-0.5">
           <span className="font-bold">{d.moment}</span> — {d.contenu}
           {d.appetit ? ` (${d.appetit})` : ""}
@@ -155,7 +171,7 @@ function EntryCard({ entry }: { entry: Entry }) {
 
       {/* Le récit — cœur de la valorisation */}
       {entry.story && (
-        <p className="text-[15px] leading-relaxed text-foreground/90">
+        <p className="carnet-story text-[15px] text-foreground/90">
           {entry.story}
         </p>
       )}
@@ -169,7 +185,13 @@ function EntryCard({ entry }: { entry: Entry }) {
       )}
 
       {entry.mood && (
-        <p className="text-sm text-muted-foreground">Humeur : {entry.mood}</p>
+        <p className="flex items-start gap-1.5 text-sm text-muted-foreground">
+          <Smile className="mt-0.5 size-4 shrink-0 text-muted-foreground/70" />
+          <span>
+            <span className="font-medium text-foreground/70">Humeur</span> ·{" "}
+            {entry.mood}
+          </span>
+        </p>
       )}
 
       {/* Photos du carnet */}
@@ -279,15 +301,20 @@ export default function Timeline() {
         </Button>
       )}
 
-      <Link
-        to="/capture"
-        className="fixed inset-x-0 bottom-6 mx-auto w-full max-w-lg px-4"
-      >
-        <Button size="lg" className="w-full shadow-lg">
-          <Camera />
-          Photographier le carnet
+      {/* CTA flottant sur un fondu vers le papier : le contenu s'efface
+          doucement dessous au lieu de buter contre le bouton. */}
+      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 flex justify-center bg-gradient-to-t from-background via-background/90 to-transparent px-4 pb-6 pt-12">
+        <Button
+          asChild
+          size="lg"
+          className="pointer-events-auto w-full max-w-lg shadow-lg"
+        >
+          <Link to="/capture">
+            <Camera />
+            Photographier le carnet
+          </Link>
         </Button>
-      </Link>
+      </div>
     </div>
   );
 }
