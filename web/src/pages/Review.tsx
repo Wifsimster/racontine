@@ -10,6 +10,7 @@ import {
   Sparkles,
   Star,
   Trash2,
+  X,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import {
@@ -73,6 +74,12 @@ export default function Review() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmRemoveAttachment, setConfirmRemoveAttachment] = useState<
+    string | null
+  >(null);
+  const [removingAttachment, setRemovingAttachment] = useState<string | null>(
+    null,
+  );
   const [batchDays, setBatchDays] = useState<BatchEntrySummary[] | null>(null);
   const [resolvingIndex, setResolvingIndex] = useState<number | null>(null);
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -220,6 +227,29 @@ export default function Review() {
     nav("/");
   }
 
+  async function removeAttachment(attachmentId: string) {
+    setRemovingAttachment(attachmentId);
+    setError(null);
+    try {
+      await api.deleteAttachment(attachmentId);
+      setEntry((prev) =>
+        prev
+          ? {
+              ...prev,
+              attachments: prev.attachments.filter((a) => a.id !== attachmentId),
+            }
+          : prev,
+      );
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Échec du retrait de la page",
+      );
+    } finally {
+      setRemovingAttachment(null);
+      setConfirmRemoveAttachment(null);
+    }
+  }
+
   if (!entry) {
     return (
       <div className="flex min-h-svh items-center justify-center gap-2 text-muted-foreground">
@@ -255,6 +285,10 @@ export default function Review() {
     );
   }
 
+  const attachmentToRemove = entry.attachments.find(
+    (a) => a.id === confirmRemoveAttachment,
+  );
+
   return (
     <div className="mx-auto w-full max-w-3xl p-4 pb-28">
       {batchDays && batchDays.length > 1 && (
@@ -274,13 +308,32 @@ export default function Review() {
             Page(s) du carnet
           </h2>
           {entry.attachments.map((a) => (
-            <a key={a.id} href={a.url} target="_blank" rel="noreferrer">
-              <img
-                src={a.url}
-                alt="page du carnet"
-                className="w-full rounded-lg border object-contain"
-              />
-            </a>
+            <div key={a.id} className="relative">
+              <a href={a.url} target="_blank" rel="noreferrer">
+                <img
+                  src={a.url}
+                  alt="page du carnet"
+                  className="w-full rounded-lg border object-contain"
+                />
+              </a>
+              {entry.status !== "published" && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="icon-sm"
+                  className="absolute right-2 top-2 rounded-full shadow"
+                  disabled={removingAttachment === a.id}
+                  onClick={() => setConfirmRemoveAttachment(a.id)}
+                  aria-label="retirer cette page"
+                >
+                  {removingAttachment === a.id ? (
+                    <Loader2 className="animate-spin" />
+                  ) : (
+                    <X />
+                  )}
+                </Button>
+              )}
+            </div>
           ))}
         </div>
 
@@ -430,6 +483,34 @@ export default function Review() {
           </Button>
         </div>
       </div>
+
+      <AlertDialog
+        open={!!confirmRemoveAttachment}
+        onOpenChange={(open) => {
+          if (!open) setConfirmRemoveAttachment(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Retirer cette page ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              La photo sera définitivement supprimée du carnet. Le récit déjà
+              écrit n'est pas modifié.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-white hover:bg-destructive/90"
+              onClick={() =>
+                attachmentToRemove && removeAttachment(attachmentToRemove.id)
+              }
+            >
+              Retirer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
