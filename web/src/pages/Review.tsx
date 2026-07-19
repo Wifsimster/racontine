@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   AlertTriangle,
+  Check,
+  CheckCircle2,
   ChevronDown,
   Loader2,
   Plus,
@@ -15,6 +17,7 @@ import {
   type EntryItem,
   type ItemType,
   type EntrySource,
+  type Uncertainty,
   ITEM_LABELS,
   SOURCE_LABELS,
 } from "@/lib/types";
@@ -68,6 +71,7 @@ export default function Review() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [resolvingIndex, setResolvingIndex] = useState<number | null>(null);
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const hydrate = useCallback((e: Entry) => {
@@ -122,21 +126,24 @@ export default function Review() {
       .filter((it) => Object.keys(it.data).length > 0);
   }
 
+  function currentPatch() {
+    return {
+      title: title.trim() || null,
+      story: story.trim() || null,
+      highlight: highlight.trim() || null,
+      mood: mood || null,
+      transcription: transcription || null,
+      source,
+      date,
+      items: cleanedItems(),
+    };
+  }
+
   async function save(publish: boolean) {
     setSaving(true);
     setError(null);
     try {
-      await api.updateEntry(id, {
-        title: title.trim() || null,
-        story: story.trim() || null,
-        highlight: highlight.trim() || null,
-        mood: mood || null,
-        transcription: transcription || null,
-        source,
-        date,
-        items: cleanedItems(),
-        publish,
-      });
+      await api.updateEntry(id, { ...currentPatch(), publish });
       if (publish) nav("/");
       else {
         const e = await api.getEntry(id);
@@ -146,6 +153,25 @@ export default function Review() {
       setError(err instanceof Error ? err.message : "Échec de l'enregistrement");
     } finally {
       setSaving(false);
+    }
+  }
+
+  // Persiste d'abord le brouillon en cours (les champs de valorisation ont pu
+  // être retouchés à la main sans être encore enregistrés), puis applique la
+  // correction choisie : elle remplace le mot incertain dans les champs
+  // enregistrés et alimente le glossaire de l'enfant pour les prochaines
+  // lectures (voir corrections.ts côté serveur).
+  async function resolveUncertainty(index: number, value: string) {
+    setResolvingIndex(index);
+    setError(null);
+    try {
+      await api.updateEntry(id, currentPatch());
+      const e = await api.resolveUncertainty(id, index, value);
+      hydrate(e);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Échec de la validation");
+    } finally {
+      setResolvingIndex(null);
     }
   }
 
@@ -236,16 +262,22 @@ export default function Review() {
             </p>
           </div>
 
-          {entry.uncertainties && entry.uncertainties.length > 0 && (
+          {normalizeUncertainties(entry.uncertainties).length > 0 && (
             <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
-              <p className="mb-1 flex items-center gap-1.5 text-sm font-medium text-amber-700 dark:text-amber-400">
+              <p className="mb-2 flex items-center gap-1.5 text-sm font-medium text-amber-700 dark:text-amber-400">
                 <AlertTriangle className="size-4" /> À vérifier
               </p>
-              <ul className="list-inside list-disc text-sm text-amber-700 dark:text-amber-400">
-                {entry.uncertainties.map((u, i) => (
-                  <li key={i}>{u}</li>
+              <div className="flex flex-col gap-2.5">
+                {normalizeUncertainties(entry.uncertainties).map((u, i) => (
+                  <UncertaintyCard
+                    key={i}
+                    item={u}
+                    disabled={resolvingIndex !== null}
+                    resolving={resolvingIndex === i}
+                    onResolve={(value) => resolveUncertainty(i, value)}
+                  />
                 ))}
-              </ul>
+              </div>
             </div>
           )}
 
@@ -408,6 +440,101 @@ function pruneEmpty(data: Record<string, string>): Record<string, string> {
     if (v && v.trim()) out[k] = v.trim();
   }
   return out;
+}
+
+/** Tolère les anciennes entrées où `uncertainties` était un simple tableau de chaînes. */
+function normalizeUncertainties(raw: unknown): Uncertainty[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((u) =>
+    typeof u === "string"
+      ? { original: u, contexte: "", suggestions: [], champ: null, resolved: null }
+      : (u as Uncertainty),
+  );
+}
+
+/* --------------------------- Incertitude à valider ------------------------ */
+
+function UncertaintyCard({
+  item,
+  disabled,
+  resolving,
+  onResolve,
+}: {
+  item: Uncertainty;
+  disabled: boolean;
+  resolving: boolean;
+  onResolve: (value: string) => void;
+}) {
+  const [custom, setCustom] = useState("");
+
+  if (item.resolved) {
+    return (
+      <div className="flex items-center gap-1.5 text-sm text-amber-700/70 dark:text-amber-400/60">
+        <CheckCircle2 className="size-3.5 shrink-0" />
+        <span>
+          <span className="line-through decoration-amber-700/40">
+            « {item.original} »
+          </span>{" "}
+          → <span className="font-medium">{item.resolved}</span>
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-1.5 text-sm text-amber-700 dark:text-amber-400">
+      <p>
+        <span className="font-medium">« {item.original} »</span>
+        {item.contexte ? <span> — {item.contexte}</span> : null}
+      </p>
+      <div className="flex flex-wrap items-center gap-1.5">
+        {item.suggestions.map((s) => (
+          <Button
+            key={s}
+            type="button"
+            variant="outline"
+            size="xs"
+            className="rounded-full border-amber-500/50 bg-transparent text-amber-800 hover:bg-amber-500/15 dark:text-amber-300"
+            disabled={disabled}
+            onClick={() => onResolve(s)}
+          >
+            {resolving ? <Loader2 className="size-3 animate-spin" /> : null}
+            {s}
+          </Button>
+        ))}
+        <Button
+          type="button"
+          variant="ghost"
+          size="xs"
+          className="rounded-full text-amber-700/80 hover:bg-amber-500/15 dark:text-amber-400/80"
+          disabled={disabled}
+          onClick={() => onResolve(item.original)}
+        >
+          Garder tel quel
+        </Button>
+      </div>
+      <div className="flex items-center gap-1.5">
+        <Input
+          value={custom}
+          onChange={(e) => setCustom(e.target.value)}
+          placeholder="Autre correction…"
+          className="h-7 max-w-48 border-amber-500/40 bg-transparent text-xs"
+          disabled={disabled}
+        />
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-xs"
+          className="text-amber-700 hover:bg-amber-500/15 dark:text-amber-400"
+          disabled={disabled || !custom.trim()}
+          onClick={() => onResolve(custom.trim())}
+          aria-label="valider cette correction"
+        >
+          <Check />
+        </Button>
+      </div>
+    </div>
+  );
 }
 
 /* ------------------------------ Éditeur d'items --------------------------- */

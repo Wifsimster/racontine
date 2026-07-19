@@ -8,6 +8,25 @@ export type ActivityData = { label: string };
 export type AnecdoteData = { text: string };
 export type HealthData = { note: string };
 
+export type UncertaintyField =
+  | "titre"
+  | "recit"
+  | "temps_fort"
+  | "transcription_integrale";
+
+/**
+ * Mot ou passage dont la lecture manuscrite est incertaine, avec des
+ * suggestions de correction à valider. `resolved` porte la valeur choisie une
+ * fois la relecture faite (null tant que non validé).
+ */
+export type Uncertainty = {
+  original: string;
+  contexte: string;
+  suggestions: string[];
+  champ: UncertaintyField | null;
+  resolved: string | null;
+};
+
 export type EntryItem = {
   id: string;
   type: ItemType;
@@ -83,7 +102,7 @@ export type Entry = {
   story: string | null;
   highlight: string | null;
   transcription: string | null;
-  uncertainties: string[] | null;
+  uncertainties: Uncertainty[] | null;
   publishedAt: string | null;
   items: EntryItem[];
   attachments: AttachmentRef[];
