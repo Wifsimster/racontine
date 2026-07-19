@@ -282,7 +282,9 @@ export default function Capture() {
       </Button>
       <p className="text-xs text-muted-foreground">
         Racontine lit le carnet via l'API Claude et écrit un joli récit de la
-        journée, que vous relisez avant de publier.
+        journée, que vous relisez avant de publier. Si les photos couvrent
+        plusieurs jours, chaque journée est détectée séparément et vous les
+        relisez l'une après l'autre.
       </p>
     </div>
   );

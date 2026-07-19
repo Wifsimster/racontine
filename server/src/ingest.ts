@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { db } from "./db/index.js";
 import {
@@ -18,7 +19,7 @@ import {
   deleteStored,
   type StoredImage,
 } from "./storage.js";
-import { extractFromImages, VlmError, type Extraction } from "./vlm.js";
+import { extractFromImages, VlmError, type DayExtraction } from "./vlm.js";
 import { getUserAnthropicKey } from "./llm-keys.js";
 import { notifyEntryPublished } from "./notifications.js";
 import { getChildGlossary } from "./corrections.js";
@@ -47,9 +48,9 @@ async function readStored(relPath: string): Promise<Buffer> {
   return readFile(resolveUpload(relPath));
 }
 
-/** Extraction VLM → lignes entry_items. */
+/** Extraction VLM (une journée) → lignes entry_items. */
 function extractionToItems(
-  x: Extraction,
+  x: DayExtraction,
 ): { type: ItemType; data: EntryItemData; position: number }[] {
   const rows: { type: ItemType; data: EntryItemData; position: number }[] = [];
   let pos = 0;
@@ -65,11 +66,171 @@ function extractionToItems(
   return rows;
 }
 
+/** Incertitudes VLM → forme persistée (ajoute `resolved: null`, pas encore validées). */
+function toStoredUncertainties(x: DayExtraction): Uncertainty[] {
+  return x.incertitudes.map((u) => ({ ...u, resolved: null }));
+}
+
+/** `date` (AAAA-MM-JJ) + `n` jours, en arithmétique calendaire (pas de fuseau). */
+function addDays(date: string, n: number): string {
+  const d = new Date(`${date}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Rattache une page déjà stockée (attachment existant, appartenant encore au
+ * placeholder) à sa journée définitive, en la plaçant à la suite des pièces
+ * jointes déjà présentes sur cette entrée.
+ */
+async function moveAttachments(attachmentIds: string[], targetEntryId: string) {
+  if (!attachmentIds.length) return;
+  const existing = await db
+    .select({ position: attachments.position })
+    .from(attachments)
+    .where(eq(attachments.entryId, targetEntryId));
+  let pos = existing.reduce((max, a) => Math.max(max, a.position + 1), 0);
+  for (const id of attachmentIds) {
+    await db
+      .update(attachments)
+      .set({ entryId: targetEntryId, position: pos++ })
+      .where(eq(attachments.id, id));
+  }
+}
+
+/**
+ * Journée détectée au-delà de la première (2e jour, 3e jour…) d'un même envoi
+ * de photos : find-or-create par (enfant, date, source), comme à l'ingestion,
+ * puis rattache ses pages. Ne remplace jamais le contenu d'une journée déjà
+ * publiée (une seule journée publiée par date pour rester cohérent) : dans ce
+ * cas, ses pages restent sur le placeholder et un signalement est ajouté.
+ */
+async function commitSplitDay(opts: {
+  userId: string;
+  childId: string;
+  source: Source;
+  date: string;
+  batchId: string;
+  day: DayExtraction;
+  attachmentIds: string[];
+  parentEntryId: string;
+}) {
+  const { userId, childId, source, date, batchId, day, attachmentIds, parentEntryId } =
+    opts;
+  const items = extractionToItems(day);
+  const uncertainties = toStoredUncertainties(day);
+
+  const [inserted] = await db
+    .insert(entries)
+    .values({
+      childId,
+      date,
+      source,
+      status: "draft",
+      batchId,
+      mood: day.humeur,
+      title: day.titre,
+      story: day.recit,
+      highlight: day.temps_fort,
+      transcription: day.transcription_integrale,
+      uncertainties,
+      createdBy: userId,
+    })
+    .onConflictDoNothing({
+      target: [entries.childId, entries.date, entries.source],
+    })
+    .returning({ id: entries.id });
+
+  if (inserted) {
+    if (items.length)
+      await db
+        .insert(entryItems)
+        .values(items.map((it) => ({ ...it, entryId: inserted.id })));
+    await moveAttachments(attachmentIds, inserted.id);
+    return;
+  }
+
+  const [existing] = await db
+    .select()
+    .from(entries)
+    .where(
+      and(
+        eq(entries.childId, childId),
+        eq(entries.date, date),
+        eq(entries.source, source),
+      ),
+    )
+    .limit(1);
+  if (!existing) return; // course improbable : abandonné plutôt que planter.
+
+  if (existing.status === "published") {
+    // On ne recrée/n'écrase pas une journée déjà publiée : ses pages restent
+    // sur l'entrée d'origine, signalées pour relecture manuelle.
+    await db
+      .update(entries)
+      .set({
+        uncertainties: [
+          ...(await currentUncertainties(parentEntryId)),
+          {
+            // `original` non vide : cette incertitude est un simple signalement,
+            // pas une correction de mot — mais l'UI de relecture (bouton
+            // « garder tel quel », validation serveur) exige une valeur non
+            // vide pour la résoudre, d'où ce libellé plutôt qu'une chaîne vide.
+            original: `pages du ${date}`,
+            contexte: `Une journée du ${date} déjà publiée a été détectée dans ce lot de photos : ses pages n'ont pas été rattachées automatiquement.`,
+            suggestions: [],
+            champ: null,
+            resolved: null,
+          },
+        ],
+      })
+      .where(eq(entries.id, parentEntryId));
+    return;
+  }
+
+  await db
+    .update(entries)
+    .set({
+      status: "draft",
+      batchId,
+      mood: day.humeur,
+      title: day.titre,
+      story: day.recit,
+      highlight: day.temps_fort,
+      transcription: day.transcription_integrale,
+      uncertainties,
+      failureReason: null,
+      updatedAt: new Date(),
+    })
+    .where(eq(entries.id, existing.id));
+  await db.delete(entryItems).where(eq(entryItems.entryId, existing.id));
+  if (items.length)
+    await db
+      .insert(entryItems)
+      .values(items.map((it) => ({ ...it, entryId: existing.id })));
+  await moveAttachments(attachmentIds, existing.id);
+}
+
+async function currentUncertainties(entryId: string): Promise<Uncertainty[]> {
+  const [row] = await db
+    .select({ uncertainties: entries.uncertainties })
+    .from(entries)
+    .where(eq(entries.id, entryId))
+    .limit(1);
+  return row?.uncertainties ?? [];
+}
+
 /**
  * Traitement VLM en arrière-plan : processing → draft | failed.
  * Ré-extrait à partir de TOUTES les pages de l'entrée (chemins disque) pour
  * fusionner correctement un ajout de page à une journée existante. La lecture
- * utilise la clé API de `userId` (l'utilisateur qui a déclenché l'import).
+ * utilise la clé API de `userId` (l'utilisateur qui a déclenché l'import) et
+ * le glossaire de corrections déjà validées pour cet enfant.
+ *
+ * Le carnet photographié peut couvrir plusieurs journées d'un coup : chaque
+ * journée détectée devient sa propre entrée (la première réutilise `entryId`,
+ * les suivantes sont créées à la volée), reliées par un `batchId` commun que
+ * le front utilise pour proposer une relecture séquentielle (stepper).
  */
 export async function processEntry(
   entryId: string,
@@ -89,8 +250,9 @@ export async function processEntry(
       .limit(1);
     const glossary = entryRow ? await getChildGlossary(entryRow.childId) : [];
     const jpegs = await Promise.all(paths.map((p) => readStored(p)));
-    const x = await extractFromImages(jpegs, apiKey, glossary);
-    if (x.illisible) {
+    const days = await extractFromImages(jpegs, apiKey, glossary);
+
+    if (!days.length || days.every((d) => d.illisible)) {
       // Compare-and-set : ne marquer « failed » que si l'entrée est toujours en
       // cours de traitement (un PATCH utilisateur a pu la relire/publier).
       await db
@@ -104,34 +266,121 @@ export async function processEntry(
         .where(and(eq(entries.id, entryId), eq(entries.status, "processing")));
       return;
     }
-    const items = extractionToItems(x);
-    await db.transaction(async (tx) => {
-      // On n'écrase le contenu que si l'entrée est encore en « processing » :
-      // sinon une relecture humaine (PATCH) faite pendant l'extraction serait
-      // silencieusement écrasée par la sortie VLM.
-      const moved = await tx
-        .update(entries)
-        .set({
-          status: "draft",
-          mood: x.humeur,
-          title: x.titre,
-          story: x.recit,
-          highlight: x.temps_fort,
-          transcription: x.transcription_integrale,
-          uncertainties: x.incertitudes.map((u) => ({ ...u, resolved: null })),
-          failureReason: null,
-          updatedAt: new Date(),
-        })
-        .where(and(eq(entries.id, entryId), eq(entries.status, "processing")))
-        .returning({ id: entries.id });
-      if (!moved.length) return;
-      await tx.delete(entryItems).where(eq(entryItems.entryId, entryId));
-      if (items.length) {
-        await tx
-          .insert(entryItems)
-          .values(items.map((it) => ({ ...it, entryId })));
-      }
+
+    // Ordre chronologique = ordre physique des pages dans le carnet.
+    const sorted = [...days].sort(
+      (a, b) => Math.min(...a.pages) - Math.min(...b.pages),
+    );
+
+    if (sorted.length === 1) {
+      // Journée unique : comportement historique, aucun batch.
+      const x = sorted[0];
+      const items = extractionToItems(x);
+      await db.transaction(async (tx) => {
+        // On n'écrase le contenu que si l'entrée est encore en « processing » :
+        // sinon une relecture humaine (PATCH) faite pendant l'extraction serait
+        // silencieusement écrasée par la sortie VLM.
+        const moved = await tx
+          .update(entries)
+          .set({
+            status: "draft",
+            mood: x.humeur,
+            title: x.titre,
+            story: x.recit,
+            highlight: x.temps_fort,
+            transcription: x.transcription_integrale,
+            uncertainties: toStoredUncertainties(x),
+            failureReason: null,
+            updatedAt: new Date(),
+          })
+          .where(and(eq(entries.id, entryId), eq(entries.status, "processing")))
+          .returning({ id: entries.id });
+        if (!moved.length) return;
+        await tx.delete(entryItems).where(eq(entryItems.entryId, entryId));
+        if (items.length) {
+          await tx
+            .insert(entryItems)
+            .values(items.map((it) => ({ ...it, entryId })));
+        }
+      });
+      return;
+    }
+
+    // Plusieurs journées détectées : le placeholder ne représente plus « la »
+    // journée mais le lot. Un PATCH utilisateur concurrent pendant l'extraction
+    // (relecture/publication déclenchée avant la fin du traitement) annule le
+    // découpage plutôt que de rouvrir une entrée déjà publiée.
+    const placeholder = await db.query.entries.findFirst({
+      where: and(eq(entries.id, entryId), eq(entries.status, "processing")),
     });
+    if (!placeholder) return;
+
+    const atts = await db
+      .select({ id: attachments.id })
+      .from(attachments)
+      .where(eq(attachments.entryId, entryId))
+      .orderBy(attachments.position);
+
+    const batchId = randomUUID();
+    let previousDate = placeholder.date;
+
+    for (let i = 0; i < sorted.length; i++) {
+      const day = sorted[i];
+      const isFirst = i === 0;
+      const attachmentIds = day.pages
+        .map((p) => atts[p - 1]?.id)
+        .filter((v): v is string => Boolean(v));
+
+      // Date illisible : la première journée retombe sur la date de capture,
+      // les suivantes sur « veille + 1 jour » (les pages suivent l'ordre
+      // chronologique du carnet). Reste éditable manuellement à la relecture.
+      let date = day.date && DATE_RE.test(day.date) ? day.date : null;
+      if (!date) date = isFirst ? placeholder.date : addDays(previousDate, 1);
+      previousDate = date;
+
+      if (isFirst) {
+        const items = extractionToItems(day);
+        await db.transaction(async (tx) => {
+          const moved = await tx
+            .update(entries)
+            .set({
+              status: "draft",
+              date,
+              batchId,
+              mood: day.humeur,
+              title: day.titre,
+              story: day.recit,
+              highlight: day.temps_fort,
+              transcription: day.transcription_integrale,
+              uncertainties: toStoredUncertainties(day),
+              failureReason: null,
+              updatedAt: new Date(),
+            })
+            .where(
+              and(eq(entries.id, entryId), eq(entries.status, "processing")),
+            )
+            .returning({ id: entries.id });
+          if (!moved.length) return;
+          await tx.delete(entryItems).where(eq(entryItems.entryId, entryId));
+          if (items.length)
+            await tx
+              .insert(entryItems)
+              .values(items.map((it) => ({ ...it, entryId })));
+        });
+        continue;
+      }
+
+      await commitSplitDay({
+        userId,
+        childId: placeholder.childId,
+        source: placeholder.source,
+        date,
+        batchId,
+        day,
+        attachmentIds,
+        parentEntryId: entryId,
+      });
+    }
   } catch (err) {
     // Seuls les VlmError portent un message déjà sûr pour l'utilisateur ; toute
     // autre erreur (DB, lecture disque…) pourrait divulguer des détails internes,

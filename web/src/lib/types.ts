@@ -106,6 +106,20 @@ export type Entry = {
   publishedAt: string | null;
   items: EntryItem[];
   attachments: AttachmentRef[];
+  /**
+   * Identifiant commun aux journées issues d'un même envoi de photos
+   * couvrant plusieurs jours (carnet photographié sur plusieurs pages à la
+   * fois). Null pour une journée seule.
+   */
+  batchId: string | null;
+};
+
+/** Résumé léger d'une journée sœur dans un même lot (stepper de relecture). */
+export type BatchEntrySummary = {
+  id: string;
+  date: string;
+  status: EntryStatus;
+  title: string | null;
 };
 
 export const SOURCE_LABELS: Record<EntrySource, string> = {

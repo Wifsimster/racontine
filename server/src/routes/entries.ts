@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { and, eq, ne, desc, inArray, or } from "drizzle-orm";
+import { and, eq, ne, desc, asc, inArray, or } from "drizzle-orm";
 import { db } from "../db/index.js";
 import {
   entries,
@@ -222,6 +222,40 @@ export async function entriesRoutes(app: FastifyInstance) {
           })),
         })),
         nextOffset: rows.length === limit ? offset + limit : null,
+      };
+    },
+  );
+
+  /**
+   * Journées sœurs d'un même envoi de photos couvrant plusieurs jours
+   * (voir `batchId` en base). Alimente le stepper de relecture séquentielle
+   * du front : un résumé léger par journée (pas les pièces jointes ni le
+   * récit complet), triées chronologiquement.
+   */
+  app.get<{ Params: { batchId: string } }>(
+    "/api/entries/batch/:batchId",
+    async (req, reply) => {
+      const rows = await db.query.entries.findMany({
+        where: eq(entries.batchId, req.params.batchId),
+        orderBy: [asc(entries.date)],
+      });
+      if (!rows.length)
+        return reply.code(404).send({ error: "lot introuvable" });
+
+      // Toutes les journées d'un lot partagent le même enfant (par construction
+      // à l'ingestion) : un seul contrôle d'accès suffit.
+      const role = await childRole(req.user!.id, rows[0].childId);
+      if (!role) return reply.code(404).send({ error: "lot introuvable" });
+      const visible =
+        role === "reader" ? rows.filter((e) => e.status === "published") : rows;
+
+      return {
+        entries: visible.map((e) => ({
+          id: e.id,
+          date: e.date,
+          status: e.status,
+          title: e.title,
+        })),
       };
     },
   );

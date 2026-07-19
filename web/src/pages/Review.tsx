@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import {
+  type BatchEntrySummary,
   type Entry,
   type EntryItem,
   type ItemType,
@@ -25,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { DayStepper } from "@/components/DayStepper";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -71,6 +73,7 @@ export default function Review() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [batchDays, setBatchDays] = useState<BatchEntrySummary[] | null>(null);
   const [resolvingIndex, setResolvingIndex] = useState<number | null>(null);
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -100,6 +103,31 @@ export default function Review() {
       if (pollRef.current) clearTimeout(pollRef.current);
     };
   }, [fetchEntry]);
+
+  // Le carnet photographié peut couvrir plusieurs journées d'un coup : quand
+  // c'est le cas, on récupère les journées sœurs du lot pour le stepper.
+  useEffect(() => {
+    if (!entry?.batchId) {
+      setBatchDays(null);
+      return;
+    }
+    let alive = true;
+    api
+      .getEntryBatch(entry.batchId)
+      .then((r) => {
+        if (alive) setBatchDays(r.entries);
+      })
+      .catch(() => {
+        if (alive) setBatchDays(null);
+      });
+    return () => {
+      alive = false;
+    };
+    // Inclut `id` : deux journées voisines d'un même lot ont souvent le même
+    // batchId ET le même statut (« draft »), ce qui laisserait cet effet ne
+    // jamais se redéclencher en navigation SPA d'une journée à l'autre sans
+    // ce repère — et donc le stepper afficher un compte de publication figé.
+  }, [entry?.batchId, entry?.status, id]);
 
   function setItemField(idx: number, key: string, value: string) {
     setItems((prev) =>
@@ -144,8 +172,20 @@ export default function Review() {
     setError(null);
     try {
       await api.updateEntry(id, { ...currentPatch(), publish });
-      if (publish) nav("/");
-      else {
+      if (publish) {
+        // Journée publiée dans un lot multi-jours : enchaîne directement sur
+        // la prochaine journée du carnet à valider plutôt que de revenir au
+        // journal, pour valider le lot journée par journée.
+        const batchId = entry?.batchId;
+        const next = batchId
+          ? await api
+              .getEntryBatch(batchId)
+              .then((r) => r.entries.find((d) => d.status !== "published"))
+              .catch(() => undefined)
+          : undefined;
+        if (next) nav(`/entries/${next.id}`);
+        else nav("/");
+      } else {
         const e = await api.getEntry(id);
         hydrate(e);
       }
@@ -217,6 +257,16 @@ export default function Review() {
 
   return (
     <div className="mx-auto w-full max-w-3xl p-4 pb-28">
+      {batchDays && batchDays.length > 1 && (
+        <div className="mb-5">
+          <DayStepper
+            days={batchDays}
+            currentId={id}
+            onSelect={(nextId) => nav(`/entries/${nextId}`)}
+          />
+        </div>
+      )}
+
       <div className="grid gap-6 md:grid-cols-[1fr_1.15fr]">
         {/* Photos originales — la source */}
         <div className="flex flex-col gap-3 md:sticky md:top-4 md:self-start">

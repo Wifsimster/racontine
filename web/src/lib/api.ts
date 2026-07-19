@@ -1,4 +1,5 @@
 import type {
+  BatchEntrySummary,
   Child,
   Entry,
   Member,
@@ -85,6 +86,10 @@ export const api = {
   },
 
   getEntry: (id: string) => req<Entry>(`/api/entries/${id}`),
+
+  /** Journées sœurs d'un même envoi couvrant plusieurs jours, triées par date. */
+  getEntryBatch: (batchId: string) =>
+    req<{ entries: BatchEntrySummary[] }>(`/api/entries/batch/${batchId}`),
 
   updateEntry: (
     id: string,
