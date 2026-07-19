@@ -57,6 +57,13 @@
       "when": 1783878855029,
       "tag": "0007_foamy_speed",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1784443702012,
+      "tag": "0008_add_entries_batch_id",
+      "breakpoints": true
     }
   ]
 }

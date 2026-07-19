@@ -167,6 +167,14 @@ export const entries = pgTable(
     transcription: text("transcription"),
     /** Champs signalés incertains par le VLM (surlignés à la relecture). */
     uncertainties: jsonb("uncertainties").$type<string[]>().default([]),
+    /**
+     * Identifiant partagé par les journées issues d'un même envoi de photos
+     * (le carnet couvrait plusieurs jours). Null pour une journée seule.
+     * Pas de clé étrangère : ce n'est pas l'id d'une entrée mais un simple
+     * repère de lot, pour ne pas coupler la suppression d'une journée aux
+     * autres journées du même lot.
+     */
+    batchId: uuid("batch_id"),
     createdBy: text("created_by").references(() => user.id, {
       onDelete: "set null",
     }),
@@ -178,6 +186,7 @@ export const entries = pgTable(
     // Deux photos de la même page → une seule entrée, fusionnée à la relecture.
     unique("entries_child_date_source").on(t.childId, t.date, t.source),
     index("entries_timeline_idx").on(t.childId, t.date),
+    index("entries_batch_idx").on(t.batchId),
   ],
 );
 
