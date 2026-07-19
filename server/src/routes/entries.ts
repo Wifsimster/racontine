@@ -9,6 +9,7 @@ import {
   memberships,
   subscriptions,
   type EntryItemData,
+  type Uncertainty,
 } from "../db/schema.js";
 import { requireUser } from "../plugins/auth.js";
 import {
@@ -26,6 +27,7 @@ import {
   type ItemType,
 } from "../ingest.js";
 import { notifyEntryPublished } from "../notifications.js";
+import { recordCorrection } from "../corrections.js";
 
 /** Entrée complète (items + pièces jointes) sérialisée pour le front. */
 async function serializeEntry(entryId: string) {
@@ -360,6 +362,77 @@ export async function entriesRoutes(app: FastifyInstance) {
     }
 
     return result;
+  });
+
+  /**
+   * Valide une incertitude signalée à la relecture : la valeur choisie (une
+   * des suggestions du VLM, l'original conservé tel quel, ou une saisie
+   * libre) remplace le mot dans tous les champs de la valorisation où il
+   * apparaît, et alimente le glossaire de l'enfant (voir corrections.ts) pour
+   * améliorer la reconnaissance de l'écriture aux prochaines lectures.
+   */
+  app.patch<{
+    Params: { id: string; index: string };
+    Body: { value?: string };
+  }>("/api/entries/:id/uncertainties/:index", async (req, reply) => {
+    const { id } = req.params;
+    const index = Number(req.params.index);
+    const value = req.body?.value?.trim();
+    if (!value) return reply.code(400).send({ error: "value requis" });
+    if (!Number.isInteger(index) || index < 0)
+      return reply.code(400).send({ error: "index invalide" });
+
+    const current = await db
+      .select()
+      .from(entries)
+      .where(eq(entries.id, id))
+      .limit(1);
+    if (!current.length)
+      return reply.code(404).send({ error: "entrée introuvable" });
+    const row = current[0];
+
+    if (!(await hasChildRole(req.user!.id, row.childId, "contributor")))
+      return reply.code(404).send({ error: "entrée introuvable" });
+
+    const uncertainties = (row.uncertainties ?? []) as Uncertainty[];
+    const item = uncertainties[index];
+    if (!item)
+      return reply.code(404).send({ error: "incertitude introuvable" });
+    if (item.resolved)
+      return reply.code(409).send({ error: "incertitude déjà validée" });
+
+    const nextUncertainties = uncertainties.map((u, i) =>
+      i === index ? { ...u, resolved: value } : u,
+    );
+
+    // Le champ signalé par le VLM peut être imprécis : on remplace le mot
+    // partout où il apparaît réellement dans la valorisation.
+    const patch: Partial<typeof entries.$inferInsert> = {
+      uncertainties: nextUncertainties,
+      updatedAt: new Date(),
+    };
+    if (row.title?.includes(item.original))
+      patch.title = row.title.split(item.original).join(value);
+    if (row.story?.includes(item.original))
+      patch.story = row.story.split(item.original).join(value);
+    if (row.highlight?.includes(item.original))
+      patch.highlight = row.highlight.split(item.original).join(value);
+    if (row.transcription?.includes(item.original))
+      patch.transcription = row.transcription.split(item.original).join(value);
+
+    await db.transaction(async (tx) => {
+      await tx.update(entries).set(patch).where(eq(entries.id, id));
+      await recordCorrection({
+        childId: row.childId,
+        original: item.original,
+        corrected: value,
+        field: item.champ,
+        entryId: id,
+        createdBy: req.user!.id,
+      });
+    });
+
+    return serializeEntry(id);
   });
 
   app.delete<{ Params: { id: string } }>(

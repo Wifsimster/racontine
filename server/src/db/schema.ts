@@ -113,6 +113,26 @@ export const attachmentKind = pgEnum("attachment_kind", [
   "souvenir", // photo souvenir libre
 ]);
 
+/** Champ de la valorisation où un mot incertain a été repéré par le VLM. */
+export type UncertaintyField =
+  | "titre"
+  | "recit"
+  | "temps_fort"
+  | "transcription_integrale";
+
+/**
+ * Mot ou passage dont la lecture manuscrite est incertaine, avec des
+ * suggestions de correction à valider par un proche. `resolved` porte la
+ * valeur choisie une fois validée (null tant que la relecture n'a pas tranché).
+ */
+export type Uncertainty = {
+  original: string;
+  contexte: string;
+  suggestions: string[];
+  champ: UncertaintyField | null;
+  resolved: string | null;
+};
+
 /**
  * Rôle d'un utilisateur sur un enfant — portée par enfant (§3.4 du plan produit).
  *  admin       → parent pivot : tout, y compris inviter/révoquer.
@@ -166,7 +186,7 @@ export const entries = pgTable(
     /** transcription_integrale du carnet. */
     transcription: text("transcription"),
     /** Champs signalés incertains par le VLM (surlignés à la relecture). */
-    uncertainties: jsonb("uncertainties").$type<string[]>().default([]),
+    uncertainties: jsonb("uncertainties").$type<Uncertainty[]>().default([]),
     createdBy: text("created_by").references(() => user.id, {
       onDelete: "set null",
     }),
@@ -206,6 +226,37 @@ export const entryItems = pgTable(
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (t) => [index("entry_items_entry_idx").on(t.entryId)],
+);
+
+/**
+ * Correction validée par un proche pour un mot ou passage signalé incertain
+ * par le VLM. Constitue, journée après journée, un glossaire par enfant
+ * (surnoms, mots d'enfant, écriture d'un intervenant donné…) réinjecté à la
+ * prochaine lecture pour améliorer la reconnaissance de l'écriture au fil du
+ * temps — voir `corrections.ts`.
+ */
+export const wordCorrections = pgTable(
+  "word_corrections",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    childId: uuid("child_id")
+      .notNull()
+      .references(() => children.id, { onDelete: "cascade" }),
+    /** Mot ou passage tel que lu à l'origine (lecture incertaine). */
+    original: text("original").notNull(),
+    /** Correction validée par un proche. */
+    corrected: text("corrected").notNull(),
+    /** Champ concerné, si connu (titre, récit, temps fort, transcription). */
+    field: text("field"),
+    entryId: uuid("entry_id").references(() => entries.id, {
+      onDelete: "set null",
+    }),
+    createdBy: text("created_by").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [index("word_corrections_child_idx").on(t.childId, t.createdAt)],
 );
 
 export const attachments = pgTable(
@@ -519,3 +570,4 @@ export type AppSettings = typeof appSettings.$inferSelect;
 export type McpToken = typeof mcpTokens.$inferSelect;
 export type McpUpload = typeof mcpUploads.$inferSelect;
 export type UserLlmSettings = typeof userLlmSettings.$inferSelect;
+export type WordCorrection = typeof wordCorrections.$inferSelect;

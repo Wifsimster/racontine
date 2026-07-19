@@ -9,6 +9,7 @@ import {
   type EntryItemData,
   type MealData,
   type NapData,
+  type Uncertainty,
 } from "./db/schema.js";
 import { accessibleChildIds, hasChildRole } from "./access.js";
 import {
@@ -20,6 +21,7 @@ import {
 import { extractFromImages, VlmError, type Extraction } from "./vlm.js";
 import { getUserAnthropicKey } from "./llm-keys.js";
 import { notifyEntryPublished } from "./notifications.js";
+import { getChildGlossary } from "./corrections.js";
 
 /** Où la journée a été passée — dimension de l'entrée (child + date + source). */
 export const SOURCES = ["nounou", "mam", "creche", "maison"] as const;
@@ -80,8 +82,14 @@ export async function processEntry(
       throw new VlmError(
         "Aucune clé API Anthropic configurée. Ajoutez la vôtre dans les réglages puis réimportez le carnet.",
       );
+    const [entryRow] = await db
+      .select({ childId: entries.childId })
+      .from(entries)
+      .where(eq(entries.id, entryId))
+      .limit(1);
+    const glossary = entryRow ? await getChildGlossary(entryRow.childId) : [];
     const jpegs = await Promise.all(paths.map((p) => readStored(p)));
-    const x = await extractFromImages(jpegs, apiKey);
+    const x = await extractFromImages(jpegs, apiKey, glossary);
     if (x.illisible) {
       // Compare-and-set : ne marquer « failed » que si l'entrée est toujours en
       // cours de traitement (un PATCH utilisateur a pu la relire/publier).
@@ -110,7 +118,7 @@ export async function processEntry(
           story: x.recit,
           highlight: x.temps_fort,
           transcription: x.transcription_integrale,
-          uncertainties: x.incertitudes,
+          uncertainties: x.incertitudes.map((u) => ({ ...u, resolved: null })),
           failureReason: null,
           updatedAt: new Date(),
         })
@@ -490,7 +498,15 @@ export async function createTranscribedEntry(
         story: input.story ?? null,
         highlight: input.highlight ?? null,
         transcription: input.transcription ?? null,
-        uncertainties: input.uncertainties ?? [],
+        uncertainties: (input.uncertainties ?? []).map(
+          (original): Uncertainty => ({
+            original,
+            contexte: "",
+            suggestions: [],
+            champ: null,
+            resolved: null,
+          }),
+        ),
         createdBy: input.userId,
         publishedAt: publish ? new Date() : null,
       })
