@@ -4,12 +4,25 @@ import {
   createTranscribedEntry,
   DATE_RE,
   ingestCarnetImages,
+  isRealIsoDate,
   SOURCES,
   todayIso,
 } from "./ingest.js";
 
 test("todayIso renvoie une date AAAA-MM-JJ", () => {
   assert.match(todayIso(), DATE_RE);
+});
+
+test("isRealIsoDate accepte une vraie date et rejette forme/calendrier invalides", () => {
+  // Date manuscrite plausible lue par le VLM → réappliquée à l'entrée.
+  assert.ok(isRealIsoDate("2025-11-24"));
+  // Mauvaise forme : refusée comme DATE_RE.
+  assert.ok(!isRealIsoDate("24/11/2025"));
+  assert.ok(!isRealIsoDate("2025-11-2"));
+  // Forme correcte mais date impossible : ne doit PAS passer, sinon l'UPDATE
+  // sur la colonne `date` planterait et marquerait la journée en échec.
+  assert.ok(!isRealIsoDate("2026-13-40"));
+  assert.ok(!isRealIsoDate("2025-02-30"));
 });
 
 test("DATE_RE n'accepte que le format AAAA-MM-JJ", () => {
