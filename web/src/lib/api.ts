@@ -119,6 +119,9 @@ export const api = {
       body: JSON.stringify({ value }),
     }),
 
+  deleteAttachment: (id: string) =>
+    req<void>(`/api/attachments/${id}`, { method: "DELETE" }),
+
   /* ------------------------------ Partage ------------------------------- */
 
   listMembers: (childId: string) =>
