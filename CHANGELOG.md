@@ -2,6 +2,13 @@
 
 Toutes les versions notables de Racontine. Format issu des messages de commit conventionnels (`feat`, `fix`, …).
 
+# [1.10.0](https://github.com/Wifsimster/racontine/compare/v1.9.2...v1.10.0) (2026-07-19)
+
+
+### Features
+
+* **web:** allow removing a captured page from an entry ([#33](https://github.com/Wifsimster/racontine/issues/33)) ([32678c1](https://github.com/Wifsimster/racontine/commit/32678c116344b9f91509780605d2ebcca0497c59))
+
 ## [1.9.2](https://github.com/Wifsimster/racontine/compare/v1.9.1...v1.9.2) (2026-07-19)
 
 
