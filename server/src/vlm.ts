@@ -52,8 +52,9 @@ const UNCERTAINTY_SCHEMA = {
       suggestions: {
         type: "array",
         items: { type: "string" },
+        minItems: 3,
         description:
-          "1 à 3 lectures alternatives plausibles, classées de la plus probable à la moins probable",
+          "au moins 3 lectures alternatives plausibles, classées de la plus probable à la moins probable",
       },
       champ: {
         type: ["string", "null"],
@@ -65,7 +66,7 @@ const UNCERTAINTY_SCHEMA = {
     required: ["original", "contexte", "suggestions"],
   },
   description:
-    "mots ou passages dont la lecture est incertaine, chacun avec 1 à 3 suggestions de correction, à faire valider par un humain",
+    "mots ou passages dont la lecture est incertaine, chacun avec au moins 3 suggestions de correction, à faire valider par un humain",
 } as const;
 
 const EXTRACTION_TOOL: Anthropic.Tool = {
@@ -196,7 +197,7 @@ Lis attentivement l'écriture manuscrite, structure chaque journée, puis **valo
 Consignes, pour chaque journée :
 - N'invente jamais : si une information est absente, laisse le champ vide (liste vide ou null). Le récit ne doit contenir que des faits présents dans le carnet.
 - "titre", "recit" et "temps_fort" sont la valorisation : rédige-les avec chaleur, dans un français soigné et vivant, à partir des repas, siestes, activités, humeur et anecdotes réels de CETTE journée.
-- Signale dans "incertitudes" tout mot ou champ dont la lecture n'est pas sûre, avec 1 à 3 suggestions de correction plausibles classées par probabilité.
+- Signale dans "incertitudes" tout mot ou champ dont la lecture n'est pas sûre, avec au moins 3 suggestions de correction plausibles classées par probabilité.
 - Si un « vocabulaire déjà confirmé » est fourni ci-dessous, utilise-le en priorité pour interpréter une écriture ambiguë (mêmes mots d'enfant, mêmes surnoms, même main) : s'il permet de lever le doute, retiens directement la lecture confirmée sans la signaler en incertitude.
 - "transcription_integrale" doit reproduire fidèlement le texte manuscrit de cette journée.
 - Si les pages de cette journée ne contiennent pas de carnet lisible, mets "illisible" à true.
