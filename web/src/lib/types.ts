@@ -187,6 +187,7 @@ export type AppSettings = {
 /** État de l'infrastructure (piloté par l'environnement, en lecture seule). */
 export type SettingsMeta = {
   mailConfigured: boolean;
+  webPushConfigured: boolean;
   notifyWebhookConfigured: boolean;
   webBaseUrl: string;
   knownVlmModels: string[];

@@ -9,6 +9,7 @@ import {
 } from "../settings.js";
 import { config } from "../config.js";
 import { mailEnabled } from "../mailer.js";
+import { webPushEnabled } from "../push.js";
 import {
   getUserLlmMeta,
   setUserAnthropicKey,
@@ -36,6 +37,7 @@ async function requireOwner(
 function infraMeta() {
   return {
     mailConfigured: mailEnabled(),
+    webPushConfigured: webPushEnabled(),
     notifyWebhookConfigured: !!config.notifyWebhookUrl,
     webBaseUrl: config.webBaseUrl,
     knownVlmModels: KNOWN_VLM_MODELS,

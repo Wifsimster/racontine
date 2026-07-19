@@ -397,6 +397,30 @@ export const notifications = pgTable(
 );
 
 /**
+ * Abonnement Web Push (VAPID) d'un appareil pour un utilisateur. Un même proche
+ * peut avoir plusieurs appareils (téléphone, ordinateur) : une ligne par
+ * endpoint. L'endpoint est unique — le navigateur en fournit un stable par
+ * appareil/installation. Purgé quand le service de push répond 404/410
+ * (abonnement expiré), voir `push.ts`.
+ */
+export const pushSubscriptions = pgTable(
+  "push_subscriptions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    endpoint: text("endpoint").notNull().unique(),
+    /** Clé publique P-256 ECDH du client (chiffrement du payload). */
+    p256dh: text("p256dh").notNull(),
+    /** Secret d'authentification du client. */
+    auth: text("auth").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [index("push_subscriptions_user_idx").on(t.userId)],
+);
+
+/**
  * Réglages de l'instance, modifiables à chaud par le propriétaire depuis l'UI
  * (sans redéploiement ni édition de variables d'environnement). Table singleton :
  * une seule ligne, `id = "singleton"`. Une colonne à `null` retombe sur le défaut

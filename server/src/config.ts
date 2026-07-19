@@ -74,6 +74,18 @@ export const config = {
    */
   notifyWebhookUrl: process.env.NOTIFY_WEBHOOK_URL,
   /**
+   * Web Push (VAPID) pour les notifications navigateur/mobile aux abonnés.
+   * Optionnel : sans paire de clés VAPID, le push est désactivé (les notifs
+   * in-app et e-mail continuent de fonctionner). Générer une paire avec
+   * `npx web-push generate-vapid-keys`.
+   */
+  webPush: {
+    publicKey: process.env.VAPID_PUBLIC_KEY,
+    privateKey: process.env.VAPID_PRIVATE_KEY,
+    // `mailto:` ou URL du responsable, exigé par la spec Web Push.
+    subject: process.env.VAPID_SUBJECT ?? "mailto:no-reply@racontine.local",
+  },
+  /**
    * E-mail (SMTP) pour les notifications aux proches abonnés. Optionnel : si
    * SMTP_HOST est absent, les e-mails sont désactivés (notifs in-app seules).
    */

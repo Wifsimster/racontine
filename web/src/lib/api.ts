@@ -187,6 +187,26 @@ export const api = {
   markAllNotificationsRead: () =>
     req<void>("/api/notifications/read-all", { method: "POST" }),
 
+  /* ---------------------------- Web Push ------------------------------ */
+
+  getPushPublicKey: () =>
+    req<{ publicKey: string | null }>("/api/push/public-key"),
+
+  subscribePush: (sub: {
+    endpoint: string;
+    keys: { p256dh: string; auth: string };
+  }) =>
+    req<void>("/api/push/subscribe", {
+      method: "POST",
+      body: JSON.stringify(sub),
+    }),
+
+  unsubscribePush: (endpoint: string) =>
+    req<void>("/api/push/unsubscribe", {
+      method: "POST",
+      body: JSON.stringify({ endpoint }),
+    }),
+
   /* --------------------------- Réglages ------------------------------- */
 
   me: () => req<Me>("/api/me"),

@@ -1,13 +1,87 @@
 import { useEffect, useState } from "react";
-import { Bell, BellOff, Mail, Users } from "lucide-react";
+import { Bell, BellOff, BellRing, Mail, Smartphone, Users } from "lucide-react";
 import { api } from "@/lib/api";
 import type { Child, Subscriber, SubscriptionStatus } from "@/lib/types";
 import { Button } from "@/components/ui/button";
+import {
+  getPushState,
+  enablePush,
+  disablePush,
+  type PushState,
+} from "@/lib/push";
 
 type ChildState = {
   status: SubscriptionStatus;
   subscribers: Subscriber[];
 };
+
+/**
+ * Active/désactive les notifications navigateur (Web Push) pour l'APPAREIL
+ * courant. C'est un réglage par appareil, indépendant du suivi par enfant :
+ * une fois activé, l'abonné reçoit une notification système pour chaque
+ * timeline qu'il suit, même l'app fermée.
+ */
+function PushCard() {
+  const [state, setState] = useState<PushState | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    getPushState()
+      .then(setState)
+      .catch(() => setState("unsupported"));
+  }, []);
+
+  async function toggle() {
+    setBusy(true);
+    setError(null);
+    try {
+      if (state === "subscribed") {
+        await disablePush();
+      } else {
+        await enablePush();
+      }
+      setState(await getPushState());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Échec.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Rien à afficher si le navigateur ne gère pas le push ou si le serveur n'a
+  // pas de clés VAPID : le canal n'existe pas, inutile de proposer un bouton.
+  if (state === null || state === "unsupported" || state === "unavailable")
+    return null;
+
+  const on = state === "subscribed";
+
+  return (
+    <div className="flex flex-col gap-2 rounded-xl border bg-card p-4 shadow-sm">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Smartphone className="size-4 text-muted-foreground" />
+          <span className="font-medium">Notifications sur cet appareil</span>
+        </div>
+        <Button
+          variant={on ? "default" : "outline"}
+          size="sm"
+          disabled={busy || state === "denied"}
+          onClick={toggle}
+        >
+          {on ? <BellRing /> : <BellOff />}
+          {on ? "Activées" : "Activer"}
+        </Button>
+      </div>
+      <p className="text-sm text-muted-foreground">
+        {state === "denied"
+          ? "Notifications bloquées par le navigateur. Autorisez-les dans les réglages du site pour les recevoir ici."
+          : "Recevez une notification directement sur cet appareil à chaque nouvelle journée publiée, même l'application fermée."}
+      </p>
+      {error && <p className="text-sm text-destructive">{error}</p>}
+    </div>
+  );
+}
 
 function ChildCard({ child }: { child: Child }) {
   const [state, setState] = useState<ChildState | null>(null);
@@ -135,6 +209,8 @@ export default function Proches() {
           e-mail — à chaque journée publiée.
         </p>
       </div>
+
+      <PushCard />
 
       {children === null ? (
         <p className="py-12 text-center text-muted-foreground">Chargement…</p>
