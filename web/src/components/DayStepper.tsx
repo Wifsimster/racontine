@@ -65,7 +65,10 @@ export function DayStepper({
         />
       </div>
 
-      <div className="flex items-start justify-center gap-0 overflow-x-auto">
+      {/* py : `overflow-x-auto` seul force `overflow-y` à « auto » (au lieu de
+          « visible »), ce qui rognerait sinon le halo (ring) du pas courant en
+          haut/bas tout en le laissant intact à gauche/droite. */}
+      <div className="flex items-start justify-center gap-0 overflow-x-auto py-2 -my-2">
         {days.map((d, i) => {
           const isCurrent = d.id === currentId;
           const done = d.status === "published";
