@@ -10,6 +10,7 @@ import {
   type EntryItemData,
   type MealData,
   type NapData,
+  type Uncertainty,
 } from "./db/schema.js";
 import { accessibleChildIds, hasChildRole } from "./access.js";
 import {
@@ -21,6 +22,7 @@ import {
 import { extractFromImages, VlmError, type DayExtraction } from "./vlm.js";
 import { getUserAnthropicKey } from "./llm-keys.js";
 import { notifyEntryPublished } from "./notifications.js";
+import { getChildGlossary } from "./corrections.js";
 
 /** Où la journée a été passée — dimension de l'entrée (child + date + source). */
 export const SOURCES = ["nounou", "mam", "creche", "maison"] as const;
@@ -62,6 +64,11 @@ function extractionToItems(
   if (x.sante && x.sante.trim())
     rows.push({ type: "health", data: { note: x.sante }, position: pos++ });
   return rows;
+}
+
+/** Incertitudes VLM → forme persistée (ajoute `resolved: null`, pas encore validées). */
+function toStoredUncertainties(x: DayExtraction): Uncertainty[] {
+  return x.incertitudes.map((u) => ({ ...u, resolved: null }));
 }
 
 /** `date` (AAAA-MM-JJ) + `n` jours, en arithmétique calendaire (pas de fuseau). */
@@ -111,6 +118,7 @@ async function commitSplitDay(opts: {
   const { userId, childId, source, date, batchId, day, attachmentIds, parentEntryId } =
     opts;
   const items = extractionToItems(day);
+  const uncertainties = toStoredUncertainties(day);
 
   const [inserted] = await db
     .insert(entries)
@@ -125,7 +133,7 @@ async function commitSplitDay(opts: {
       story: day.recit,
       highlight: day.temps_fort,
       transcription: day.transcription_integrale,
-      uncertainties: day.incertitudes,
+      uncertainties,
       createdBy: userId,
     })
     .onConflictDoNothing({
@@ -163,7 +171,17 @@ async function commitSplitDay(opts: {
       .set({
         uncertainties: [
           ...(await currentUncertainties(parentEntryId)),
-          `Une journée du ${date} déjà publiée a été détectée dans ce lot de photos : ses pages n'ont pas été rattachées automatiquement.`,
+          {
+            // `original` non vide : cette incertitude est un simple signalement,
+            // pas une correction de mot — mais l'UI de relecture (bouton
+            // « garder tel quel », validation serveur) exige une valeur non
+            // vide pour la résoudre, d'où ce libellé plutôt qu'une chaîne vide.
+            original: `pages du ${date}`,
+            contexte: `Une journée du ${date} déjà publiée a été détectée dans ce lot de photos : ses pages n'ont pas été rattachées automatiquement.`,
+            suggestions: [],
+            champ: null,
+            resolved: null,
+          },
         ],
       })
       .where(eq(entries.id, parentEntryId));
@@ -180,7 +198,7 @@ async function commitSplitDay(opts: {
       story: day.recit,
       highlight: day.temps_fort,
       transcription: day.transcription_integrale,
-      uncertainties: day.incertitudes,
+      uncertainties,
       failureReason: null,
       updatedAt: new Date(),
     })
@@ -193,7 +211,7 @@ async function commitSplitDay(opts: {
   await moveAttachments(attachmentIds, existing.id);
 }
 
-async function currentUncertainties(entryId: string): Promise<string[]> {
+async function currentUncertainties(entryId: string): Promise<Uncertainty[]> {
   const [row] = await db
     .select({ uncertainties: entries.uncertainties })
     .from(entries)
@@ -206,7 +224,8 @@ async function currentUncertainties(entryId: string): Promise<string[]> {
  * Traitement VLM en arrière-plan : processing → draft | failed.
  * Ré-extrait à partir de TOUTES les pages de l'entrée (chemins disque) pour
  * fusionner correctement un ajout de page à une journée existante. La lecture
- * utilise la clé API de `userId` (l'utilisateur qui a déclenché l'import).
+ * utilise la clé API de `userId` (l'utilisateur qui a déclenché l'import) et
+ * le glossaire de corrections déjà validées pour cet enfant.
  *
  * Le carnet photographié peut couvrir plusieurs journées d'un coup : chaque
  * journée détectée devient sa propre entrée (la première réutilise `entryId`,
@@ -224,8 +243,14 @@ export async function processEntry(
       throw new VlmError(
         "Aucune clé API Anthropic configurée. Ajoutez la vôtre dans les réglages puis réimportez le carnet.",
       );
+    const [entryRow] = await db
+      .select({ childId: entries.childId })
+      .from(entries)
+      .where(eq(entries.id, entryId))
+      .limit(1);
+    const glossary = entryRow ? await getChildGlossary(entryRow.childId) : [];
     const jpegs = await Promise.all(paths.map((p) => readStored(p)));
-    const days = await extractFromImages(jpegs, apiKey);
+    const days = await extractFromImages(jpegs, apiKey, glossary);
 
     if (!days.length || days.every((d) => d.illisible)) {
       // Compare-and-set : ne marquer « failed » que si l'entrée est toujours en
@@ -264,7 +289,7 @@ export async function processEntry(
             story: x.recit,
             highlight: x.temps_fort,
             transcription: x.transcription_integrale,
-            uncertainties: x.incertitudes,
+            uncertainties: toStoredUncertainties(x),
             failureReason: null,
             updatedAt: new Date(),
           })
@@ -306,14 +331,11 @@ export async function processEntry(
         .map((p) => atts[p - 1]?.id)
         .filter((v): v is string => Boolean(v));
 
+      // Date illisible : la première journée retombe sur la date de capture,
+      // les suivantes sur « veille + 1 jour » (les pages suivent l'ordre
+      // chronologique du carnet). Reste éditable manuellement à la relecture.
       let date = day.date && DATE_RE.test(day.date) ? day.date : null;
-      if (!date) {
-        date = isFirst ? placeholder.date : addDays(previousDate, 1);
-        day.incertitudes = [
-          ...day.incertitudes,
-          "Date de cette journée illisible : estimée automatiquement, à vérifier.",
-        ];
-      }
+      if (!date) date = isFirst ? placeholder.date : addDays(previousDate, 1);
       previousDate = date;
 
       if (isFirst) {
@@ -330,7 +352,7 @@ export async function processEntry(
               story: day.recit,
               highlight: day.temps_fort,
               transcription: day.transcription_integrale,
-              uncertainties: day.incertitudes,
+              uncertainties: toStoredUncertainties(day),
               failureReason: null,
               updatedAt: new Date(),
             })
@@ -725,7 +747,15 @@ export async function createTranscribedEntry(
         story: input.story ?? null,
         highlight: input.highlight ?? null,
         transcription: input.transcription ?? null,
-        uncertainties: input.uncertainties ?? [],
+        uncertainties: (input.uncertainties ?? []).map(
+          (original): Uncertainty => ({
+            original,
+            contexte: "",
+            suggestions: [],
+            champ: null,
+            resolved: null,
+          }),
+        ),
         createdBy: input.userId,
         publishedAt: publish ? new Date() : null,
       })

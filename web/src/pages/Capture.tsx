@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Camera, Images, X } from "lucide-react";
+import { Camera, ImagePlus, Images, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { compressImage } from "@/lib/image";
 import { type Child, type EntrySource, SOURCE_LABELS } from "@/lib/types";
@@ -213,16 +213,18 @@ export default function Capture() {
         onChange={onPick}
       />
 
-      <div className="grid grid-cols-2 gap-2">
-        <Button variant="outline" onClick={() => cameraRef.current?.click()}>
-          <Camera />
-          Photographier
-        </Button>
-        <Button variant="outline" onClick={() => albumRef.current?.click()}>
-          <Images />
-          Depuis l'album
-        </Button>
-      </div>
+      {shots.length === 0 && (
+        <div className="grid grid-cols-2 gap-2">
+          <Button variant="outline" onClick={() => cameraRef.current?.click()}>
+            <Camera />
+            Photographier
+          </Button>
+          <Button variant="outline" onClick={() => albumRef.current?.click()}>
+            <Images />
+            Depuis l'album
+          </Button>
+        </div>
+      )}
 
       {restored && shots.length > 0 && (
         <p className="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
@@ -250,7 +252,27 @@ export default function Capture() {
               </button>
             </div>
           ))}
+          <button
+            type="button"
+            onClick={() => cameraRef.current?.click()}
+            className="flex aspect-square w-full flex-col items-center justify-center gap-1 rounded-md border-2 border-dashed border-primary/50 text-primary transition-colors hover:border-primary hover:bg-primary/5"
+          >
+            <ImagePlus className="size-5" />
+            <span className="text-xs font-medium">Ajouter</span>
+          </button>
         </div>
+      )}
+
+      {shots.length > 0 && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="-mt-2 self-start text-muted-foreground"
+          onClick={() => albumRef.current?.click()}
+        >
+          <Images />
+          Ajouter depuis l'album
+        </Button>
       )}
 
       {error && <p className="text-sm text-destructive">{error}</p>}

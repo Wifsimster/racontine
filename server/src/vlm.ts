@@ -1,6 +1,19 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { getSettings } from "./settings.js";
 
+/**
+ * Incertitude telle que renvoyée par le VLM : le mot tel que lu, pourquoi il
+ * est incertain, et des lectures alternatives plausibles. `resolved` n'existe
+ * pas encore à ce stade — il est ajouté à la persistance une fois la relecture
+ * humaine faite (voir `ingest.ts`).
+ */
+export type VlmUncertainty = {
+  original: string;
+  contexte: string;
+  suggestions: string[];
+  champ: "titre" | "recit" | "temps_fort" | "transcription_integrale" | null;
+};
+
 /** Une journée extraite d'un sous-ensemble des pages envoyées. */
 export type DayExtraction = {
   date: string | null;
@@ -16,11 +29,44 @@ export type DayExtraction = {
   titre: string | null;
   recit: string | null;
   temps_fort: string | null;
-  incertitudes: string[];
+  incertitudes: VlmUncertainty[];
   illisible: boolean;
   /** Pages (1-based, dans l'ordre des images fournies) qui composent cette journée. */
   pages: number[];
 };
+
+const UNCERTAINTY_SCHEMA = {
+  type: "array",
+  items: {
+    type: "object",
+    properties: {
+      original: {
+        type: "string",
+        description: "le mot ou passage tel que lu, incertain",
+      },
+      contexte: {
+        type: "string",
+        description:
+          "brève explication de l'incertitude (position dans le texte, raison)",
+      },
+      suggestions: {
+        type: "array",
+        items: { type: "string" },
+        description:
+          "1 à 3 lectures alternatives plausibles, classées de la plus probable à la moins probable",
+      },
+      champ: {
+        type: ["string", "null"],
+        enum: ["titre", "recit", "temps_fort", "transcription_integrale", null],
+        description:
+          "champ de la valorisation où ce mot apparaît, si identifiable, sinon null",
+      },
+    },
+    required: ["original", "contexte", "suggestions"],
+  },
+  description:
+    "mots ou passages dont la lecture est incertaine, chacun avec 1 à 3 suggestions de correction, à faire valider par un humain",
+} as const;
 
 const EXTRACTION_TOOL: Anthropic.Tool = {
   name: "enregistrer_journees",
@@ -112,12 +158,7 @@ const EXTRACTION_TOOL: Anthropic.Tool = {
               description:
                 "Le moment le plus marquant de la journée en une phrase courte (première fois, mot rigolo, jolie activité…), sinon null.",
             },
-            incertitudes: {
-              type: "array",
-              items: { type: "string" },
-              description:
-                "champs ou mots dont la lecture est incertaine, à faire relire par un humain",
-            },
+            incertitudes: UNCERTAINTY_SCHEMA,
             illisible: {
               type: "boolean",
               description:
@@ -148,14 +189,15 @@ Ces pages peuvent couvrir UNE SEULE journée (recto/verso, pages multiples de la
 - Une page hors-sujet (couverture, page blanche, tableau récapitulatif sans date) peut être rattachée à la journée la plus proche plutôt que d'être ignorée.
 - Si tout le lot ne concerne qu'une seule journée, renvoie un tableau "journees" d'un seul élément couvrant toutes les pages.
 
-Pour chaque journée, indique dans "pages" la liste des numéros (1-based) des pages qui la composent — chaque page fournie doit apparaître dans exactement une journée, jamais aucune ou plusieurs.
+Pour chaque journée, indique dans "pages" la liste des numéros (1-based) des pages qui la composent — chaque page fournie doit apparaître dans exactement une journée.
 
 Lis attentivement l'écriture manuscrite, structure chaque journée, puis **valorise-la** : transforme des notes brutes en un joli souvenir que les proches auront plaisir à lire. C'est le cœur du produit.
 
 Consignes, pour chaque journée :
 - N'invente jamais : si une information est absente, laisse le champ vide (liste vide ou null). Le récit ne doit contenir que des faits présents dans le carnet.
 - "titre", "recit" et "temps_fort" sont la valorisation : rédige-les avec chaleur, dans un français soigné et vivant, à partir des repas, siestes, activités, humeur et anecdotes réels de CETTE journée.
-- Signale dans "incertitudes" tout mot ou champ dont la lecture n'est pas sûre.
+- Signale dans "incertitudes" tout mot ou champ dont la lecture n'est pas sûre, avec 1 à 3 suggestions de correction plausibles classées par probabilité.
+- Si un « vocabulaire déjà confirmé » est fourni ci-dessous, utilise-le en priorité pour interpréter une écriture ambiguë (mêmes mots d'enfant, mêmes surnoms, même main) : s'il permet de lever le doute, retiens directement la lecture confirmée sans la signaler en incertitude.
 - "transcription_integrale" doit reproduire fidèlement le texte manuscrit de cette journée.
 - Si les pages de cette journée ne contiennent pas de carnet lisible, mets "illisible" à true.
 Appelle toujours l'outil enregistrer_journees.`;
@@ -209,7 +251,35 @@ function clientFor(apiKey: string): Anthropic {
   return new Anthropic({ apiKey });
 }
 
+/** Correction déjà validée par un proche pour un enfant — voir `corrections.ts`. */
+export type GlossaryEntry = { original: string; corrected: string };
+
+/** Construit le bloc « vocabulaire déjà confirmé » ajouté au prompt système. */
+function glossaryBlock(glossary: GlossaryEntry[]): string {
+  if (!glossary.length) return "";
+  const lines = glossary
+    .map((g) => `- « ${g.original} » → « ${g.corrected} »`)
+    .join("\n");
+  return `\n\nVocabulaire déjà confirmé pour cet enfant (lectures validées lors de relectures précédentes) :\n${lines}`;
+}
+
 const arr = <T>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
+const UNCERTAINTY_CHAMPS = ["titre", "recit", "temps_fort", "transcription_integrale"];
+
+function normalizeUncertainties(raw: unknown): VlmUncertainty[] {
+  return arr<Partial<VlmUncertainty>>(raw)
+    .filter((u) => typeof u?.original === "string" && u.original.trim())
+    .map((u) => ({
+      original: u.original as string,
+      contexte: typeof u.contexte === "string" ? u.contexte : "",
+      suggestions: arr<string>(u.suggestions).filter(
+        (s) => typeof s === "string" && s.trim(),
+      ),
+      champ: UNCERTAINTY_CHAMPS.includes(u.champ as string)
+        ? (u.champ as VlmUncertainty["champ"])
+        : null,
+    }));
+}
 
 /**
  * Normalise la sortie brute (non fiable — le SDK n'impose pas le schéma à
@@ -252,7 +322,7 @@ export function normalizeJournees(
       titre: (d.titre as string) ?? null,
       recit: (d.recit as string) ?? null,
       temps_fort: (d.temps_fort as string) ?? null,
-      incertitudes: arr<string>(d.incertitudes),
+      incertitudes: normalizeUncertainties(d.incertitudes),
       illisible: Boolean(d.illisible),
       pages,
     });
@@ -291,11 +361,13 @@ export function normalizeJournees(
  * Envoie les pages (JPEG) au modèle vision et renvoie une journée par date
  * distincte détectée dans le lot (une seule si tout le lot ne couvre qu'un
  * jour). `apiKey` est la clé Anthropic de l'utilisateur au nom duquel on lit
- * le carnet.
+ * le carnet. `glossary` : corrections déjà validées pour cet enfant,
+ * réinjectées pour améliorer la lecture de l'écriture au fil des relectures.
  */
 export async function extractFromImages(
   jpegs: Buffer[],
   apiKey: string,
+  glossary: GlossaryEntry[] = [],
 ): Promise<DayExtraction[]> {
   const anthropic = clientFor(apiKey);
   // Modèle piloté par les réglages d'instance (défaut : VLM_MODEL de l'env).
@@ -315,7 +387,7 @@ export async function extractFromImages(
     message = await anthropic.messages.create({
       model: vlmModel,
       max_tokens: 4096,
-      system: SYSTEM_PROMPT,
+      system: SYSTEM_PROMPT + glossaryBlock(glossary),
       tools: [EXTRACTION_TOOL],
       tool_choice: { type: "tool", name: EXTRACTION_TOOL.name },
       messages: [

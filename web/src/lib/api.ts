@@ -113,6 +113,12 @@ export const api = {
   deleteEntry: (id: string) =>
     req<void>(`/api/entries/${id}`, { method: "DELETE" }),
 
+  resolveUncertainty: (id: string, index: number, value: string) =>
+    req<Entry>(`/api/entries/${id}/uncertainties/${index}`, {
+      method: "PATCH",
+      body: JSON.stringify({ value }),
+    }),
+
   /* ------------------------------ Partage ------------------------------- */
 
   listMembers: (childId: string) =>

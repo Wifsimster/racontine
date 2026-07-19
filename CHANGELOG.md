@@ -2,6 +2,13 @@
 
 Toutes les versions notables de Racontine. Format issu des messages de commit conventionnels (`feat`, `fix`, …).
 
+# [1.8.0](https://github.com/Wifsimster/racontine/compare/v1.7.0...v1.8.0) (2026-07-19)
+
+
+### Features
+
+* valider les incertitudes de lecture par des suggestions et un glossaire par enfant ([#27](https://github.com/Wifsimster/racontine/issues/27)) ([18b5692](https://github.com/Wifsimster/racontine/commit/18b5692347238158621ed649fbd41d40aab74638))
+
 # [1.7.0](https://github.com/Wifsimster/racontine/compare/v1.6.0...v1.7.0) (2026-07-13)
 
 
