@@ -323,6 +323,10 @@ export default function Settings() {
         <div className="mt-1 flex flex-col gap-2">
           <StatusPill ok={meta.mailConfigured} label="Serveur e-mail (SMTP)" />
           <StatusPill
+            ok={meta.webPushConfigured}
+            label="Notifications navigateur (Web Push)"
+          />
+          <StatusPill
             ok={meta.notifyWebhookConfigured}
             label="Webhook de notification"
           />

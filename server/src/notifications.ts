@@ -8,6 +8,7 @@ import {
 } from "./db/schema.js";
 import { config } from "./config.js";
 import { sendMail, mailEnabled } from "./mailer.js";
+import { sendPushToUser } from "./push.js";
 import { getSettings } from "./settings.js";
 
 /** Échappe le texte destiné à être interpolé dans du HTML d'e-mail. */
@@ -106,6 +107,16 @@ export async function notifyEntryPublished(params: {
             body,
           })
           .returning({ id: notifications.id });
+
+        // Web Push : envoyé à tous les appareils enregistrés de l'abonné,
+        // indépendamment de la préférence e-mail. No-op si VAPID n'est pas
+        // configuré ou si l'abonné n'a aucun appareil. Ne lève jamais.
+        await sendPushToUser(s.userId, {
+          title,
+          body,
+          url: link,
+          tag: `entry-${entryId}`,
+        });
 
         if (canEmail && s.emailEnabled && s.email) {
           const emailedAt = await sendEntryEmail(
