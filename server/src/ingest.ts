@@ -41,6 +41,18 @@ export function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+/**
+ * Vrai si `s` est une date calendaire *réelle* au format AAAA-MM-JJ. `DATE_RE`
+ * ne valide que la forme : un « 2026-13-40 » syntaxiquement correct planterait
+ * l'UPDATE (type `date` en base) et marquerait à tort la journée en échec. On
+ * vérifie donc que la date existe vraiment avant de la réappliquer à une entrée.
+ */
+export function isRealIsoDate(s: string): boolean {
+  if (!DATE_RE.test(s)) return false;
+  const d = new Date(`${s}T00:00:00.000Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
+}
+
 async function readStored(relPath: string): Promise<Buffer> {
   return readFile(resolveUpload(relPath));
 }
@@ -68,11 +80,17 @@ function extractionToItems(
  * Ré-extrait à partir de TOUTES les pages de l'entrée (chemins disque) pour
  * fusionner correctement un ajout de page à une journée existante. La lecture
  * utilise la clé API de `userId` (l'utilisateur qui a déclenché l'import).
+ *
+ * `deriveDate` : quand l'appelant n'a pas fourni de date explicite, l'entrée est
+ * créée à la date du jour (voir `ingestCarnetImages`). Le VLM lit pourtant la
+ * date manuscrite du carnet ; on la réapplique alors à l'entrée pour que la
+ * journée tombe au bon jour dans la timeline plutôt qu'« aujourd'hui ».
  */
 export async function processEntry(
   entryId: string,
   paths: string[],
   userId: string,
+  deriveDate = false,
 ) {
   try {
     const apiKey = await getUserAnthropicKey(userId);
@@ -98,6 +116,37 @@ export async function processEntry(
     }
     const items = extractionToItems(x);
     await db.transaction(async (tx) => {
+      // Date de la journée : quand l'appelant n'a pas imposé de date, on
+      // privilégie la date manuscrite lue par le VLM sur la date de
+      // téléversement. On ne déplace l'entrée que si le créneau (enfant, date,
+      // source) cible est libre — sinon l'unicité serait violée : on conserve
+      // alors la date de téléversement (la relecture humaine tranchera).
+      let dateSet: { date: string } | undefined;
+      if (deriveDate && x.date && isRealIsoDate(x.date)) {
+        const [cur] = await tx
+          .select({
+            childId: entries.childId,
+            source: entries.source,
+            date: entries.date,
+          })
+          .from(entries)
+          .where(eq(entries.id, entryId))
+          .limit(1);
+        if (cur && cur.date !== x.date) {
+          const [clash] = await tx
+            .select({ id: entries.id })
+            .from(entries)
+            .where(
+              and(
+                eq(entries.childId, cur.childId),
+                eq(entries.date, x.date),
+                eq(entries.source, cur.source),
+              ),
+            )
+            .limit(1);
+          if (!clash) dateSet = { date: x.date };
+        }
+      }
       // On n'écrase le contenu que si l'entrée est encore en « processing » :
       // sinon une relecture humaine (PATCH) faite pendant l'extraction serait
       // silencieusement écrasée par la sortie VLM.
@@ -105,6 +154,7 @@ export async function processEntry(
         .update(entries)
         .set({
           status: "draft",
+          ...(dateSet ?? {}),
           mood: x.humeur,
           title: x.titre,
           story: x.recit,
@@ -338,10 +388,14 @@ export async function ingestCarnetImages(
     // Extraction en arrière-plan : la réponse est immédiate. Le .catch final est
     // un garde-fou : processEntry gère déjà ses erreurs, mais on ne veut aucune
     // promesse rejetée non gérée sur un appel fire-and-forget.
+    // On ne dérive la date manuscrite que pour une entrée fraîchement créée sans
+    // date imposée : ajouter une page à une journée existante ne doit pas
+    // redéplacer (ni écraser une date éventuellement corrigée à la main).
     void processEntry(
       entryId,
       allAtts.map((a) => a.path),
       input.userId,
+      input.date === undefined && Boolean(inserted),
     ).catch((err) => {
       console.error(
         "processEntry a échoué de façon inattendue :",
