@@ -2,6 +2,13 @@
 
 Toutes les versions notables de Racontine. Format issu des messages de commit conventionnels (`feat`, `fix`, …).
 
+# [1.9.0](https://github.com/Wifsimster/racontine/compare/v1.8.0...v1.9.0) (2026-07-19)
+
+
+### Features
+
+* **notifications:** add browser Web Push (VAPID) ([#30](https://github.com/Wifsimster/racontine/issues/30)) ([9de2d31](https://github.com/Wifsimster/racontine/commit/9de2d31b9a3155491ebee17ae0092cc96260c896))
+
 # [1.8.0](https://github.com/Wifsimster/racontine/compare/v1.7.0...v1.8.0) (2026-07-19)
 
 
