@@ -2,6 +2,13 @@
 
 Toutes les versions notables de Racontine. Format issu des messages de commit conventionnels (`feat`, `fix`, …).
 
+## [1.9.2](https://github.com/Wifsimster/racontine/compare/v1.9.1...v1.9.2) (2026-07-19)
+
+
+### Bug Fixes
+
+* **ci:** drop unused pnpm cache from release job ([#32](https://github.com/Wifsimster/racontine/issues/32)) ([f330c96](https://github.com/Wifsimster/racontine/commit/f330c961f84bb703d77e6551ee57d09f2f9aff73))
+
 ## [1.9.1](https://github.com/Wifsimster/racontine/compare/v1.9.0...v1.9.1) (2026-07-19)
 
 
