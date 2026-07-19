@@ -2,6 +2,13 @@
 
 Toutes les versions notables de Racontine. Format issu des messages de commit conventionnels (`feat`, `fix`, …).
 
+## [1.9.1](https://github.com/Wifsimster/racontine/compare/v1.9.0...v1.9.1) (2026-07-19)
+
+
+### Bug Fixes
+
+* **web:** type VAPID key helper as Uint8Array<ArrayBuffer> ([#31](https://github.com/Wifsimster/racontine/issues/31)) ([56f2c6d](https://github.com/Wifsimster/racontine/commit/56f2c6d48c2053efa0c82c406b473acca13f59d6))
+
 # [1.9.0](https://github.com/Wifsimster/racontine/compare/v1.8.0...v1.9.0) (2026-07-19)
 
 
