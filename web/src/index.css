@@ -190,6 +190,39 @@
       animation: none;
     }
   }
+
+  /* Fondu d'une page du carnet à l'autre pendant la lecture par Racontine. */
+  .animate-scan-fade {
+    animation: scan-fade 500ms ease-out both;
+  }
+  /* Bandeau lumineux qui balaie la page, comme un scanner. */
+  .animate-scan-sweep {
+    animation-name: scan-sweep;
+    animation-duration: 1.8s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .animate-scan-fade,
+    .animate-scan-sweep {
+      animation: none;
+    }
+  }
+}
+
+@keyframes scan-fade {
+  from {
+    opacity: 0;
+    transform: scale(1.02);
+  }
+}
+@keyframes scan-sweep {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(400%);
+  }
 }
 
 @keyframes login-drift {

@@ -189,24 +189,7 @@ export default function Review() {
   }
 
   if (entry.status === "processing") {
-    return (
-      <div className="mx-auto flex w-full max-w-lg flex-col items-center gap-4 p-8 text-center">
-        <div className="relative">
-          <Sparkles className="size-8 animate-pulse text-primary" />
-        </div>
-        <p className="font-medium">Racontine écrit la journée…</p>
-        <p className="text-sm text-muted-foreground">
-          Lecture du carnet et mise en récit. Quelques secondes suffisent.
-        </p>
-        {entry.attachments.length > 0 && (
-          <img
-            src={entry.attachments[0].thumbUrl}
-            alt="page"
-            className="mt-2 max-h-64 rounded-lg object-contain"
-          />
-        )}
-      </div>
-    );
+    return <ProcessingView attachments={entry.attachments} />;
   }
 
   if (entry.status === "failed") {
@@ -397,6 +380,61 @@ export default function Review() {
           </Button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Fait défiler les pages du carnet pendant la lecture, comme un scan en cours. */
+function ProcessingView({ attachments }: { attachments: Entry["attachments"] }) {
+  const [idx, setIdx] = useState(0);
+
+  useEffect(() => {
+    if (attachments.length < 2) return;
+    const t = setInterval(() => {
+      setIdx((i) => (i + 1) % attachments.length);
+    }, 1900);
+    return () => clearInterval(t);
+  }, [attachments.length]);
+
+  const current = attachments[idx];
+
+  return (
+    <div className="mx-auto flex w-full max-w-lg flex-col items-center gap-4 p-8 text-center">
+      <div className="relative">
+        <Sparkles className="size-8 animate-pulse text-primary" />
+      </div>
+      <p className="font-medium">Racontine écrit la journée…</p>
+      <p className="text-sm text-muted-foreground">
+        Lecture du carnet et mise en récit. Quelques secondes suffisent.
+      </p>
+      {current && (
+        <div className="relative mt-2 w-full max-w-64 overflow-hidden rounded-lg border">
+          <img
+            key={current.id}
+            src={current.thumbUrl}
+            alt={`page ${idx + 1}`}
+            className="max-h-64 w-full animate-scan-fade object-contain"
+          />
+          <div className="pointer-events-none absolute inset-x-0 h-1/3 animate-scan-sweep bg-gradient-to-b from-transparent via-primary/25 to-transparent" />
+        </div>
+      )}
+      {attachments.length > 1 && (
+        <>
+          <div className="flex items-center gap-1.5">
+            {attachments.map((a, i) => (
+              <span
+                key={a.id}
+                className={`size-1.5 rounded-full transition-colors ${
+                  i === idx ? "bg-primary" : "bg-muted-foreground/30"
+                }`}
+              />
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Page {idx + 1} / {attachments.length}
+          </p>
+        </>
+      )}
     </div>
   );
 }
