@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { DayStepper } from "@/components/DayStepper";
 import {
   AlertDialog,
@@ -349,8 +350,8 @@ export default function Review() {
           </div>
 
           {normalizeUncertainties(entry.uncertainties).length > 0 && (
-            <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
-              <p className="mb-2 flex items-center gap-1.5 text-sm font-medium text-amber-700 dark:text-amber-400">
+            <div className="rounded-lg border border-warning/40 bg-warning-bg p-3">
+              <p className="mb-2 flex items-center gap-1.5 text-sm font-medium text-warning">
                 <AlertTriangle className="size-4" /> À vérifier
               </p>
               <div className="flex flex-col gap-2.5">
@@ -414,8 +415,7 @@ export default function Review() {
             </div>
             <div className="flex flex-col gap-1.5">
               <Label>Lieu</Label>
-              <select
-                className="h-10 rounded-md border bg-transparent px-3"
+              <Select
                 value={source}
                 onChange={(e) => setSource(e.target.value as EntrySource)}
               >
@@ -424,7 +424,7 @@ export default function Review() {
                     {SOURCE_LABELS[s]}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
           </div>
 
@@ -501,7 +501,7 @@ export default function Review() {
           <AlertDialogFooter>
             <AlertDialogCancel>Annuler</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-destructive text-white hover:bg-destructive/90"
+              variant="destructive"
               onClick={() =>
                 attachmentToRemove && removeAttachment(attachmentToRemove.id)
               }
@@ -591,10 +591,7 @@ function DeleteDialog({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Annuler</AlertDialogCancel>
-          <AlertDialogAction
-            className="bg-destructive text-white hover:bg-destructive/90"
-            onClick={onConfirm}
-          >
+          <AlertDialogAction variant="destructive" onClick={onConfirm}>
             Supprimer
           </AlertDialogAction>
         </AlertDialogFooter>
@@ -638,10 +635,10 @@ function UncertaintyCard({
 
   if (item.resolved) {
     return (
-      <div className="flex items-center gap-1.5 text-sm text-amber-700/70 dark:text-amber-400/60">
+      <div className="flex items-center gap-1.5 text-sm text-warning/70">
         <CheckCircle2 className="size-3.5 shrink-0" />
         <span>
-          <span className="line-through decoration-amber-700/40">
+          <span className="line-through decoration-warning/40">
             « {item.original} »
           </span>{" "}
           → <span className="font-medium">{item.resolved}</span>
@@ -651,7 +648,7 @@ function UncertaintyCard({
   }
 
   return (
-    <div className="flex flex-col gap-1.5 text-sm text-amber-700 dark:text-amber-400">
+    <div className="flex flex-col gap-1.5 text-sm text-warning">
       <p>
         <span className="font-medium">« {item.original} »</span>
         {item.contexte ? <span> — {item.contexte}</span> : null}
@@ -663,7 +660,7 @@ function UncertaintyCard({
             type="button"
             variant="outline"
             size="xs"
-            className="rounded-full border-amber-500/50 bg-transparent text-amber-800 hover:bg-amber-500/15 dark:text-amber-300"
+            className="rounded-full border-warning/50 bg-transparent text-warning hover:bg-warning/15"
             disabled={disabled}
             onClick={() => onResolve(s)}
           >
@@ -675,7 +672,7 @@ function UncertaintyCard({
           type="button"
           variant="ghost"
           size="xs"
-          className="rounded-full text-amber-700/80 hover:bg-amber-500/15 dark:text-amber-400/80"
+          className="rounded-full text-warning/80 hover:bg-warning/15"
           disabled={disabled}
           onClick={() => onResolve(item.original)}
         >
@@ -687,14 +684,14 @@ function UncertaintyCard({
           value={custom}
           onChange={(e) => setCustom(e.target.value)}
           placeholder="Autre correction…"
-          className="h-7 max-w-48 border-amber-500/40 bg-transparent text-xs"
+          className="h-7 max-w-48 border-warning/40 bg-transparent text-xs"
           disabled={disabled}
         />
         <Button
           type="button"
           variant="ghost"
           size="icon-xs"
-          className="text-amber-700 hover:bg-amber-500/15 dark:text-amber-400"
+          className="text-warning hover:bg-warning/15"
           disabled={disabled || !custom.trim()}
           onClick={() => onResolve(custom.trim())}
           aria-label="valider cette correction"

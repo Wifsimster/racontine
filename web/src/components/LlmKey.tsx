@@ -179,10 +179,7 @@ export default function LlmKey() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-white hover:bg-destructive/90"
-              onClick={clear}
-            >
+            <AlertDialogAction variant="destructive" onClick={clear}>
               Supprimer
             </AlertDialogAction>
           </AlertDialogFooter>
