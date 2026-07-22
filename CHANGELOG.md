@@ -2,6 +2,13 @@
 
 Toutes les versions notables de Racontine. Format issu des messages de commit conventionnels (`feat`, `fix`, …).
 
+## [1.10.1](https://github.com/Wifsimster/racontine/compare/v1.10.0...v1.10.1) (2026-07-22)
+
+
+### Bug Fixes
+
+* **web:** align UI with the design-system tokens ([#35](https://github.com/Wifsimster/racontine/issues/35)) ([f8b3366](https://github.com/Wifsimster/racontine/commit/f8b3366b6fc5559a3bba7fa8d0092130393d06af))
+
 # [1.10.0](https://github.com/Wifsimster/racontine/compare/v1.9.2...v1.10.0) (2026-07-19)
 
 
