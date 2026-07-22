@@ -14,6 +14,7 @@ import {
 } from "@/lib/photo-store";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 
 const SOURCES: EntrySource[] = ["nounou", "mam", "creche", "maison"];
 
@@ -161,8 +162,8 @@ export default function Capture() {
       {children.length > 1 && (
         <div className="flex flex-col gap-1.5">
           <Label>Enfant</Label>
-          <select
-            className="h-10 rounded-md border bg-transparent px-3"
+          <Select
+            className="w-full"
             value={childId}
             onChange={(e) => setChildId(e.target.value)}
           >
@@ -171,7 +172,7 @@ export default function Capture() {
                 {c.name}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
       )}
 

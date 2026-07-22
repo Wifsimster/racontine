@@ -262,7 +262,7 @@ export default function McpTokens({ webBaseUrl }: { webBaseUrl?: string }) {
           <AlertDialogFooter>
             <AlertDialogCancel>Annuler</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-destructive text-white hover:bg-destructive/90"
+              variant="destructive"
               onClick={() => toRevoke && revoke(toRevoke)}
             >
               Révoquer

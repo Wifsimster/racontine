@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Select } from "@/components/ui/select";
 
 const ROLES: MemberRole[] = ["reader", "contributor", "admin"];
 
@@ -35,18 +36,17 @@ function RoleSelect({
   disabled?: boolean;
 }) {
   return (
-    <select
+    <Select
       value={value}
       disabled={disabled}
       onChange={(e) => onChange(e.target.value as MemberRole)}
-      className="h-9 rounded-md border border-input bg-transparent px-2 text-sm shadow-sm disabled:opacity-50"
     >
       {ROLES.map((r) => (
         <option key={r} value={r}>
           {ROLE_LABELS[r]}
         </option>
       ))}
-    </select>
+    </Select>
   );
 }
 

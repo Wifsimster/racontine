@@ -17,6 +17,7 @@ import type { AppSettings, SettingsMeta } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 
 /** Interrupteur on/off accessible (pas de composant Switch dans le repo). */
 function Toggle({
@@ -296,18 +297,17 @@ export default function Settings() {
           hint="Modèle Claude vision utilisé pour lire les carnets, avec la clé API de chaque contributeur."
           htmlFor="vlmModel"
         >
-          <select
+          <Select
             id="vlmModel"
             value={settings.vlmModel}
             onChange={(e) => patch("vlmModel", e.target.value)}
-            className="h-9 rounded-md border border-input bg-transparent px-2 text-sm shadow-sm"
           >
             {models.map((m) => (
               <option key={m} value={m}>
                 {m}
               </option>
             ))}
-          </select>
+          </Select>
         </Row>
       </section>
 
