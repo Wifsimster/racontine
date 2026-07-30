@@ -1,12 +1,16 @@
 import { useEffect, useState, useCallback } from "react";
+import { Link } from "react-router-dom";
 import {
   Users,
   UserPlus,
   Trash2,
   Copy,
   Check,
-  Loader2,
   ShieldCheck,
+  MailPlus,
+  Clock,
+  Camera,
+  TriangleAlert,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useSession } from "@/lib/auth-client";
@@ -23,6 +27,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select } from "@/components/ui/select";
+import {
+  PageShell,
+  PageHeader,
+  PageState,
+  PageSkeleton,
+  SectionLabel,
+  InlineError,
+} from "@/components/PageState";
 
 const ROLES: MemberRole[] = ["reader", "contributor", "admin"];
 
@@ -30,15 +42,21 @@ function RoleSelect({
   value,
   onChange,
   disabled,
+  className,
+  "aria-label": ariaLabel,
 }: {
   value: MemberRole;
   onChange: (r: MemberRole) => void;
   disabled?: boolean;
+  className?: string;
+  "aria-label"?: string;
 }) {
   return (
     <Select
       value={value}
       disabled={disabled}
+      aria-label={ariaLabel}
+      className={className}
       onChange={(e) => onChange(e.target.value as MemberRole)}
     >
       {ROLES.map((r) => (
@@ -50,24 +68,28 @@ function RoleSelect({
   );
 }
 
+/**
+ * Copie du lien d'invitation. Le retour est un CHANGEMENT D'ICÔNE tenu 1,5 s
+ * (coche groseille) : le geste est silencieux, il lui faut un accusé visible.
+ */
 function CopyButton({ url }: { url: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <Button
       variant="ghost"
       size="icon-sm"
-      aria-label="Copier le lien"
+      aria-label={copied ? "Lien copié" : "Copier le lien"}
       onClick={async () => {
         try {
           await navigator.clipboard.writeText(url);
           setCopied(true);
           setTimeout(() => setCopied(false), 1500);
         } catch {
-          /* clipboard indisponible */
+          /* presse-papiers indisponible (contexte non sécurisé) */
         }
       }}
     >
-      {copied ? <Check className="text-primary" /> : <Copy />}
+      {copied ? <Check className="text-success" /> : <Copy />}
     </Button>
   );
 }
@@ -92,6 +114,9 @@ export default function Share() {
         setChildren(admin);
         setSelected(admin[0]?.id ?? null);
       })
+      .catch((e) =>
+        setError(e instanceof Error ? e.message : "Échec du chargement"),
+      )
       .finally(() => setLoading(false));
   }, []);
 
@@ -139,61 +164,89 @@ export default function Share() {
     }
   }
 
+  const header = (
+    <PageHeader
+      title="Partager"
+      lede="Invitez un proche à lire le carnet — ou à écrire dedans."
+    />
+  );
+
   if (loading)
     return (
-      <p className="py-16 text-center text-muted-foreground">Chargement…</p>
+      <PageShell>
+        {header}
+        <PageSkeleton label="Racontine ouvre le cercle" rows={2} />
+      </PageShell>
     );
 
+  /* Pas d'enfant dont on est administrateur : la porte n'existe pas, et on dit
+     pourquoi plutôt que d'afficher un formulaire qui refuserait à l'envoi. */
   if (!children.length)
     return (
-      <div className="mx-auto flex max-w-lg flex-col items-center gap-3 px-4 py-16 text-center">
-        <div className="rounded-full bg-primary/10 p-4">
-          <Users className="size-7 text-primary" />
-        </div>
-        <p className="font-medium">Aucun enfant à partager</p>
-        <p className="max-w-xs text-sm text-muted-foreground">
-          Seul l'administrateur d'un enfant peut inviter des proches. Créez un
-          enfant depuis l'écran de capture pour commencer.
-        </p>
-      </div>
+      <PageShell>
+        {header}
+        <PageState
+          icon={Users}
+          tone="locked"
+          title="Aucun carnet à partager"
+          actions={
+            error ? undefined : (
+              <Button asChild variant="outline">
+                <Link to="/capture">
+                  <Camera aria-hidden="true" />
+                  Photographier un carnet
+                </Link>
+              </Button>
+            )
+          }
+        >
+          {error ??
+            "Seul l'administrateur d'un carnet peut inviter des proches. Créez un enfant depuis l'écran de capture pour commencer."}
+        </PageState>
+      </PageShell>
     );
 
-  return (
-    <div className="mx-auto flex w-full max-w-lg flex-col gap-6 p-4 pb-16">
-      <div className="flex items-center gap-2">
-        <Users className="size-5 text-primary" />
-        <h1 className="text-xl font-semibold">Partager le journal</h1>
-      </div>
+  const child = children.find((c) => c.id === selected);
 
+  return (
+    <PageShell>
+      {header}
+
+      {/* Plusieurs carnets : on choisit celui qu'on partage. */}
       {children.length > 1 && (
-        <div className="flex flex-wrap gap-2">
-          {children.map((c) => (
-            <Button
-              key={c.id}
-              variant={c.id === selected ? "default" : "outline"}
-              size="sm"
-              onClick={() => setSelected(c.id)}
-            >
-              {c.name}
-            </Button>
-          ))}
+        <div className="flex flex-col gap-1">
+          <SectionLabel className="px-1">Le carnet</SectionLabel>
+          <div className="flex flex-wrap gap-2">
+            {children.map((c) => (
+              <Button
+                key={c.id}
+                variant={c.id === selected ? "default" : "outline"}
+                size="sm"
+                aria-pressed={c.id === selected}
+                onClick={() => setSelected(c.id)}
+              >
+                {c.name}
+              </Button>
+            ))}
+          </div>
         </div>
       )}
 
-      {/* Inviter un proche */}
+      {/* ── Inviter un proche ────────────────────────────────────────────── */}
       <form
         onSubmit={invite}
-        className="flex flex-col gap-3 rounded-2xl border bg-card p-5 shadow-sm"
+        className="flex flex-col gap-4 rounded-2xl border bg-card p-5 shadow-card"
       >
-        <div className="flex items-center gap-2 text-sm font-medium">
-          <UserPlus className="size-4 text-primary" />
+        <h2 className="flex items-center gap-2 font-serif text-title font-semibold">
+          <MailPlus className="size-5 shrink-0 text-primary" aria-hidden="true" />
           Inviter un proche
-        </div>
+        </h2>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="invite-email">Email</Label>
+          <Label htmlFor="invite-email">Son adresse e-mail</Label>
           <Input
             id="invite-email"
             type="email"
+            autoComplete="email"
             placeholder="mamie@example.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -201,117 +254,148 @@ export default function Share() {
           />
         </div>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="invite-role">Rôle</Label>
+          <Label htmlFor="invite-role">Ce qu'elle pourra faire</Label>
           <RoleSelect value={role} onChange={setRole} />
-          <p className="text-xs text-muted-foreground">{ROLE_HINTS[role]}</p>
+          <p className="text-meta text-muted-foreground">{ROLE_HINTS[role]}</p>
         </div>
-        {error && <p className="text-sm text-destructive">{error}</p>}
-        <Button type="submit" disabled={inviting}>
-          {inviting ? <Loader2 className="size-4 animate-spin" /> : <UserPlus />}
+        {error && (
+          <InlineError>
+            <TriangleAlert
+              className="mt-0.5 size-4 shrink-0"
+              aria-hidden="true"
+            />
+            {error}
+          </InlineError>
+        )}
+        <Button type="submit" loading={inviting}>
+          {!inviting && <UserPlus aria-hidden="true" />}
           Envoyer l'invitation
         </Button>
       </form>
 
-      {/* Invitations en attente */}
+      {/* ── Invitations en attente ───────────────────────────────────────── */}
       {invitations.length > 0 && (
-        <div className="flex flex-col gap-2">
-          <h2 className="text-sm font-medium text-muted-foreground">
-            Invitations en attente
-          </h2>
-          {invitations.map((inv) => (
-            <div
-              key={inv.id}
-              className="flex items-center gap-2 rounded-xl border bg-card p-3 text-sm"
-            >
-              <div className="flex min-w-0 flex-1 flex-col">
-                <span className="truncate">{inv.email}</span>
-                <span className="text-xs text-muted-foreground">
-                  {ROLE_LABELS[inv.role]}
-                  {inv.expired ? " · expirée" : ""}
-                </span>
-              </div>
-              <CopyButton url={inv.url} />
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label="Révoquer"
-                onClick={async () => {
-                  try {
-                    await api.revokeInvitation(inv.id);
-                    if (selected) await refresh(selected);
-                  } catch (e) {
-                    setError(e instanceof Error ? e.message : "Échec");
-                  }
-                }}
+        <section className="flex flex-col gap-1">
+          <SectionLabel className="px-1">
+            En attente ({invitations.length})
+          </SectionLabel>
+          <ul className="flex flex-col gap-2">
+            {invitations.map((inv) => (
+              <li
+                key={inv.id}
+                className="flex items-center gap-2 rounded-2xl border bg-card p-3 pl-4 shadow-card"
               >
-                <Trash2 className="text-destructive" />
-              </Button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Membres */}
-      <div className="flex flex-col gap-2">
-        <h2 className="text-sm font-medium text-muted-foreground">Membres</h2>
-        {members.map((m) => {
-          const isSelf = m.userId === session?.user.id;
-          return (
-            <div
-              key={m.userId}
-              className="flex items-center gap-2 rounded-xl border bg-card p-3 text-sm"
-            >
-              <div className="flex min-w-0 flex-1 flex-col">
-                <span className="flex items-center gap-1.5 truncate font-medium">
-                  {m.name}
-                  {m.role === "admin" && (
-                    <ShieldCheck className="size-3.5 text-primary" />
-                  )}
-                  {isSelf && (
-                    <Badge variant="secondary" className="text-[10px]">
-                      vous
-                    </Badge>
-                  )}
-                </span>
-                <span className="truncate text-xs text-muted-foreground">
-                  {m.email}
-                </span>
-              </div>
-              <RoleSelect
-                value={m.role}
-                disabled={isSelf}
-                onChange={async (r) => {
-                  if (!selected) return;
-                  try {
-                    await api.setMemberRole(selected, m.userId, r);
-                    await refresh(selected);
-                  } catch (e) {
-                    setError(e instanceof Error ? e.message : "Échec");
-                  }
-                }}
-              />
-              {!isSelf && (
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <span className="truncate text-ui font-bold">{inv.email}</span>
+                  <span className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-meta text-muted-foreground">
+                    <Clock className="size-3.5 shrink-0" aria-hidden="true" />
+                    {ROLE_LABELS[inv.role]}
+                    {inv.expired && (
+                      <Badge variant="warning">
+                        <TriangleAlert aria-hidden="true" />
+                        expirée
+                      </Badge>
+                    )}
+                  </span>
+                </div>
+                <CopyButton url={inv.url} />
                 <Button
                   variant="ghost"
                   size="icon-sm"
-                  aria-label="Retirer"
+                  aria-label={`Révoquer l'invitation de ${inv.email}`}
+                  className="text-destructive hover:bg-destructive-soft hover:text-destructive"
                   onClick={async () => {
-                    if (!selected) return;
                     try {
-                      await api.removeMember(selected, m.userId);
-                      await refresh(selected);
+                      await api.revokeInvitation(inv.id);
+                      if (selected) await refresh(selected);
                     } catch (e) {
                       setError(e instanceof Error ? e.message : "Échec");
                     }
                   }}
                 >
-                  <Trash2 className="text-destructive" />
+                  <Trash2 />
                 </Button>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/* ── Membres ──────────────────────────────────────────────────────────
+          CHAQUE MEMBRE EST UNE FEUILLE EMPILÉE, et c'est la correction qui
+          compte. En une seule ligne (nom + e-mail + rôle + corbeille), le
+          `<select>` « Administrateur » imposait sa largeur et le nom se coupait
+          au milieu d'un mot : « Mamie Jacque », « marc@battiste… ». Le nom et
+          l'adresse prennent maintenant toute la largeur, le rôle et la
+          suppression sont sur la ligne du dessous. Plus rien n'est tronqué. */}
+      <section className="flex flex-col gap-1">
+        <SectionLabel className="px-1">
+          Le cercle de {child?.name ?? "l'enfant"} ({members.length})
+        </SectionLabel>
+        <ul className="flex flex-col gap-2">
+          {members.map((m) => {
+            const isSelf = m.userId === session?.user.id;
+            return (
+              <li
+                key={m.userId}
+                className="flex flex-col gap-3 rounded-2xl border bg-card p-4 shadow-card"
+              >
+                <div className="flex min-w-0 flex-col">
+                  <span className="flex min-w-0 items-center gap-1.5 text-ui font-bold">
+                    <span className="truncate">{m.name}</span>
+                    {m.role === "admin" && (
+                      <ShieldCheck
+                        className="size-4 shrink-0 text-primary"
+                        aria-label="administrateur"
+                      />
+                    )}
+                    {isSelf && <Badge variant="soft">vous</Badge>}
+                  </span>
+                  <span className="truncate text-meta text-muted-foreground">
+                    {m.email}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <RoleSelect
+                    value={m.role}
+                    disabled={isSelf}
+                    className="min-w-0 flex-1"
+                    aria-label={`Rôle de ${m.name}`}
+                    onChange={async (r) => {
+                      if (!selected) return;
+                      try {
+                        await api.setMemberRole(selected, m.userId, r);
+                        await refresh(selected);
+                      } catch (e) {
+                        setError(e instanceof Error ? e.message : "Échec");
+                      }
+                    }}
+                  />
+                  {!isSelf && (
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label={`Retirer ${m.name} du cercle`}
+                      className="text-destructive hover:bg-destructive-soft hover:text-destructive"
+                      onClick={async () => {
+                        if (!selected) return;
+                        try {
+                          await api.removeMember(selected, m.userId);
+                          await refresh(selected);
+                        } catch (e) {
+                          setError(e instanceof Error ? e.message : "Échec");
+                        }
+                      }}
+                    >
+                      <Trash2 />
+                    </Button>
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+    </PageShell>
   );
 }

@@ -6,7 +6,6 @@ import {
   Trash2,
   Copy,
   Check,
-  Loader2,
   TriangleAlert,
 } from "lucide-react";
 import { api } from "@/lib/api";
@@ -24,6 +23,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { InlineError } from "@/components/PageState";
 
 /** Petit bouton « copier » avec accusé de copie temporaire. */
 function CopyButton({ value, label }: { value: string; label: string }) {
@@ -120,14 +120,14 @@ export default function McpTokens({ webBaseUrl }: { webBaseUrl?: string }) {
   }
 
   return (
-    <section className="flex flex-col rounded-2xl border bg-card px-5 shadow-sm">
-      <div className="flex items-center gap-2 border-b py-4 text-sm font-medium">
-        <Plug className="size-4 text-primary" />
+    <section className="flex flex-col rounded-2xl border bg-card px-5 shadow-card">
+      <h2 className="flex items-center gap-2 border-b py-4 text-ui font-bold">
+        <Plug className="size-4 shrink-0 text-primary" aria-hidden="true" />
         Connexion MCP (session Claude)
-      </div>
+      </h2>
 
       <div className="flex flex-col gap-4 py-4">
-        <p className="text-sm text-muted-foreground">
+        <p className="text-meta text-pretty text-muted-foreground">
           Connectez une session Claude (cloud, Desktop ou Claude Code) à cette
           instance pour téléverser des photos de carnet à la voix ou par
           glisser-déposer. Créez un jeton, puis ajoutez ce serveur MCP à Claude.
@@ -135,16 +135,14 @@ export default function McpTokens({ webBaseUrl }: { webBaseUrl?: string }) {
 
         {/* Adresse du serveur MCP */}
         <div className="flex flex-col gap-1.5">
-          <Label className="text-xs text-muted-foreground">
-            Adresse du serveur MCP
-          </Label>
+          <Label>Adresse du serveur MCP</Label>
           <div className="flex items-center gap-2">
-            <code className="flex-1 truncate rounded-lg border bg-background px-3 py-2 text-sm">
+            <code className="min-w-0 flex-1 truncate rounded-xl border bg-background px-3 py-2 text-meta">
               {endpoint}
             </code>
             <CopyButton value={endpoint} label="Copier l'adresse MCP" />
           </div>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-meta text-muted-foreground">
             Transport « HTTP », en-tête{" "}
             <code>Authorization: Bearer &lt;jeton&gt;</code>. Outils exposés :{" "}
             <code>list_children</code>, <code>upload_daily_note</code>.
@@ -153,16 +151,16 @@ export default function McpTokens({ webBaseUrl }: { webBaseUrl?: string }) {
 
         {/* Secret fraîchement créé */}
         {secret && (
-          <div className="flex flex-col gap-2 rounded-xl border border-primary/40 bg-primary/5 p-3">
-            <div className="flex items-center gap-2 text-sm font-medium text-primary">
-              <TriangleAlert className="size-4" />
+          <div role="status" className="flex flex-col gap-2 rounded-xl bg-warning-bg p-3">
+            <p className="flex items-center gap-2 text-ui font-bold text-warning">
+              <TriangleAlert className="size-4 shrink-0" aria-hidden="true" />
               Copiez ce jeton maintenant
-            </div>
-            <p className="text-xs text-muted-foreground">
+            </p>
+            <p className="text-meta text-warning">
               Il ne sera plus jamais affiché. Conservez-le comme un mot de passe.
             </p>
             <div className="flex items-center gap-2">
-              <code className="flex-1 truncate rounded-lg border bg-background px-3 py-2 font-mono text-sm">
+              <code className="min-w-0 flex-1 truncate rounded-xl border bg-card px-3 py-2 font-mono text-meta">
                 {secret}
               </code>
               <CopyButton value={secret} label="Copier le jeton" />
@@ -183,50 +181,59 @@ export default function McpTokens({ webBaseUrl }: { webBaseUrl?: string }) {
         {/* Création d'un jeton */}
         <div className="flex items-end gap-2">
           <div className="flex flex-1 flex-col gap-1.5">
-            <Label htmlFor="mcpTokenName" className="text-xs text-muted-foreground">
+            <Label htmlFor="mcpTokenName">
               Nouveau jeton
             </Label>
             <Input
               id="mcpTokenName"
               value={name}
               maxLength={60}
-              placeholder="ex. Session Claude cloud"
+              placeholder="ex. Claude cloud"
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") create();
               }}
             />
           </div>
-          <Button onClick={create} disabled={!name.trim() || creating}>
-            {creating ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Plus className="size-4" />
-            )}
+          <Button onClick={create} loading={creating} disabled={!name.trim()}>
+            {!creating && <Plus aria-hidden="true" />}
             Créer
           </Button>
         </div>
 
-        {error && <p className="text-sm text-destructive">{error}</p>}
+        {error && (
+          <InlineError>
+            <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+            {error}
+          </InlineError>
+        )}
 
         {/* Liste des jetons */}
         {tokens === null ? (
-          <p className="text-sm text-muted-foreground">Chargement…</p>
+          <div
+            role="status"
+            aria-label="On regarde vos jetons"
+            className="flex flex-col gap-2"
+          >
+            <div className="skeleton h-12 w-full" />
+            <div className="skeleton h-12 w-full" />
+          </div>
         ) : tokens.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            Aucun jeton pour le moment.
+          <p className="rounded-xl border border-dashed px-3 py-4 text-center text-meta text-muted-foreground">
+            Aucun jeton pour l'instant : créez-en un ci-dessus pour relier une
+            session Claude à ce carnet.
           </p>
         ) : (
           <ul className="flex flex-col gap-2">
             {tokens.map((t) => (
               <li
                 key={t.id}
-                className="flex items-center gap-3 rounded-lg border bg-background px-3 py-2"
+                className="flex items-center gap-3 rounded-xl border bg-background py-2 pr-2 pl-3"
               >
-                <KeyRound className="size-4 shrink-0 text-muted-foreground" />
+                <KeyRound className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                 <div className="flex min-w-0 flex-1 flex-col">
-                  <span className="truncate text-sm font-medium">{t.name}</span>
-                  <span className="truncate text-xs text-muted-foreground">
+                  <span className="truncate text-ui font-bold">{t.name}</span>
+                  <span className="truncate text-meta text-muted-foreground">
                     <code>{t.tokenPrefix}…</code> · créé le{" "}
                     {fmtDate(t.createdAt)} · dernier usage{" "}
                     {fmtDate(t.lastUsedAt)}
@@ -234,12 +241,12 @@ export default function McpTokens({ webBaseUrl }: { webBaseUrl?: string }) {
                 </div>
                 <Button
                   variant="ghost"
-                  size="sm"
-                  className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  size="icon-sm"
+                  className="shrink-0 text-destructive hover:bg-destructive-soft hover:text-destructive"
                   onClick={() => setToRevoke(t)}
                   aria-label={`Révoquer le jeton ${t.name}`}
                 >
-                  <Trash2 className="size-3.5" />
+                  <Trash2 />
                 </Button>
               </li>
             ))}

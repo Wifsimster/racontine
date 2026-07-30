@@ -1,6 +1,23 @@
 @import "tailwindcss";
 
-@custom-variant dark (&:is(.dark *));
+/* ---------------------------------------------------------------------------
+   Le variant `dark:` répond à DEUX signaux, dans cet ordre de priorité :
+     1. une classe `.dark` / `.light` posée à la main (harnais de captures,
+        futur sélecteur de thème) — elle gagne toujours ;
+     2. à défaut, la préférence système `prefers-color-scheme: dark`.
+   Avant, la palette sombre existait mais rien ne l'allumait jamais : personne
+   n'a jamais vu le mode sombre de Racontine.
+   --------------------------------------------------------------------------- */
+@custom-variant dark {
+  &:where(.dark, .dark *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(:not(.light, .light *)) {
+      @slot;
+    }
+  }
+}
 
 /* --- Polices auto-hébergées (hors-ligne, cohérentes avec l'export livre) --- */
 @font-face {
@@ -25,99 +42,264 @@
   src: url("/fonts/nunito-700.woff2") format("woff2");
 }
 
-/* ---------------------------------------------------------------------------
+/* ===========================================================================
    « Le carnet, en vrai » — papier réglé, encre bleu-nuit, feutres par catégorie.
-   --------------------------------------------------------------------------- */
+
+   Trois règles tiennent tout le système, et rien ne doit les contredire :
+
+   1. UNE couleur = UN sens. Chaque teinte est livrée en paire (encre, fond)
+      et les DEUX thèmes sont mesurés : toutes les paires ci-dessous sont
+      >= 5,1:1 (script : gauntlet/probe/contrast.js). Aucune couleur décorative.
+   2. SIX crans typographiques, pas un de plus, et chaque interligne est un
+      multiple de 4 px. Les crans Tailwind historiques (`text-sm`, `text-xl`…)
+      sont réécrits pour retomber dedans : une page ne peut plus inventer une
+      septième taille sans le faire exprès.
+      -> N'écrivez PAS `leading-none` : les crans portent déjà leur interligne.
+   3. La structure vient des filets (1 px), pas des ombres. Deux couches
+      d'ombre maximum en clair ; en sombre l'ombre ne porte plus rien, elle est
+      remplacée par un liseré haut et une surface relevée.
+
+   COROLLAIRE, et c'est une vraie règle de travail : n'utilisez PAS les
+   modificateurs d'opacité de Tailwind sur un fond (`bg-primary/10`,
+   `bg-background/95`). Ils compilent en `color-mix(in oklab, …)`, que
+   `getComputedStyle` rend en `oklab()` — et plus aucun outil ne sait mesurer le
+   contraste du texte posé dessus. Les jetons `*-soft`, `*-bg` et
+   `--surface-bar` existent exactement pour ça : ils portent l'alpha déjà
+   composé, en sRGB.
+
+   Les teintes sont PENSÉES en OKLCH (la clarté y est perceptuelle, donc on
+   choisit un contraste au lieu de le deviner) mais ÉCRITES en sRGB. Le rendu
+   est identique au pixel près ; la différence est que `getComputedStyle`
+   renvoie alors des `rgb()`. Tout outil de mesure — le nôtre, celui du BAR,
+   celui d'un relecteur — sait les lire ; avec `oklch()`, un auditeur qui
+   extrait trois nombres d'une chaîne calcule un contraste imaginaire (on a vu
+   « 2,36:1 » sur du 13,4:1). Une couleur qu'on ne peut pas mesurer n'est pas
+   une couleur accessible. La spécification OKLCH d'origine est rappelée en
+   commentaire à côté de chaque valeur.
+   =========================================================================== */
+
 :root {
-  --radius: 1.1rem; /* plus rond, plus tendre */
+  /* ── Rayons : 4 px de pas, comme l'espacement ───────────────────────────── */
+  --radius: 1rem; /* 16 px : le rayon d'une feuille de carnet */
 
-  /* Interligne du papier réglé — partagé par la réglure et le récit pour que
-     chaque ligne de texte tombe sur une ligne du cahier. */
-  --rule-pitch: 2.15rem;
+  /* ── Réglure du papier ──────────────────────────────────────────────────
+     Un interligne = une ligne du cahier. 28 px = l'interligne du cran « récit »
+     (17/28) : le texte tombe donc exactement sur les lignes, et toute la
+     verticalité du produit reste sur la grille de 4 px. */
+  --rule-pitch: 1.75rem;
 
-  --background: oklch(0.98 0.006 95); /* papier */
-  --foreground: oklch(0.31 0.05 278); /* encre bleu-nuit */
-  --card: oklch(0.995 0.004 95);
-  --card-foreground: oklch(0.31 0.05 278);
-  --popover: oklch(0.995 0.004 95);
-  --popover-foreground: oklch(0.31 0.05 278);
-  --primary: oklch(0.55 0.16 12); /* groseille — trait de marge */
-  --primary-foreground: oklch(0.99 0.005 95);
-  --secondary: oklch(0.95 0.012 280);
-  --secondary-foreground: oklch(0.38 0.04 278);
-  --muted: oklch(0.955 0.008 280);
-  --muted-foreground: oklch(0.52 0.03 278);
-  --accent: oklch(0.93 0.02 285);
-  --accent-foreground: oklch(0.38 0.04 278);
-  --destructive: oklch(0.58 0.16 28);
-  --border: oklch(0.9 0.012 280);
-  --input: oklch(0.9 0.012 280);
-  --ring: oklch(0.55 0.16 12);
+  /* ── Surfaces ───────────────────────────────────────────────────────────── */
+  --background: rgb(249 247 242); /* oklch(0.976 0.007 89) · papier */
+  --card: rgb(
+    254 253 250
+  ); /* oklch(0.994 0.004 91) · la feuille, posée sur le papier */
+  --popover: rgb(254 253 250); /* oklch(0.994 0.004 91) */
 
-  /* caution — feutre ambre « à vérifier » (sens, pas décoration) */
-  --warning: oklch(0.56 0.14 70);
-  --warning-bg: oklch(0.93 0.05 80);
+  /* ── Encres ─────────────────────────────────────────────────────────────── */
+  --foreground: rgb(
+    36 40 70
+  ); /* oklch(0.289 0.055 277) · encre bleu-nuit — 13,4:1 */
+  --card-foreground: rgb(36 40 70); /* oklch(0.289 0.055 277) */
+  --popover-foreground: rgb(36 40 70); /* oklch(0.289 0.055 277) */
+  --muted-foreground: rgb(
+    94 98 118
+  ); /* oklch(0.500 0.032 276) · encre pâlie — 5,6:1 */
 
-  /* réglure du papier — assez tendre pour ne jamais gêner la lecture */
-  --rule: oklch(0.89 0.035 285);
+  /* ── Groseille : la marque, et UNE seule chose à l'écran — l'action ─────── */
+  --primary: rgb(184 40 77); /* oklch(0.520 0.179 12) · 5,9:1 avec son texte */
+  --primary-foreground: rgb(253 252 247); /* oklch(0.990 0.007 97) */
+  --primary-hover: rgb(
+    164 8 60
+  ); /* oklch(0.440 0.180 12) · survol : 7,6:1 —
+     on FONCE le fond, on ne le rend pas translucide */
+  --primary-soft: rgb(
+    255 235 236
+  ); /* oklch(0.956 0.022 14) · fond groseille très pâle */
 
-  /* feutres — un par type de moment (couleur = sens, pas décoration) */
-  --meal: oklch(0.58 0.1 75);
-  --meal-bg: oklch(0.93 0.05 80);
-  --nap: oklch(0.52 0.1 275);
-  --nap-bg: oklch(0.92 0.035 280);
-  --activity: oklch(0.56 0.11 155);
-  --activity-bg: oklch(0.92 0.05 155);
-  --anecdote: oklch(0.57 0.12 5);
-  --anecdote-bg: oklch(0.93 0.04 5);
-  --health: oklch(0.56 0.14 30);
-  --health-bg: oklch(0.93 0.05 35);
-}
+  /* ── Neutres d'interface ────────────────────────────────────────────────── */
+  --secondary: rgb(235 236 242); /* oklch(0.944 0.008 279) */
+  --secondary-foreground: rgb(46 51 79); /* oklch(0.330 0.050 276) */
+  --muted: rgb(235 236 242); /* oklch(0.944 0.008 279) */
+  --accent: rgb(
+    240 237 228
+  ); /* oklch(0.946 0.012 92) · survol : le papier qui s'assombrit */
+  --accent-foreground: rgb(36 40 70); /* oklch(0.289 0.055 277) */
+  --border: rgb(
+    219 221 232
+  ); /* oklch(0.899 0.015 278) · le filet : toute la structure */
+  --input: rgb(
+    206 208 220
+  ); /* oklch(0.860 0.017 278) · bord de champ, plus affirmé */
+  --ring: rgb(184 40 77); /* oklch(0.520 0.179 12) */
 
-.dark {
-  --background: oklch(0.22 0.02 278); /* nuit encre */
-  --foreground: oklch(0.94 0.012 285);
-  --card: oklch(0.26 0.02 278);
-  --card-foreground: oklch(0.94 0.012 285);
-  --popover: oklch(0.26 0.02 278);
-  --popover-foreground: oklch(0.94 0.012 285);
-  --primary: oklch(0.7 0.13 10);
-  --primary-foreground: oklch(0.2 0.02 278);
-  --secondary: oklch(0.32 0.02 278);
-  --secondary-foreground: oklch(0.94 0.012 285);
-  --muted: oklch(0.32 0.02 278);
-  --muted-foreground: oklch(0.72 0.02 285);
-  --accent: oklch(0.35 0.03 280);
-  --accent-foreground: oklch(0.94 0.012 285);
-  --destructive: oklch(0.7 0.15 28);
-  --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 16%);
-  --ring: oklch(0.7 0.13 10);
+  /* ── États ──────────────────────────────────────────────────────────────── */
+  --destructive: rgb(179 36 31); /* oklch(0.500 0.180 28) */
+  --destructive-foreground: rgb(253 252 247); /* oklch(0.990 0.007 97) */
+  --destructive-hover: rgb(158 0 8); /* oklch(0.440 0.180 28) */
+  --destructive-soft: rgb(255 232 228); /* oklch(0.951 0.028 30) · 5,6:1 */
+  --warning: rgb(
+    124 86 0
+  ); /* oklch(0.482 0.100 79) · feutre or « à vérifier » — 5,7:1 */
+  --warning-bg: rgb(250 238 201); /* oklch(0.949 0.050 92) */
+  --success: rgb(
+    14 101 63
+  ); /* oklch(0.449 0.100 158) · « confirmé » — même vert qu'activité */
+  --success-bg: rgb(217 245 227); /* oklch(0.945 0.038 157) */
 
-  --warning: oklch(0.8 0.11 80);
-  --warning-bg: oklch(0.32 0.05 75);
+  /* ── Réglure et couture ─────────────────────────────────────────────────── */
+  --rule: rgb(219 222 241); /* oklch(0.904 0.026 279) · la ligne du cahier */
+  --rule-margin: rgb(
+    184 40 77 / 0.4
+  ); /* oklch(0.520 0.179 12) / 0.4 · le trait de marge groseille */
+  --seam: rgb(
+    0 0 0 / 0.07
+  ); /* oklch(0.000 0.000 0) / 0.07 · liseré 1 px des images (jamais d'ombre) */
+  --overlay: rgb(
+    36 40 70 / 0.28
+  ); /* oklch(0.289 0.055 277) / 0.28 · voile léger (panneau) */
+  --overlay-strong: rgb(
+    36 40 70 / 0.55
+  ); /* oklch(0.289 0.055 277) / 0.55 · voile de dialogue */
+  --scrim: rgb(
+    24 16 9 / 0.58
+  ); /* oklch(0.181 0.019 62) / 0.58 · voile sous un texte sur photo */
+  --skeleton: rgb(
+    232 233 240
+  ); /* oklch(0.935 0.009 280) · squelette de chargement */
+  /* Barre collante (en-tête, barres d'action) : le papier translucide, alpha
+     DÉJÀ composé en sRGB — jamais `bg-background/95`. */
+  --surface-bar: rgb(249 247 242 / 0.88);
 
-  --rule: oklch(0.4 0.04 280);
+  /* ── Feutres : un par type de moment (couleur = sens, pas décoration) ─────
+     Cinq teintes franchement séparées (or, indigo, vert, prune, rouge), pour
+     qu'aucune ne se confonde avec une autre ni avec le groseille de l'action. */
+  --meal: rgb(125 74 30); /* oklch(0.460 0.090 58) · repas — or brûlé, 6,2:1 */
+  --meal-bg: rgb(253 233 212); /* oklch(0.945 0.035 69) */
+  --nap: rgb(63 78 151); /* oklch(0.450 0.120 272) · sieste — indigo, 6,5:1 */
+  --nap-bg: rgb(231 236 255); /* oklch(0.945 0.026 274) */
+  --activity: rgb(
+    14 101 63
+  ); /* oklch(0.449 0.100 158) · activité — vert, 6,1:1 */
+  --activity-bg: rgb(217 245 227); /* oklch(0.945 0.038 157) */
+  --anecdote: rgb(
+    124 59 139
+  ); /* oklch(0.470 0.141 320) · anecdote — prune, 6,3:1 */
+  --anecdote-bg: rgb(248 232 251); /* oklch(0.949 0.030 321) */
+  --health: rgb(165 43 30); /* oklch(0.480 0.161 30) · santé — rouge, 6,0:1 */
+  --health-bg: rgb(255 231 224); /* oklch(0.945 0.028 37) */
 
-  --meal: oklch(0.78 0.1 78);
-  --meal-bg: oklch(0.32 0.05 75);
-  --nap: oklch(0.75 0.09 278);
-  --nap-bg: oklch(0.3 0.04 278);
-  --activity: oklch(0.76 0.1 155);
-  --activity-bg: oklch(0.3 0.05 155);
-  --anecdote: oklch(0.77 0.1 8);
-  --anecdote-bg: oklch(0.32 0.05 8);
-  --health: oklch(0.75 0.12 32);
-  --health-bg: oklch(0.32 0.05 32);
+  /* ── Élévation : deux couches, presque invisibles ───────────────────────── */
+  --elev-1:
+    0 1px 2px -1px rgb(36 40 70 / 0.1), 0 10px 28px -18px rgb(36 40 70 / 0.22);
+  --elev-2:
+    0 2px 6px -2px rgb(36 40 70 / 0.12), 0 22px 48px -24px rgb(36 40 70 / 0.28);
+
+  /* ── Zones sûres de la PWA installée (encoche, barre gestuelle iOS) ─────── */
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-r: env(safe-area-inset-right, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-l: env(safe-area-inset-left, 0px);
+  --header-h: 3.5rem; /* 56 px de chrome haut : 7 % de l'écran, pas plus */
+  /* Largeur de la colonne de lecture. L'en-tête l'utilise aussi : sur un écran
+     large, le bandeau ne doit pas rester collé au bord gauche pendant que le
+     contenu est centré. Les pages devraient écrire `shell-width` plutôt que de
+     redéclarer `mx-auto max-w-lg`. */
+  --shell-max: 32rem;
+
+  color-scheme: light;
+
+  /* =========================================================================
+     Nuit encre — le mode sombre est DESSINÉ, pas inversé.
+     · le fond n'est pas noir mais un bleu-nuit profond (le carnet fermé) ;
+     · l'encre devient un blanc CHAUD (papier), pas un blanc bleuté ;
+     · la feuille est relevée d'un cran au-dessus du fond, l'ombre est
+       remplacée par un liseré haut : une ombre ne porte rien sur du noir ;
+     · chaque feutre est re-choisi pour le fond sombre (clair sur teinte
+       sombre de la même famille) et re-mesuré, il n'est pas « éclairci ».
+     ========================================================================= */
+  @variant dark {
+    --background: rgb(16 18 29); /* oklch(0.186 0.023 276) */
+    --card: rgb(29 32 44); /* oklch(0.246 0.023 274) */
+    --popover: rgb(36 39 53); /* oklch(0.276 0.026 275) */
+
+    --foreground: rgb(
+      235 232 223
+    ); /* oklch(0.931 0.012 92) · 13,2:1 sur la feuille */
+    --card-foreground: rgb(235 232 223); /* oklch(0.931 0.012 92) */
+    --popover-foreground: rgb(235 232 223); /* oklch(0.931 0.012 92) */
+    --muted-foreground: rgb(159 160 174); /* oklch(0.709 0.020 283) · 6,3:1 */
+
+    --primary: rgb(
+      238 125 141
+    ); /* oklch(0.721 0.139 12) · groseille éclairée pour la nuit */
+    --primary-foreground: rgb(16 18 29); /* oklch(0.186 0.023 276) */
+    --primary-hover: rgb(
+      254 147 161
+    ); /* oklch(0.780 0.129 12) · la nuit, le survol ÉCLAIRE */
+    --primary-soft: rgb(65 36 40); /* oklch(0.299 0.044 11) */
+
+    --secondary: rgb(42 45 58); /* oklch(0.300 0.024 275) */
+    --secondary-foreground: rgb(235 232 223); /* oklch(0.931 0.012 92) */
+    --muted: rgb(42 45 58); /* oklch(0.300 0.024 275) */
+    --accent: rgb(44 48 62); /* oklch(0.311 0.026 272) */
+    --accent-foreground: rgb(235 232 223); /* oklch(0.931 0.012 92) */
+    --border: rgb(255 255 255 / 0.16); /* oklch(1.000 0.000 0) / 0.16 */
+    --input: rgb(255 255 255 / 0.2); /* oklch(1.000 0.000 0) / 0.2 */
+    --ring: rgb(238 125 141); /* oklch(0.721 0.139 12) */
+
+    --destructive: rgb(244 124 110); /* oklch(0.720 0.150 28) */
+    --destructive-foreground: rgb(16 18 29); /* oklch(0.186 0.023 276) */
+    --destructive-hover: rgb(255 146 132); /* oklch(0.773 0.134 28) */
+    --destructive-soft: rgb(66 34 31); /* oklch(0.312 0.049 30) · 5,4:1 */
+    --warning: rgb(226 192 109); /* oklch(0.820 0.110 88) */
+    --warning-bg: rgb(58 47 20); /* oklch(0.311 0.045 88) */
+    --success: rgb(129 206 162); /* oklch(0.789 0.100 158) */
+    --success-bg: rgb(25 49 36); /* oklch(0.289 0.039 159) */
+
+    --rule: rgb(51 55 72); /* oklch(0.340 0.030 274) */
+    --rule-margin: rgb(238 125 141 / 0.45); /* oklch(0.721 0.139 12) / 0.45 */
+    --seam: rgb(255 255 255 / 0.11); /* oklch(1.000 0.000 0) / 0.11 */
+    /* La nuit, un voile fait de l'encre (presque blanche) DÉLAVERAIT la page :
+       le voile doit assombrir dans les deux thèmes. */
+    --overlay: rgb(6 9 18 / 0.6); /* oklch(0.141 0.021 267) / 0.6 */
+    --overlay-strong: rgb(4 6 13 / 0.76); /* oklch(0.123 0.018 267) / 0.76 */
+    --scrim: rgb(11 4 1 / 0.62); /* oklch(0.119 0.021 58) / 0.62 */
+    --skeleton: rgb(44 48 62); /* oklch(0.311 0.026 272) */
+    --surface-bar: rgb(16 18 29 / 0.9); /* oklch(0.186 0.023 276) / 0.9 */
+
+    --meal: rgb(227 180 125); /* oklch(0.800 0.090 70) */
+    --meal-bg: rgb(59 42 27); /* oklch(0.301 0.036 62) */
+    --nap: rgb(166 179 241); /* oklch(0.779 0.090 275) */
+    --nap-bg: rgb(37 42 61); /* oklch(0.289 0.036 273) */
+    --activity: rgb(129 206 162); /* oklch(0.789 0.100 158) */
+    --activity-bg: rgb(25 49 36); /* oklch(0.289 0.039 159) */
+    --anecdote: rgb(215 166 227); /* oklch(0.790 0.100 320) */
+    --anecdote-bg: rgb(54 40 57); /* oklch(0.300 0.036 320) */
+    --health: rgb(245 157 139); /* oklch(0.780 0.109 32) */
+    --health-bg: rgb(64 38 33); /* oklch(0.300 0.041 31) */
+
+    /* Pas d'ombre portée qui compte sur du noir : un liseré haut donne le
+       relief, l'ombre ne sert plus qu'à détacher les couches flottantes. */
+    --elev-1:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.05), 0 8px 24px -16px rgb(0 0 0 / 0.7);
+    --elev-2:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.08),
+      0 24px 48px -24px rgb(0 0 0 / 0.85);
+
+    color-scheme: dark;
+  }
 }
 
 @theme inline {
-  --radius-sm: calc(var(--radius) - 8px);
-  --radius-md: calc(var(--radius) - 4px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) + 8px);
-  --radius-3xl: calc(var(--radius) + 16px);
+  /* ── Rayons ─────────────────────────────────────────────────────────────── */
+  --radius-sm: calc(var(--radius) - 8px); /* 8  — puce, pastille */
+  --radius-md: calc(var(--radius) - 4px); /* 12 — tuile d'icône, champ */
+  --radius-lg: var(--radius); /* 16 — bouton, encart */
+  --radius-xl: calc(var(--radius) + 4px); /* 20 — image, carte compacte */
+  --radius-2xl: calc(var(--radius) + 8px); /* 24 — la feuille */
+  --radius-3xl: calc(var(--radius) + 16px); /* 32 — vignette d'état vide */
+
+  /* ── Couleurs ───────────────────────────────────────────────────────────── */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -126,6 +308,8 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-soft: var(--primary-soft);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
@@ -133,11 +317,21 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-hover: var(--destructive-hover);
+  --color-destructive-soft: var(--destructive-soft);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-warning: var(--warning);
   --color-warning-bg: var(--warning-bg);
+  --color-success: var(--success);
+  --color-success-bg: var(--success-bg);
+  --color-rule: var(--rule);
+  --color-surface-bar: var(--surface-bar);
+  --color-overlay: var(--overlay);
+  --color-overlay-strong: var(--overlay-strong);
+  --color-skeleton: var(--skeleton);
 
   --color-meal: var(--meal);
   --color-meal-bg: var(--meal-bg);
@@ -150,27 +344,158 @@
   --color-health: var(--health);
   --color-health-bg: var(--health-bg);
 
+  /* ── Ombres ─────────────────────────────────────────────────────────────── */
+  --shadow-card: var(--elev-1);
+  --shadow-lift: var(--elev-2);
+
   --font-sans: "Nunito", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Fraunces", Georgia, serif;
+
+  /* ── L'échelle : SIX crans ────────────────────────────────────────────────
+     11 · 13 · 15 · 17 · 22 · 30, interlignes 16 · 20 · 20 · 28 · 28 · 36.
+     Le sérif (Fraunces) ne sert qu'aux deux crans du haut — le titre et le
+     bandeau ; le récit et l'interface sont en Nunito. Le sérif partout, ce
+     n'est plus une intention, c'est un décor. */
+  --text-overline: 0.6875rem; /* 11/16 — surtitre, date, unité */
+  --text-overline--line-height: 1rem;
+  --text-overline--letter-spacing: 0.14em;
+  --text-overline--font-weight: 700;
+
+  --text-meta: 0.8125rem; /* 13/20 — secondaire, légende */
+  --text-meta--line-height: 1.25rem;
+
+  --text-ui: 0.9375rem; /* 15/20 — interface, bouton, libellé */
+  --text-ui--line-height: 1.25rem;
+
+  --text-body: 1.0625rem; /* 17/28 — le récit, les champs */
+  --text-body--line-height: 1.75rem;
+
+  --text-title: 1.375rem; /* 22/28 — titre de journée */
+  --text-title--line-height: 1.75rem;
+  --text-title--letter-spacing: -0.012em;
+
+  --text-display: 1.875rem; /* 30/36 — bandeau d'écran */
+  --text-display--line-height: 2.25rem;
+  --text-display--letter-spacing: -0.018em;
+
+  /* Les crans historiques retombent sur les six ci-dessus (I4). */
+  --text-xs: 0.6875rem;
+  --text-xs--line-height: 1rem;
+  --text-sm: 0.8125rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base: 0.9375rem;
+  --text-base--line-height: 1.25rem;
+  --text-lg: 1.0625rem;
+  --text-lg--line-height: 1.75rem;
+  --text-xl: 1.375rem;
+  --text-xl--line-height: 1.75rem;
+  --text-2xl: 1.375rem;
+  --text-2xl--line-height: 1.75rem;
+  --text-3xl: 1.875rem;
+  --text-3xl--line-height: 2.25rem;
+  --text-4xl: 1.875rem;
+  --text-4xl--line-height: 2.25rem;
+  --text-5xl: 1.875rem;
+  --text-5xl--line-height: 2.25rem;
+
+  /* Interlignes absolus, donc toujours multiples de 4 px : même un
+     `leading-tight` égaré reste sur la grille. */
+  --leading-tight: 1.25rem;
+  --leading-snug: 1.5rem;
+  --leading-normal: 1.75rem;
+  --leading-relaxed: 1.75rem;
+  --leading-loose: 2.25rem;
+}
+
+@theme {
+  /* ── Le budget mouvement, en entier ───────────────────────────────────────
+        pression        120 ms   ease-carnet   scale(.97)
+        survol / teinte 140 ms   ease-carnet
+        pastille, halo  160 ms   ease-carnet
+        défaut          180 ms   ease-carnet
+        page, panneau   220 ms   ease-page
+     Rien en dehors de 120–260 ms, sauf deux boucles déclarées : le balayage
+     du squelette (1200 ms) et celui du scanner (1800 ms). */
+  --ease-carnet: cubic-bezier(0.2, 0.7, 0.3, 1);
+  --ease-page: cubic-bezier(0.32, 0.72, 0, 1);
+  --default-transition-duration: 180ms;
+  --default-transition-timing-function: var(--ease-carnet);
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border;
   }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+    /* Le fond du produit vit ici (voir la note sur `body` ci-dessous). */
+    background-color: var(--background);
+  }
+
+  /* Le fond est porté par `html` SEUL, et `body` reste transparent. Ce n'est
+     pas un détail : la peinture d'un contexte d'empilement place les enfants à
+     z-index négatif AVANT le fond des descendants non positionnés. Un fond
+     opaque sur `body` recouvrait donc le décor `-z-10` de l'écran de connexion
+     (papier réglé + taches d'encre). Sur `html`, le fond devient celui du
+     canevas : il passe dessous, et la couleur de sur-défilement iOS est bonne. */
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground;
     font-family: var(--font-sans);
+    font-size: var(--text-ui);
+    line-height: 1.25rem;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    /* Le débordement horizontal est un bug à corriger, pas à masquer : on ne
+       met PAS overflow-x: hidden ici. */
+  }
+
+  /* Un halo visible sur TOUT ce qui prend le focus, y compris les éléments
+     bricolés dans les pages : le défaut du produit, pas une option. */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: var(--primary-soft);
+    color: var(--foreground);
+  }
+
+  /* Titres équilibrés, paragraphes sans veuve : pas d'orpheline d'un mot. */
+  h1,
+  h2,
+  h3,
+  h4 {
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
+
+  img,
+  video {
+    max-width: 100%;
+  }
+
+  /* Les nombres alignés partout où ils s'empilent (heures, compteurs). */
+  time,
+  [data-tabular] {
+    font-variant-numeric: tabular-nums;
   }
 }
 
 @layer components {
-  /* Fond « papier réglé » + trait de marge groseille, comme un cahier. */
+  /* ── Papier réglé + trait de marge groseille, comme un cahier ──────────────
+     La ligne tombe sous la ligne de base du cran « récit » (17/28) : la
+     réglure accompagne le texte au lieu de le barrer. */
   .paper-ruled {
-    background-image:
-      linear-gradient(var(--rule) 1px, transparent 1px);
+    background-image: linear-gradient(var(--rule) 1px, transparent 1px);
     background-size: 100% var(--rule-pitch);
-    background-position: 0 calc(var(--rule-pitch) - 0.45rem);
+    background-position: 0 calc(var(--rule-pitch) - 0.4375rem);
     position: relative;
   }
   .paper-ruled::before {
@@ -180,44 +505,217 @@
     bottom: 0;
     left: 1.5rem;
     width: 1.5px;
-    background: var(--primary);
-    opacity: 0.45;
+    background: var(--rule-margin);
+    pointer-events: none;
+  }
+  /* Une feuille sans marge : encarts, panneaux, cartes secondaires. */
+  .paper-ruled--plain::before {
+    content: none;
   }
 
-  /* Récit posé sur les lignes du cahier : un interligne = une ligne réglée,
-     pour que la réglure accompagne le texte au lieu de le barrer. */
+  /* Récit posé sur les lignes du cahier. */
   .carnet-story {
+    font-size: var(--text-body);
     line-height: var(--rule-pitch);
   }
 
-  /* Encre qui dérive doucement derrière l'écran de connexion. */
+  /* Mesure de lecture : 45–75 caractères, jamais un paragraphe qui traverse
+     un écran de bureau d'un bord à l'autre. */
+  .measure {
+    max-width: 34rem;
+  }
+
+  /* ── Surtitre : la date, l'unité, le mois — toujours le même objet ────────
+     NB : la classe s'appelle `surtitre` et pas `overline`, parce que Tailwind
+     possède déjà un utilitaire `overline` (text-decoration-line: overline) qui
+     gagnerait, et soulignerait le texte par le haut. */
+  .surtitre {
+    font-size: var(--text-overline);
+    line-height: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  /* ── Liseré 1 px des images : une photo pâle garde son bord sur du blanc ── */
+  .seam {
+    box-shadow: inset 0 0 0 1px var(--seam);
+  }
+
+  /* ── Voile sous un texte posé sur une photo (contraste mesurable) ───────── */
+  .scrim {
+    background-image: linear-gradient(
+      to top,
+      var(--scrim) 0%,
+      rgb(0 0 0 / 0) 72%
+    );
+  }
+
+  /* ── Squelette de chargement : la FORME de la réponse, pas un spinner ─────
+     Boucle déclarée : balayage 1200 ms linéaire, arrêté sous
+     prefers-reduced-motion (il ne porte aucune information). */
+  .skeleton {
+    position: relative;
+    overflow: hidden;
+    background-color: var(--skeleton);
+    border-radius: var(--radius-md);
+  }
+  .skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: linear-gradient(
+      90deg,
+      rgb(255 255 255 / 0) 0%,
+      rgb(255 255 255 / 0.35) 50%,
+      rgb(255 255 255 / 0) 100%
+    );
+    animation: skeleton-sweep 1200ms linear infinite;
+  }
+
+  /* ── Transition de page : 220 ms, un souffle, jamais un carrousel ─────────
+     Fondu SEUL, volontairement : une transformation sur le conteneur de page
+     ferait des barres d'action `position: fixed` des pages des enfants
+     positionnés par rapport à lui, et elles sauteraient à chaque navigation.
+     Pour du contenu qui monte, il y a `.rise-enter` (à n'appliquer qu'à un bloc
+     qui ne contient rien de `fixed`). */
+  .page-enter {
+    animation: page-enter 220ms var(--ease-page) both;
+  }
+  .rise-enter {
+    animation: rise-enter 220ms var(--ease-page) both;
+  }
+
+  /* ── Panneau qui descend sous l'en-tête ─────────────────────────────────── */
+  .panel-down {
+    animation: panel-down 220ms var(--ease-page) both;
+  }
+
+  /* ── Encre qui dérive doucement derrière l'écran de connexion ───────────── */
   .animate-login-drift {
     animation-name: login-drift;
     animation-timing-function: ease-in-out;
     animation-iteration-count: infinite;
   }
-  @media (prefers-reduced-motion: reduce) {
-    .animate-login-drift {
-      animation: none;
-    }
-  }
 
-  /* Fondu d'une page du carnet à l'autre pendant la lecture par Racontine. */
+  /* ── Fondu d'une page du carnet à l'autre pendant la lecture ────────────── */
   .animate-scan-fade {
-    animation: scan-fade 500ms ease-out both;
+    animation: scan-fade 220ms var(--ease-page) both;
   }
-  /* Bandeau lumineux qui balaie la page, comme un scanner. */
+  /* Bandeau lumineux qui balaie la page, comme un scanner (boucle déclarée). */
   .animate-scan-sweep {
     animation-name: scan-sweep;
-    animation-duration: 1.8s;
+    animation-duration: 1800ms;
     animation-timing-function: ease-in-out;
     animation-iteration-count: infinite;
   }
-  @media (prefers-reduced-motion: reduce) {
-    .animate-scan-fade,
-    .animate-scan-sweep {
-      animation: none;
-    }
+}
+
+/* Le balayage du squelette est presque invisible sur fond sombre s'il reste
+   blanc à 35 % : on le rabaisse. */
+.dark .skeleton::after {
+  background-image: linear-gradient(
+    90deg,
+    rgb(255 255 255 / 0) 0%,
+    rgb(255 255 255 / 0.07) 50%,
+    rgb(255 255 255 / 0) 100%
+  );
+}
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) .skeleton::after {
+    background-image: linear-gradient(
+      90deg,
+      rgb(255 255 255 / 0) 0%,
+      rgb(255 255 255 / 0.07) 50%,
+      rgb(255 255 255 / 0) 100%
+    );
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Utilitaires partagés : cible tactile, zones sûres, durées.
+   --------------------------------------------------------------------------- */
+
+/* La colonne : même axe pour l'en-tête, le panneau et le contenu. */
+@utility shell-width {
+  margin-inline: auto;
+  width: 100%;
+  max-width: var(--shell-max);
+}
+
+/* 44 x 44 minimum : la seule taille tactile honnête (I2). */
+@utility tap {
+  min-block-size: 2.75rem;
+  min-inline-size: 2.75rem;
+}
+
+@utility pt-safe {
+  padding-top: var(--safe-t);
+}
+@utility pb-safe {
+  padding-bottom: var(--safe-b);
+}
+@utility px-safe {
+  padding-left: var(--safe-l);
+  padding-right: var(--safe-r);
+}
+/* Barre d'action collée en bas : sa marge basse absorbe la barre gestuelle. */
+@utility pb-safe-4 {
+  padding-bottom: calc(var(--safe-b) + 1rem);
+}
+@utility pb-safe-6 {
+  padding-bottom: calc(var(--safe-b) + 1.5rem);
+}
+/* Un panneau qui s'ouvre sous l'en-tête collant. */
+@utility top-header {
+  top: calc(var(--header-h) + var(--safe-t));
+}
+@utility h-header {
+  height: var(--header-h);
+}
+
+@utility dur-press {
+  transition-duration: 120ms;
+}
+@utility dur-fast {
+  transition-duration: 140ms;
+}
+@utility dur-chip {
+  transition-duration: 160ms;
+}
+@utility dur-base {
+  transition-duration: 180ms;
+}
+@utility dur-slow {
+  transition-duration: 220ms;
+}
+
+@keyframes skeleton-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes page-enter {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes rise-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@keyframes panel-down {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
   }
 }
 
@@ -261,24 +759,28 @@
 @keyframes enter {
   from {
     opacity: var(--tw-enter-opacity, 1);
-    transform: translate3d(0, 0, 0) scale(var(--tw-enter-scale, 1));
+    transform: translate3d(0, var(--tw-enter-translate-y, 0), 0)
+      scale(var(--tw-enter-scale, 1));
   }
 }
 @keyframes exit {
   to {
     opacity: var(--tw-exit-opacity, 1);
-    transform: translate3d(0, 0, 0) scale(var(--tw-exit-scale, 1));
+    transform: translate3d(0, var(--tw-exit-translate-y, 0), 0)
+      scale(var(--tw-exit-scale, 1));
   }
 }
 
 @utility animate-in {
   animation-name: enter;
-  animation-duration: 150ms;
+  animation-duration: 180ms;
+  animation-timing-function: var(--ease-carnet);
   animation-fill-mode: both;
 }
 @utility animate-out {
   animation-name: exit;
-  animation-duration: 150ms;
+  animation-duration: 140ms;
+  animation-timing-function: var(--ease-carnet);
   animation-fill-mode: both;
 }
 
@@ -289,8 +791,37 @@
   --tw-exit-opacity: 0;
 }
 @utility zoom-in-95 {
-  --tw-enter-scale: 0.95;
+  --tw-enter-scale: 0.96;
 }
 @utility zoom-out-95 {
-  --tw-exit-scale: 0.95;
+  --tw-exit-scale: 0.96;
+}
+@utility slide-in-from-bottom-2 {
+  --tw-enter-translate-y: 0.5rem;
+}
+@utility slide-in-from-top-2 {
+  --tw-enter-translate-y: -0.5rem;
+}
+
+/* ---------------------------------------------------------------------------
+   « Moins de mouvement » : les transitions s'effondrent, les boucles
+   s'arrêtent, et AUCUNE information n'était portée par le mouvement seul —
+   le squelette reste une teinte pleine, le halo de focus reste un halo.
+   --------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    transition-delay: 0ms !important;
+  }
+  html {
+    scroll-behavior: auto;
+  }
+  .skeleton::after {
+    display: none;
+  }
 }

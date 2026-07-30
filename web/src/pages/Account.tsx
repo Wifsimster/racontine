@@ -4,6 +4,7 @@ import { api } from "@/lib/api";
 import type { Me } from "@/lib/types";
 import LlmKey from "@/components/LlmKey";
 import McpTokens from "@/components/McpTokens";
+import { PageShell, PageHeader } from "@/components/PageState";
 
 /**
  * « Mon compte » — réglages propres à l'utilisateur connecté, accessibles à
@@ -15,19 +16,48 @@ export default function Account() {
   const [me, setMe] = useState<Me | null>(null);
 
   useEffect(() => {
-    api.me().then(setMe).catch(() => {});
+    api
+      .me()
+      .then(setMe)
+      .catch(() => {
+        /* L'identité est un ORNEMENT ici : les deux encarts ci-dessous portent
+           leur propre chargement et leur propre erreur. Un échec sur /me ne doit
+           pas masquer la clé API ni les jetons — on retombe simplement sur la
+           phrase générique. */
+      });
   }, []);
 
   return (
-    <div className="mx-auto flex w-full max-w-lg flex-col gap-6 p-4 pb-24">
-      <div className="flex items-center gap-2">
-        <CircleUser className="size-5 text-primary" />
-        <h1 className="text-xl font-semibold">Mon compte</h1>
-      </div>
-      <p className="-mt-4 text-sm text-muted-foreground">
-        {me
-          ? `Connecté·e en tant que ${me.name} · ${me.email}`
-          : "Vos réglages personnels — clé API d'extraction et connexions Claude."}
+    <PageShell>
+      <PageHeader
+        title="Mon compte"
+        lede="Vos réglages personnels : la clé qui lit vos carnets et vos connexions Claude."
+      />
+
+      {/* Qui est connecté·e. La ligne ne remplace pas le bandeau : elle
+          l'ancre, au cran de la légende, avec sa propre tuile d'icône. */}
+      <p className="flex min-w-0 items-center gap-3 rounded-2xl border bg-card p-4 text-meta shadow-card">
+        <span
+          aria-hidden="true"
+          className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary"
+        >
+          <CircleUser className="size-5" />
+        </span>
+        {me ? (
+          <span className="flex min-w-0 flex-col">
+            <span className="truncate text-ui font-bold">{me.name}</span>
+            <span className="truncate text-muted-foreground">{me.email}</span>
+          </span>
+        ) : (
+          <span className="flex min-w-0 flex-1 flex-col gap-1.5">
+            <span
+              className="skeleton h-4 w-32"
+              role="status"
+              aria-label="On ouvre votre compte"
+            />
+            <span aria-hidden="true" className="skeleton h-3 w-44" />
+          </span>
+        )}
       </p>
 
       {/* Clé API Anthropic propre à cet utilisateur (facturée sur son compte). */}
@@ -35,6 +65,6 @@ export default function Account() {
 
       {/* Jetons MCP personnels (portent les droits de cet utilisateur). */}
       <McpTokens />
-    </div>
+    </PageShell>
   );
 }

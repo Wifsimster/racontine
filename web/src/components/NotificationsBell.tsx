@@ -128,7 +128,7 @@ export default function NotificationsBell() {
       >
         <Bell />
         {unread > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 flex min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-4 text-primary-foreground">
+          <span className="absolute top-1 right-1 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-xs font-bold text-primary-foreground">
             {unread > 9 ? "9+" : unread}
           </span>
         )}
@@ -137,45 +137,53 @@ export default function NotificationsBell() {
       {open && pos && (
         <div
           style={{ top: pos.top, right: pos.right }}
-          className="fixed z-20 w-80 max-w-[calc(100vw-1rem)] overflow-hidden rounded-xl border bg-popover shadow-lg"
+          className="panel-down fixed z-40 w-80 max-w-[calc(100vw-1rem)] overflow-hidden rounded-2xl border bg-popover text-popover-foreground shadow-lift"
         >
-          <div className="flex items-center justify-between border-b px-3 py-2">
-            <span className="text-sm font-semibold">Notifications</span>
+          <div className="flex min-h-11 items-center justify-between gap-2 border-b pl-4">
+            <span className="text-ui font-bold">Notifications</span>
             {unread > 0 && (
-              <button
-                className="text-xs text-primary hover:underline"
-                onClick={markAll}
-              >
+              <Button variant="link" size="sm" onClick={markAll}>
                 Tout marquer lu
-              </button>
+              </Button>
             )}
           </div>
           <div className="max-h-96 overflow-y-auto">
             {items.length === 0 ? (
-              <p className="px-3 py-8 text-center text-sm text-muted-foreground">
-                Aucune notification.
-              </p>
+              /* État vide dessiné : on nomme ce qui arrivera ici, on ne se
+                 contente pas d'un « Aucune notification ». */
+              <div className="px-6 py-8 text-center">
+                <span className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+                  <Bell className="size-5" aria-hidden="true" />
+                </span>
+                <p className="mt-4 text-ui font-bold">Rien de neuf</p>
+                <p className="mt-1 text-meta text-muted-foreground">
+                  Vous serez prévenu ici dès qu'une journée est publiée.
+                </p>
+              </div>
             ) : (
               items.map((n) => (
                 <button
                   key={n.id}
                   onClick={() => onClickItem(n)}
-                  className={`flex w-full flex-col items-start gap-0.5 border-b px-3 py-2.5 text-left last:border-b-0 hover:bg-accent ${
-                    n.readAt ? "" : "bg-primary/5"
+                  className={`flex min-h-11 w-full flex-col items-start gap-1 border-b px-4 py-3 text-left transition-colors dur-fast last:border-b-0 hover:bg-accent ${
+                    n.readAt ? "" : "bg-primary-soft"
                   }`}
                 >
-                  <div className="flex w-full items-center gap-2">
+                  <span className="flex w-full items-center gap-2">
                     {!n.readAt && (
-                      <span className="size-2 shrink-0 rounded-full bg-primary" />
+                      <span
+                        className="size-2 shrink-0 rounded-full bg-primary"
+                        aria-hidden="true"
+                      />
                     )}
-                    <span className="text-sm font-medium">{n.title}</span>
-                  </div>
+                    <span className="text-ui font-bold">{n.title}</span>
+                  </span>
                   {n.body && (
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-meta text-muted-foreground">
                       {n.body}
                     </span>
                   )}
-                  <span className="text-[11px] text-muted-foreground">
+                  <span className="surtitre text-muted-foreground">
                     {timeAgo(n.createdAt)}
                   </span>
                 </button>

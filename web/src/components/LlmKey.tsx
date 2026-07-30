@@ -5,8 +5,9 @@ import {
   Save,
   Trash2,
   Check,
-  Loader2,
   ShieldCheck,
+  ExternalLink,
+  TriangleAlert,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import type { UserLlm } from "@/lib/types";
@@ -23,6 +24,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { InlineError } from "@/components/PageState";
 
 /**
  * Clé API Anthropic propre à l'utilisateur : la lecture des carnets est
@@ -76,60 +78,70 @@ export default function LlmKey() {
   }
 
   return (
-    <section className="flex flex-col rounded-2xl border bg-card px-5 shadow-sm">
-      <div className="flex items-center gap-2 border-b py-4 text-sm font-medium">
-        <Sparkles className="size-4 text-primary" />
+    <section className="flex flex-col rounded-2xl border bg-card px-5 shadow-card">
+      <h2 className="flex items-center gap-2 border-b py-4 text-ui font-bold">
+        <Sparkles className="size-4 shrink-0 text-primary" aria-hidden="true" />
         Clé API d'extraction (Anthropic)
-      </div>
+      </h2>
 
       <div className="flex flex-col gap-4 py-4">
-        <p className="text-sm text-muted-foreground">
+        <p className="text-meta text-pretty text-muted-foreground">
           La lecture automatique des carnets utilise <strong>votre</strong> clé
-          API Anthropic : les appels sont facturés sur votre compte. Créez-en une
-          sur{" "}
+          API Anthropic : les appels sont facturés sur votre compte. Elle est
+          stockée chiffrée et n'est jamais réaffichée.
+        </p>
+
+        {/* « Aller chercher une clé » est une ACTION, pas une incise : en lien
+            dans la phrase, la cible faisait 129 x 18 px (I2). Sortie du
+            paragraphe, elle fait 44 px de haut et se voit. */}
+        <Button
+          asChild
+          variant="outline"
+          size="sm"
+          /* `whitespace-normal` : le libellé du bouton est long, et à 320 px un
+             `nowrap` poussait la page à 325 px de large (I5). */
+          className="h-auto min-h-11 self-start py-2 text-left whitespace-normal"
+        >
           <a
             href="https://console.anthropic.com/settings/keys"
             target="_blank"
             rel="noreferrer"
-            className="text-primary underline underline-offset-2"
           >
-            console.anthropic.com
+            <ExternalLink aria-hidden="true" />
+            Créer une clé sur console.anthropic.com
           </a>
-          . Elle est stockée chiffrée et n'est jamais réaffichée.
-        </p>
+        </Button>
 
         {/* État actuel */}
         {state?.configured ? (
-          <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
-            <ShieldCheck className="size-4 shrink-0 text-primary" />
+          <div className="flex items-center gap-2 rounded-xl bg-success-bg px-3 py-2 text-meta text-success">
+            <ShieldCheck className="size-4 shrink-0" aria-hidden="true" />
             <span className="flex-1">
               Clé configurée{" "}
-              <code className="text-muted-foreground">
-                sk-ant-…{state.hint}
-              </code>
+              <code data-tabular>sk-ant-…{state.hint}</code>
             </span>
             <Button
               variant="ghost"
-              size="sm"
-              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+              size="icon-sm"
+              className="-mr-2 shrink-0 text-destructive hover:bg-destructive-soft hover:text-destructive"
               onClick={() => setConfirmClear(true)}
               aria-label="Supprimer la clé API"
             >
-              <Trash2 className="size-3.5" />
+              <Trash2 />
             </Button>
           </div>
         ) : state ? (
-          <div className="rounded-lg border bg-background px-3 py-2 text-sm text-muted-foreground">
+          <div className="rounded-xl border bg-background px-3 py-2 text-meta text-muted-foreground">
             Aucune clé configurée — l'import de carnets est indisponible tant
             qu'une clé n'est pas enregistrée.
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">Chargement…</p>
+          <div className="skeleton h-10 w-full" role="status" aria-label="On regarde si une clé est enregistrée" />
         )}
 
         {/* Saisie / remplacement */}
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="anthropicKey" className="text-xs text-muted-foreground">
+          <Label htmlFor="anthropicKey">
             {state?.configured ? "Remplacer la clé" : "Clé API Anthropic"}
           </Label>
           <div className="flex items-end gap-2">
@@ -144,25 +156,29 @@ export default function LlmKey() {
                 if (e.key === "Enter") save();
               }}
             />
-            <Button onClick={save} disabled={!value.trim() || saving}>
-              {saving ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : saved ? (
-                <Check className="size-4" />
-              ) : (
-                <Save className="size-4" />
-              )}
+            <Button onClick={save} loading={saving} disabled={!value.trim()}>
+              {!saving &&
+                (saved ? (
+                  <Check aria-hidden="true" />
+                ) : (
+                  <Save aria-hidden="true" />
+                ))}
               {saved ? "Enregistré" : "Enregistrer"}
             </Button>
           </div>
-          <p className="flex items-center gap-1 text-xs text-muted-foreground">
-            <KeyRound className="size-3" />
+          <p className="flex items-center gap-1.5 text-meta text-muted-foreground">
+            <KeyRound className="size-3.5 shrink-0" aria-hidden="true" />
             La clé reste sur ce serveur, chiffrée ; elle sert uniquement à lire
             vos carnets.
           </p>
         </div>
 
-        {error && <p className="text-sm text-destructive">{error}</p>}
+        {error && (
+          <InlineError>
+            <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+            {error}
+          </InlineError>
+        )}
       </div>
 
       <AlertDialog

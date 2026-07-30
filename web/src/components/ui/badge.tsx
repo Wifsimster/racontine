@@ -1,19 +1,41 @@
-import * as React from "react"
-import { cva, type VariantProps } from "class-variance-authority"
-import { Slot } from "radix-ui"
+import * as React from "react";
+import { cva, type VariantProps } from "class-variance-authority";
+import { Slot } from "radix-ui";
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils";
 
+/**
+ * Pastille.
+ *
+ * Chaque variante est une paire (encre, fond) mesurée dans LES DEUX thèmes
+ * (>= 5,1:1). Les variantes `success` / `warning` portent un état : la couleur
+ * ne suffit jamais, on leur passe une icône (`<Check/>`, `<TriangleAlert/>`)
+ * pour que l'état reste lisible en noir et blanc.
+ *
+ * Une pastille cliquable (`<a>` / `<button>`) passe automatiquement à 44 px de
+ * haut : une cible de 20 px n'est pas une cible (I2).
+ */
 const badgeVariants = cva(
-  "inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-full border border-transparent px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&>svg]:pointer-events-none [&>svg]:size-3",
+  [
+    "inline-flex w-fit min-h-6 shrink-0 items-center justify-center gap-1",
+    "rounded-full border border-transparent px-3 py-1",
+    "text-xs font-bold whitespace-nowrap",
+    "transition-[color,background-color,border-color,box-shadow] dur-chip ease-carnet",
+    "[a&]:min-h-11 [a&]:px-4 [button&]:min-h-11 [button&]:px-4",
+    "[&>svg]:pointer-events-none [&>svg]:size-3",
+  ],
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground [a&]:hover:bg-primary/90",
+        default:
+          "bg-primary text-primary-foreground [a&]:hover:bg-primary-hover",
         secondary:
-          "bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/90",
+          "bg-secondary text-secondary-foreground [a&]:hover:bg-accent",
+        soft: "bg-muted text-muted-foreground [a&]:hover:text-foreground",
+        success: "bg-success-bg text-success",
+        warning: "bg-warning-bg text-warning",
         destructive:
-          "bg-destructive text-white focus-visible:ring-destructive/20 dark:bg-destructive/60 dark:focus-visible:ring-destructive/40 [a&]:hover:bg-destructive/90",
+          "bg-destructive text-destructive-foreground [a&]:hover:bg-destructive-hover",
         outline:
           "border-border text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
         ghost: "[a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
@@ -23,8 +45,8 @@ const badgeVariants = cva(
     defaultVariants: {
       variant: "default",
     },
-  }
-)
+  },
+);
 
 function Badge({
   className,
@@ -33,7 +55,7 @@ function Badge({
   ...props
 }: React.ComponentProps<"span"> &
   VariantProps<typeof badgeVariants> & { asChild?: boolean }) {
-  const Comp = asChild ? Slot.Root : "span"
+  const Comp = asChild ? Slot.Root : "span";
 
   return (
     <Comp
@@ -42,7 +64,7 @@ function Badge({
       className={cn(badgeVariants({ variant }), className)}
       {...props}
     />
-  )
+  );
 }
 
-export { Badge, badgeVariants }
+export { Badge, badgeVariants };
