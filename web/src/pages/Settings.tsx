@@ -2,15 +2,15 @@ import { useEffect, useState } from "react";
 import {
   Settings as SettingsIcon,
   Save,
-  Loader2,
   Check,
   ShieldAlert,
-  Mail,
+  Link2,
   Sparkles,
   UserPlus,
   Clock,
   Bell,
-  ServerCog,
+  CloudOff,
+  TriangleAlert,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import type { AppSettings, SettingsMeta } from "@/lib/types";
@@ -18,78 +18,107 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { Toggle } from "@/components/ui/toggle";
+import {
+  PageShell,
+  PageHeader,
+  PageState,
+  PageSkeleton,
+  SectionLabel,
+  InlineError,
+} from "@/components/PageState";
 
-/** Interrupteur on/off accessible (pas de composant Switch dans le repo). */
-function Toggle({
-  checked,
-  onChange,
-  disabled,
-  id,
-}: {
-  checked: boolean;
-  onChange: (v: boolean) => void;
-  disabled?: boolean;
-  id?: string;
-}) {
-  return (
-    <button
-      type="button"
-      id={id}
-      role="switch"
-      aria-checked={checked}
-      disabled={disabled}
-      onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50 ${
-        checked ? "bg-primary" : "bg-input"
-      }`}
-    >
-      <span
-        className={`inline-block size-5 rounded-full bg-background shadow transition-transform ${
-          checked ? "translate-x-5" : "translate-x-0.5"
-        }`}
-      />
-    </button>
-  );
-}
-
+/**
+ * Une ligne de réglage : le libellé et son aide, puis le contrôle.
+ *
+ * ELLE S'EMPILE SOUS 480 px, et c'est la correction qui compte. En côte à côte,
+ * un `Select` portant « claude-sonnet-4-5-20250929 » impose sa largeur
+ * intrinsèque et écrase la colonne de gauche : l'aide « Modèle Claude vision
+ * utilisé pour lire les carnets… » tombait sur NEUF lignes d'un ou deux mots, et
+ * « Nom de l'instance » se coupait en « Nom de / l'instance ». Sur un téléphone,
+ * le contrôle passe donc SOUS son libellé et prend toute la largeur ; le côte à
+ * côte revient à partir de `sm`, où il y a la place.
+ */
 function Row({
-  icon,
+  icon: Icon,
   title,
   hint,
   htmlFor,
+  inline = false,
   children,
 }: {
-  icon: React.ReactNode;
+  icon: React.ElementType;
   title: string;
   hint?: string;
   htmlFor?: string;
+  /** Contrôle étroit (un interrupteur) : il reste à droite, même sur téléphone. */
+  inline?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-start justify-between gap-4 py-4">
-      <div className="flex min-w-0 flex-col gap-0.5">
-        <Label htmlFor={htmlFor} className="flex items-center gap-2 font-medium">
-          <span className="text-primary">{icon}</span>
+    <div
+      className={
+        inline
+          ? "flex items-start justify-between gap-4 py-4"
+          : "flex flex-col gap-3 py-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6"
+      }
+    >
+      <div className="flex min-w-0 flex-col gap-1">
+        <Label
+          htmlFor={htmlFor}
+          className="flex items-center gap-2 text-ui font-bold"
+        >
+          <Icon className="size-4 shrink-0 text-primary" aria-hidden="true" />
           {title}
         </Label>
-        {hint && <p className="text-sm text-muted-foreground">{hint}</p>}
+        {hint && (
+          <p className="max-w-[46ch] text-meta text-pretty text-muted-foreground">
+            {hint}
+          </p>
+        )}
       </div>
-      <div className="shrink-0">{children}</div>
+      <div className={inline ? "shrink-0" : "shrink-0 sm:pt-1"}>{children}</div>
     </div>
   );
 }
 
+/**
+ * Un service d'infrastructure, piloté par l'environnement (lecture seule).
+ * L'état double la couleur par un MOT (« configuré » / « absent ») : il reste
+ * lisible en niveaux de gris.
+ */
 function StatusPill({ ok, label }: { ok: boolean; label: string }) {
   return (
-    <div className="flex items-center gap-2 rounded-lg border bg-background px-3 py-2 text-sm">
+    <div className="flex items-center gap-2 rounded-xl border bg-background px-3 py-3">
       <span
-        className={`size-2 shrink-0 rounded-full ${ok ? "bg-primary" : "bg-muted-foreground/40"}`}
+        aria-hidden="true"
+        className={`size-2 shrink-0 rounded-full ${ok ? "bg-success" : "bg-muted-foreground"}`}
       />
-      <span className="flex-1">{label}</span>
-      <span className="text-xs text-muted-foreground">
+      <span className="min-w-0 flex-1 text-meta">{label}</span>
+      <span
+        className={`shrink-0 text-meta font-bold ${ok ? "text-success" : "text-muted-foreground"}`}
+      >
         {ok ? "configuré" : "absent"}
       </span>
     </div>
+  );
+}
+
+/** Une feuille de réglages : un intertitre, puis des lignes séparées par un filet. */
+function Section({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="flex flex-col gap-1">
+      <SectionLabel className="px-1">{label}</SectionLabel>
+      <div className="flex flex-col divide-y rounded-2xl border bg-card px-5 shadow-card">
+        {children}
+      </div>
+    </section>
   );
 }
 
@@ -159,32 +188,55 @@ export default function Settings() {
     }
   }
 
+  /* Le bandeau reste dans les quatre états : le titre d'un écran ne dépend pas
+     de ses données. */
+  const header = (
+    <PageHeader
+      title="Réglages"
+      lede="Ces réglages s'appliquent immédiatement à toute l'instance, sans redéploiement."
+    />
+  );
+
   if (loading)
     return (
-      <p className="py-16 text-center text-muted-foreground">Chargement…</p>
+      <PageShell>
+        {header}
+        <PageSkeleton label="Racontine ouvre les réglages" rows={3} />
+      </PageShell>
     );
 
   if (forbidden)
     return (
-      <div className="mx-auto flex max-w-lg flex-col items-center gap-3 px-4 py-16 text-center">
-        <div className="rounded-full bg-primary/10 p-4">
-          <ShieldAlert className="size-7 text-primary" />
-        </div>
-        <p className="font-medium">Réglages réservés au propriétaire</p>
-        <p className="max-w-xs text-sm text-muted-foreground">
-          Seul le propriétaire de l'instance (le premier compte créé) peut gérer
-          les réglages de l'application.
-        </p>
-      </div>
+      <PageShell>
+        {header}
+        <PageState
+          icon={ShieldAlert}
+          tone="locked"
+          title="Réglages réservés au propriétaire"
+        >
+          Seul le propriétaire de l'instance — le premier compte créé — peut
+          modifier les réglages de l'application. Vos propres réglages, eux, sont
+          dans « Mon compte ».
+        </PageState>
+      </PageShell>
     );
 
   if (!settings || !meta)
     return (
-      <div className="mx-auto max-w-lg px-4 py-16 text-center">
-        <p className="text-sm text-destructive">
-          {error ?? "Réglages indisponibles."}
-        </p>
-      </div>
+      <PageShell>
+        {header}
+        <PageState
+          icon={CloudOff}
+          tone="error"
+          title="Les réglages ne répondent pas"
+          actions={
+            <Button onClick={() => window.location.reload()}>Réessayer</Button>
+          }
+        >
+          {error ??
+            "La connexion au serveur a échoué. Rien n'a été modifié : réessayez dans un instant."}
+        </PageState>
+      </PageShell>
     );
 
   const models = Array.from(
@@ -192,20 +244,12 @@ export default function Settings() {
   );
 
   return (
-    <div className="mx-auto flex w-full max-w-lg flex-col gap-6 p-4 pb-24">
-      <div className="flex items-center gap-2">
-        <SettingsIcon className="size-5 text-primary" />
-        <h1 className="text-xl font-semibold">Réglages de l'application</h1>
-      </div>
-      <p className="-mt-4 text-sm text-muted-foreground">
-        Ces réglages s'appliquent immédiatement à toute l'instance, sans
-        redéploiement.
-      </p>
+    <PageShell className="pb-8">
+      {header}
 
-      {/* Général */}
-      <section className="rounded-2xl border bg-card px-5 shadow-sm">
+      <Section label="L'instance">
         <Row
-          icon={<SettingsIcon className="size-4" />}
+          icon={SettingsIcon}
           title="Nom de l'instance"
           hint="Affiché dans l'en-tête et sur l'écran de connexion."
           htmlFor="appName"
@@ -215,70 +259,62 @@ export default function Settings() {
             value={settings.appName}
             maxLength={60}
             onChange={(e) => patch("appName", e.target.value)}
-            className="w-48"
+            className="w-full sm:w-48"
           />
         </Row>
-      </section>
+      </Section>
 
-      {/* Accès */}
-      <section className="flex flex-col rounded-2xl border bg-card px-5 shadow-sm">
-        <div className="border-b pt-4 pb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Accès & partage
-        </div>
-        <div className="divide-y">
-          <Row
-            icon={<UserPlus className="size-4" />}
-            title="Inscriptions ouvertes"
-            hint="Autorise la création de comptes email/mot de passe. À fermer une fois le foyer créé — les proches invités par lien restent acceptés."
-            htmlFor="signupEnabled"
-          >
-            <Toggle
-              id="signupEnabled"
-              checked={settings.signupEnabled}
-              onChange={(v) => patch("signupEnabled", v)}
-            />
-          </Row>
-          <Row
-            icon={<Clock className="size-4" />}
-            title="Validité des invitations"
-            hint="Durée avant expiration d'un lien d'invitation."
-            htmlFor="invitationTtlDays"
-          >
-            <div className="flex items-center gap-2">
-              <Input
-                id="invitationTtlDays"
-                type="number"
-                min={1}
-                max={365}
-                value={settings.invitationTtlDays}
-                onChange={(e) =>
-                  patch(
-                    "invitationTtlDays",
-                    Math.max(1, Math.min(365, Number(e.target.value) || 1)),
-                  )
-                }
-                className="w-20"
-              />
-              <span className="text-sm text-muted-foreground">jours</span>
-            </div>
-          </Row>
-        </div>
-      </section>
-
-      {/* Notifications */}
-      <section className="flex flex-col rounded-2xl border bg-card px-5 shadow-sm">
-        <div className="border-b pt-4 pb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Notifications
-        </div>
+      <Section label="Accès & partage">
         <Row
-          icon={<Bell className="size-4" />}
+          icon={UserPlus}
+          title="Inscriptions ouvertes"
+          hint="Autorise la création de comptes email/mot de passe. À fermer une fois le foyer créé — les proches invités par lien restent acceptés."
+          htmlFor="signupEnabled"
+          inline
+        >
+          <Toggle
+            id="signupEnabled"
+            checked={settings.signupEnabled}
+            onChange={(v) => patch("signupEnabled", v)}
+          />
+        </Row>
+        <Row
+          icon={Clock}
+          title="Validité des invitations"
+          hint="Durée avant expiration d'un lien d'invitation."
+          htmlFor="invitationTtlDays"
+        >
+          <div className="flex items-center gap-2">
+            <Input
+              id="invitationTtlDays"
+              type="number"
+              min={1}
+              max={365}
+              value={settings.invitationTtlDays}
+              onChange={(e) =>
+                patch(
+                  "invitationTtlDays",
+                  Math.max(1, Math.min(365, Number(e.target.value) || 1)),
+                )
+              }
+              className="w-20"
+            />
+            <span className="text-meta text-muted-foreground">jours</span>
+          </div>
+        </Row>
+      </Section>
+
+      <Section label="Notifications">
+        <Row
+          icon={Bell}
           title="E-mails de notification"
           hint={
             meta.mailConfigured
               ? "Envoie un e-mail aux abonnés à chaque journée publiée."
-              : "SMTP non configuré : les e-mails sont désactivés quoi qu'il arrive (notifications in-app seules)."
+              : "SMTP non configuré : les e-mails sont désactivés quoi qu'il arrive (notifications dans l'app seules)."
           }
           htmlFor="emailNotificationsEnabled"
+          inline
         >
           <Toggle
             id="emailNotificationsEnabled"
@@ -287,13 +323,12 @@ export default function Settings() {
             onChange={(v) => patch("emailNotificationsEnabled", v)}
           />
         </Row>
-      </section>
+      </Section>
 
-      {/* Extraction */}
-      <section className="rounded-2xl border bg-card px-5 shadow-sm">
+      <Section label="Lecture des carnets">
         <Row
-          icon={<Sparkles className="size-4" />}
-          title="Modèle d'extraction (VLM)"
+          icon={Sparkles}
+          title="Modèle d'extraction"
           hint="Modèle Claude vision utilisé pour lire les carnets, avec la clé API de chaque contributeur."
           htmlFor="vlmModel"
         >
@@ -301,6 +336,7 @@ export default function Settings() {
             id="vlmModel"
             value={settings.vlmModel}
             onChange={(e) => patch("vlmModel", e.target.value)}
+            className="w-full sm:w-auto"
           >
             {models.map((m) => (
               <option key={m} value={m}>
@@ -309,53 +345,67 @@ export default function Settings() {
             ))}
           </Select>
         </Row>
-      </section>
+      </Section>
 
-      {/* Infra (lecture seule) */}
-      <section className="flex flex-col gap-2 rounded-2xl border bg-card p-5 shadow-sm">
-        <div className="flex items-center gap-2 text-sm font-medium">
-          <ServerCog className="size-4 text-primary" />
-          Infrastructure
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Piloté par les variables d'environnement du serveur (lecture seule).
-        </p>
-        <div className="mt-1 flex flex-col gap-2">
-          <StatusPill ok={meta.mailConfigured} label="Serveur e-mail (SMTP)" />
-          <StatusPill
-            ok={meta.webPushConfigured}
-            label="Notifications navigateur (Web Push)"
-          />
-          <StatusPill
-            ok={meta.notifyWebhookConfigured}
-            label="Webhook de notification"
-          />
-          <div className="flex items-center gap-2 rounded-lg border bg-background px-3 py-2 text-sm">
-            <Mail className="size-3.5 shrink-0 text-muted-foreground" />
-            <span className="flex-1 truncate">{meta.webBaseUrl}</span>
-            <span className="text-xs text-muted-foreground">URL publique</span>
+      {/* Infrastructure : lecture seule, pilotée par l'environnement. */}
+      <section className="flex flex-col gap-1">
+        <SectionLabel className="px-1">Infrastructure</SectionLabel>
+        <div className="flex flex-col gap-3 rounded-2xl border bg-card p-5 shadow-card">
+          <p className="text-meta text-muted-foreground">
+            Piloté par les variables d'environnement du serveur : ces lignes se
+            lisent, elles ne se modifient pas ici.
+          </p>
+          <div className="flex flex-col gap-2">
+            <StatusPill ok={meta.mailConfigured} label="Serveur e-mail (SMTP)" />
+            <StatusPill
+              ok={meta.webPushConfigured}
+              label="Notifications navigateur (Web Push)"
+            />
+            <StatusPill
+              ok={meta.notifyWebhookConfigured}
+              label="Webhook de notification"
+            />
+            <div className="flex items-center gap-2 rounded-xl border bg-background px-3 py-3">
+              <Link2
+                className="size-4 shrink-0 text-muted-foreground"
+                aria-hidden="true"
+              />
+              <span className="min-w-0 flex-1 truncate text-meta">
+                {meta.webBaseUrl}
+              </span>
+              <span className="shrink-0 text-meta text-muted-foreground">
+                URL publique
+              </span>
+            </div>
           </div>
         </div>
       </section>
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && (
+        <InlineError>
+          <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+          {error}
+        </InlineError>
+      )}
 
-      {/* Barre d'enregistrement */}
-      <div className="sticky bottom-0 -mx-4 flex items-center justify-end gap-3 border-t bg-background/95 px-4 py-3 backdrop-blur">
+      {/* La barre d'enregistrement : papier translucide (`bg-surface-bar`, alpha
+          déjà composé en sRGB — jamais `bg-background/95`), et sa marge basse
+          absorbe la barre gestuelle iOS. */}
+      <div className="sticky bottom-0 -mx-4 flex items-center justify-end gap-3 border-t bg-surface-bar px-4 pt-3 pb-safe-4 backdrop-blur-md">
+        {/* `role="status"` : l'accusé de réception s'entend aussi. */}
         {saved && (
-          <span className="flex items-center gap-1 text-sm text-primary">
-            <Check className="size-4" /> Enregistré
-          </span>
+          <p
+            role="status"
+            className="flex items-center gap-1.5 text-meta font-bold text-success"
+          >
+            <Check className="size-4" aria-hidden="true" /> Enregistré
+          </p>
         )}
-        <Button onClick={save} disabled={saving || !dirty.length}>
-          {saving ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : (
-            <Save className="size-4" />
-          )}
-          Enregistrer
+        <Button onClick={save} loading={saving} disabled={!dirty.length}>
+          {!saving && <Save aria-hidden="true" />}
+          {dirty.length ? "Enregistrer" : "Rien à enregistrer"}
         </Button>
       </div>
-    </div>
+    </PageShell>
   );
 }

@@ -31,7 +31,12 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
         ...init?.headers,
       },
     });
-  } catch {
+  } catch (e) {
+    // Un abandon DEMANDÉ n'est pas une panne : il remonte tel quel pour que
+    // l'appelant puisse le reconnaître (`err.name === "AbortError"`) et écrire
+    // la bonne phrase. Le confondre avec une coupure réseau ferait dire
+    // « vérifiez votre réseau » à quelqu'un qui vient d'appuyer sur « arrêter ».
+    if (e instanceof DOMException && e.name === "AbortError") throw e;
     // fetch ne rejette (TypeError « Failed to fetch ») que si aucune réponse
     // n'est arrivée : réseau coupé, requête trop volumineuse rejetée par le
     // proxy, etc. On remonte un message lisible plutôt que l'erreur brute.
@@ -91,6 +96,13 @@ export const api = {
   getEntryBatch: (batchId: string) =>
     req<{ entries: BatchEntrySummary[] }>(`/api/entries/batch/${batchId}`),
 
+  /**
+   * `signal` ne change ni la route ni le corps : il donne seulement à l'écran de
+   * relecture le moyen d'ARRÊTER D'ATTENDRE une publication qui ne revient pas
+   * (cf. `Review.tsx`, `PublishProgress`). Une requête abandonnée peut avoir été
+   * appliquée côté serveur : c'est pourquoi l'écran dit « arrêter d'attendre »
+   * et non « annuler ».
+   */
   updateEntry: (
     id: string,
     patch: Partial<{
@@ -104,10 +116,12 @@ export const api = {
       items: { type: string; data: unknown; position?: number }[];
       publish: boolean;
     }>,
+    signal?: AbortSignal,
   ) =>
     req<Entry>(`/api/entries/${id}`, {
       method: "PATCH",
       body: JSON.stringify(patch),
+      signal,
     }),
 
   deleteEntry: (id: string) =>
