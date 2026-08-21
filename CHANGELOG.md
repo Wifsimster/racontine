@@ -2,6 +2,13 @@
 
 Toutes les versions notables de Racontine. Format issu des messages de commit conventionnels (`feat`, `fix`, …).
 
+# [1.15.0](https://github.com/Wifsimster/racontine/compare/v1.14.2...v1.15.0) (2026-08-21)
+
+
+### Features
+
+* **auth:** réinitialiser vraiment le mot de passe, au lieu d'envoyer un lien de connexion ([#46](https://github.com/Wifsimster/racontine/issues/46)) ([93024b9](https://github.com/Wifsimster/racontine/commit/93024b93497e4231b740ca1ef7caa5edbaa99c72))
+
 ## [1.14.2](https://github.com/Wifsimster/racontine/compare/v1.14.1...v1.14.2) (2026-08-21)
 
 
