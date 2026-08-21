@@ -1053,7 +1053,7 @@ export default function Capture() {
           className="h-12 bg-gradient-to-t from-background to-transparent"
         />
         <div className="flex justify-center bg-background px-4 pb-safe-6">
-          <div className="shell-width pointer-events-auto flex flex-col gap-2">
+          <div className="action-width pointer-events-auto flex flex-col gap-2">
             {/* Désactivé et SANS roue : le seul mouvement du produit qui
               tournerait ici est une boucle de 1000 ms linéaire, hors du budget
               publié (120–260 ms + deux boucles déclarées). L'activité est portée

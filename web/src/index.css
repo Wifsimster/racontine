@@ -200,11 +200,50 @@
   --safe-b: env(safe-area-inset-bottom, 0px);
   --safe-l: env(safe-area-inset-left, 0px);
   --header-h: 3.5rem; /* 56 px de chrome haut : 7 % de l'écran, pas plus */
-  /* Largeur de la colonne de lecture. L'en-tête l'utilise aussi : sur un écran
+  /* ── Les deux largeurs : ce qu'on LIT, ce qu'on VISE ──────────────────────
+     Largeur de la colonne de lecture. L'en-tête l'utilise aussi : sur un écran
      large, le bandeau ne doit pas rester collé au bord gauche pendant que le
      contenu est centré. Les pages devraient écrire `shell-width` plutôt que de
-     redéclarer `mx-auto max-w-lg`. */
+     redéclarer `mx-auto max-w-lg`.
+
+     La colonne GRANDIT avec l'écran, et elle grandit d'une quantité mesurée,
+     pas « parce qu'il y a la place ». La règle de la bande de lecture est la
+     même que celle de la relecture (45–75 caractères par ligne) ; ce qui
+     changeait, c'est que le journal n'y entrait jamais du bon côté.
+
+       colonne du récit = --shell-max − 2 rem (gouttière) − 3 rem (marge de la
+       feuille : `pl-7` + `pr-5`)
+
+     Les caractères par ligne ci-dessous ne sont pas estimés depuis une largeur
+     de glyphe moyenne : ils sont COMPTÉS sur le rendu réel (Playwright, Nunito
+     chargée, moyenne des lignes pleines d'un récit de journée) —
+
+       · 32 rem → 308 px / 35 ch à 390 px, 432 px / 50 ch dès qu'il y a la
+         place — c'était la valeur d'AVANT, sur TOUS les écrans : un bureau de
+         1 440 px lisait la même ligne courte qu'un téléphone, avec 500 px de
+         papier vide de chaque côté.
+       · 36 rem → 494 px / 62 ch — à partir de 768 px (tablette, fenêtre
+         étroite, écran partagé).
+       · 39 rem → 542 px / 68 ch — à partir de 1 024 px, et c'est le dernier
+         palier : ~68 caractères, c'est le haut du confort, là où l'œil
+         retrouve encore le début de la ligne suivante sans le chercher.
+
+     Au-delà, on n'élargit plus. 75 ch est un PLAFOND, pas un objectif : à
+     partir de là, le retour à la ligne devient un saut, et c'est exactement ce
+     qui fait relire deux fois la même ligne. Le mobile ne bouge PAS — tout ce
+     qui a été mesuré en 390×844 tient au pixel près. */
   --shell-max: 32rem;
+  /* La mesure du récit lui-même, à l'intérieur de la feuille (voir `.measure`).
+     Le dernier palier de `--shell-max` vaut EXACTEMENT `--measure` + 2 rem de
+     gouttière + 3 rem de marge de feuille : à 1 024 px le récit remplit donc
+     la carte au lieu de s'arrêter au milieu en laissant à sa droite un blanc
+     que rien n'explique. */
+  --measure: 34rem;
+  /* Ce qu'on VISE ne suit pas ce qu'on LIT. Une barre d'action reste à la
+     largeur du pouce : un bouton de 656 px n'est pas plus facile à atteindre,
+     il est seulement plus grand — et il n'existe aucune app de la catégorie
+     dont le bouton principal traverse un écran de bureau. */
+  --action-max: 32rem;
 
   color-scheme: light;
 
@@ -287,6 +326,23 @@
       0 24px 48px -24px rgb(0 0 0 / 0.85);
 
     color-scheme: dark;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   La colonne s'ouvre par PALIERS, jamais en continu : deux valeurs, deux
+   ruptures, et un mobile intact. Les seuils sont en `rem` — quelqu'un qui
+   grossit la police de son navigateur garde la colonne étroite tant que sa
+   ligne n'a pas la place d'être plus longue, ce qu'un seuil en `px` ignore.
+   --------------------------------------------------------------------------- */
+@media (min-width: 48rem) {
+  :root {
+    --shell-max: 36rem; /* récit : 494 px, 62 ch */
+  }
+}
+@media (min-width: 64rem) {
+  :root {
+    --shell-max: 39rem; /* récit : 542 px, 68 ch — = --measure + 5 rem */
   }
 }
 
@@ -520,9 +576,10 @@
   }
 
   /* Mesure de lecture : 45–75 caractères, jamais un paragraphe qui traverse
-     un écran de bureau d'un bord à l'autre. */
+     un écran de bureau d'un bord à l'autre. La valeur vit dans `--measure`,
+     sur lequel s'aligne le dernier palier de la colonne (voir le jeton). */
   .measure {
-    max-width: 34rem;
+    max-width: var(--measure);
   }
 
   /* ── Surtitre : la date, l'unité, le mois — toujours le même objet ────────
@@ -641,6 +698,14 @@
   margin-inline: auto;
   width: 100%;
   max-width: var(--shell-max);
+}
+
+/* La barre d'action : centrée sur le même axe, mais à largeur de pouce. Elle
+   ne suit PAS `--shell-max` (cf. `--action-max`). */
+@utility action-width {
+  margin-inline: auto;
+  width: 100%;
+  max-width: var(--action-max);
 }
 
 /* 44 x 44 minimum : la seule taille tactile honnête (I2). */

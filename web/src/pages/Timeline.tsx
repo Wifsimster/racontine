@@ -999,13 +999,17 @@ function EntryCard({
             que les lignes traversent la page comme sur un vrai cahier, tandis
             que le texte garde sa mesure de lecture.
 
-            `measure` (34 rem) ne change rien à 390 px — la feuille est plus
-            étroite — mais empêche le récit de traverser un écran de bureau,
-            comme le dit le jeton depuis le début.
+            `measure` ne change rien à 390 px — la feuille est plus étroite —
+            mais empêche le récit de traverser un écran de bureau. Le dernier
+            palier de la colonne (39 rem, au-delà de 1 024 px) vaut exactement
+            cette mesure plus les marges : le récit remplit alors la feuille au
+            lieu de s’arrêter au milieu (voir `--measure` dans `index.css`).
             `hyphens-auto` + `text-pretty` : à 308 px de colonne, la césure et
             l’équilibrage des dernières lignes sont ce qui reste pour resserrer
             un drapeau que la mesure ne peut pas élargir (mesuré : Nunito est
-            déjà la fonte la plus étroite embarquée). */}
+            déjà la fonte la plus étroite embarquée). Sur un bureau, la colonne
+            passe à ~68 ch et la césure n’a presque plus rien à rattraper — elle
+            reste, parce qu’une fenêtre peut être étroite à tout moment. */}
         {entry.story && (
           <div className="paper-ruled paper-ruled--plain -mr-5 -ml-7 pr-5 pl-7">
             <p
@@ -1981,7 +1985,7 @@ export default function Timeline() {
           <Button
             asChild
             size="lg"
-            className="shell-width pointer-events-auto shadow-lift"
+            className="action-width pointer-events-auto shadow-lift"
           >
             <Link to="/capture">
               <Camera aria-hidden="true" />
