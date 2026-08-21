@@ -12,6 +12,7 @@ import {
 } from "./ingest.js";
 import type { McpTokenUser } from "./mcp-tokens.js";
 import { consumeStagedUploads, resolveStagedUploads } from "./mcp-uploads.js";
+import { tidyUncertainties } from "./uncertainties.js";
 
 /** Nombre maximum de pages par journée (aligné sur la limite du formulaire web). */
 const MAX_PAGES = 12;
@@ -451,7 +452,9 @@ export function buildMcpServer(user: McpTokenUser): McpServer {
         story: entry.story,
         highlight: entry.highlight,
         transcription: entry.transcription,
-        uncertainties: entry.uncertainties,
+        // Remise en forme comme pour l'API web : un mot par incertitude, sa
+        // glose dans `contexte` (voir uncertainties.ts).
+        uncertainties: tidyUncertainties(entry.uncertainties),
         meals: items.filter((i) => i.type === "meal").map((i) => i.data),
         naps: items.filter((i) => i.type === "nap").map((i) => i.data),
         activities: items

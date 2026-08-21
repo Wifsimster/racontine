@@ -73,3 +73,52 @@ test("normalizeJournees tolère une entrée malformée (champ manquant)", () => 
   assert.equal(days.length, 1);
   assert.equal(days[0].illisible, true);
 });
+
+test("normalizeJournees sépare le mot lu de sa glose dans les incertitudes", () => {
+  // Le modèle écrit régulièrement le mot ET son explication dans `original` :
+  // c'est `original` qui sera remplacé dans le récit à la relecture, il ne peut
+  // donc pas porter la phrase entière. Voir uncertainties.ts.
+  const raw = {
+    journees: [
+      day({
+        pages: [1],
+        incertitudes: [
+          {
+            original: "«écrite» : peut-être «éveillée» ou autre mot",
+            contexte: "",
+            suggestions: [],
+          },
+        ],
+      }),
+    ],
+  };
+  const [d] = normalizeJournees(raw, 1);
+  assert.equal(d.incertitudes[0].original, "écrite");
+  assert.equal(d.incertitudes[0].contexte, "peut-être «éveillée» ou autre mot");
+  assert.deepEqual(d.incertitudes[0].suggestions, ["éveillée"]);
+});
+
+test("normalizeJournees laisse intacte une incertitude déjà bien formée", () => {
+  const raw = {
+    journees: [
+      day({
+        pages: [1],
+        incertitudes: [
+          {
+            original: "gratin",
+            contexte: "écriture serrée en fin de ligne",
+            suggestions: ["gratin de courgettes", "gratiné"],
+            champ: "recit",
+          },
+        ],
+      }),
+    ],
+  };
+  const [d] = normalizeJournees(raw, 1);
+  assert.deepEqual(d.incertitudes[0], {
+    original: "gratin",
+    contexte: "écriture serrée en fin de ligne",
+    suggestions: ["gratin de courgettes", "gratiné"],
+    champ: "recit",
+  });
+});

@@ -29,6 +29,7 @@ import {
 } from "../ingest.js";
 import { notifyEntryPublished } from "../notifications.js";
 import { recordCorrection } from "../corrections.js";
+import { tidyUncertainties } from "../uncertainties.js";
 
 /** Entrée complète (items + pièces jointes) sérialisée pour le front. */
 async function serializeEntry(entryId: string) {
@@ -43,6 +44,11 @@ async function serializeEntry(entryId: string) {
   if (!entry) return null;
   return {
     ...entry,
+    /* Les journées déjà en base gardent le `original` fourre-tout que le modèle
+       a parfois écrit (le mot ET sa glose dans le même champ). Aucune migration
+       ne les réécrit : on les remet en forme à la lecture, pour que l'écran de
+       relecture montre un MOT et non une phrase entre guillemets doublés. */
+    uncertainties: tidyUncertainties(entry.uncertainties),
     attachments: entry.attachments.map((a) => ({
       id: a.id,
       kind: a.kind,
@@ -429,7 +435,12 @@ export async function entriesRoutes(app: FastifyInstance) {
     if (!(await hasChildRole(req.user!.id, row.childId, "contributor")))
       return reply.code(404).send({ error: "entrée introuvable" });
 
-    const uncertainties = (row.uncertainties ?? []) as Uncertainty[];
+    /* Même remise en forme qu'à la sérialisation : c'est le MOT qui doit être
+       remplacé dans le récit, pas la phrase explicative que le modèle a parfois
+       glissée dans `original`. Sans ça, la substitution ci-dessous ne trouvait
+       rien et le mot douteux partait tel quel chez les proches — le parent
+       avait tranché pour rien. */
+    const uncertainties = tidyUncertainties(row.uncertainties);
     const item = uncertainties[index];
     if (!item)
       return reply.code(404).send({ error: "incertitude introuvable" });

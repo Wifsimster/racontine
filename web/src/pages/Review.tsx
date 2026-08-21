@@ -13,6 +13,7 @@ import {
   PenLine,
   Plus,
   RotateCcw,
+  RotateCw,
   ScanLine,
   Send,
   Smile,
@@ -26,6 +27,7 @@ import {
 import { api } from "@/lib/api";
 import { canWrite, roleMap } from "@/lib/access";
 import {
+  type AttachmentRef,
   type BatchEntrySummary,
   type Entry,
   type EntryItem,
@@ -190,6 +192,58 @@ function longDate(iso: string): string {
 }
 
 /**
+ * Le mot lu s'affiche partout entre guillemets français, posés par l'écran. Une
+ * lecture qui arrive DÉJÀ citée — le modèle en met parfois, d'anciennes journées
+ * en gardent — se retrouvait donc « « Roueil » » : deux paires de guillemets
+ * pour un mot. Le serveur nettoie la donnée (server/src/uncertainties.ts) ; ceci
+ * est le filet d'affichage, pour que l'écran ne double jamais la ponctuation
+ * quoi qu'on lui serve.
+ */
+function unquoted(text: string): string {
+  let t = (text ?? "").trim();
+  const pairs: [string, string][] = [
+    ["«", "»"],
+    ["\u201c", "\u201d"],
+    ['"', '"'],
+  ];
+  for (let pass = 0; pass < 3; pass++) {
+    const pair = pairs.find(
+      ([open, close]) =>
+        t.length > 2 &&
+        t.startsWith(open) &&
+        t.endsWith(close) &&
+        !t.slice(1, -1).includes(close),
+    );
+    if (!pair) break;
+    t = t.slice(1, -1).trim();
+  }
+  return t;
+}
+
+/** Échappe un mot lu sur un carnet pour l'insérer tel quel dans une regex. */
+function escapeRe(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Un mot encore douteux marque « à vérifier » les lignes de la journée qui le
+ * contiennent — mais EN TANT QUE MOT. La recherche était une sous-chaîne :
+ * « eau » marquait « beaucoup », « thé » marquait « méthode », et une lecture
+ * douteuse de trois lettres suffisait à saupoudrer d'ambre une journée entière.
+ * Les bornes sont des non-lettres/non-chiffres Unicode, pas `\b` : `\b` place une
+ * frontière au milieu de « goûter » (le « û » n'est pas un caractère de mot).
+ */
+function wordMatcher(token: string): RegExp | null {
+  const t = unquoted(token);
+  if (!t) return null;
+  try {
+    return new RegExp(`(^|[^\\p{L}\\p{N}])${escapeRe(t)}([^\\p{L}\\p{N}]|$)`, "iu");
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Met en gras le mot douteux à l'intérieur de son contexte : on voit d'un coup
  * d'œil OÙ le doute se trouve dans la phrase, sans relire la phrase.
  */
@@ -251,6 +305,9 @@ export default function Review() {
       dépliée dès `md` où elle tient dans sa propre colonne. */
   const [sourceOpen, setSourceOpen] = useState(false);
   const [sourceTab, setSourceTab] = useState<"pages" | "texte">("pages");
+  /** Quarts de tour appliqués à chaque page, à l'affichage seulement : cf.
+      `SourcePage`. Par pièce jointe, et remis à zéro d'une journée à l'autre. */
+  const [rotations, setRotations] = useState<Record<string, number>>({});
   /** Le dépli de correction est piloté par l'état : `group-open:` ne génère
       aucune règle dans ce Tailwind, le chevron ne tournait jamais. */
   const [itemsOpen, setItemsOpen] = useState(false);
@@ -312,6 +369,12 @@ export default function Review() {
   }, [id, hydrate]);
 
   const [reloadKey, setReloadKey] = useState(0);
+
+  /* Les rotations sont attachées à la journée qu'on relit, pas au composant :
+     d'une journée d'un lot à la suivante, la route est la même et l'état
+     survivait — la page 1 de la journée suivante arrivait tournée du quart de
+     tour donné à la précédente. */
+  useEffect(() => setRotations({}), [id]);
 
   useEffect(() => {
     // L'échec de CHARGEMENT est un état à part entière : avant, il était rangé
@@ -401,15 +464,17 @@ export default function Review() {
   );
   const pending = uncertainties.filter((u) => !u.resolved).length;
 
-  /** Les mots encore douteux, en bas de casse : une ligne de la journée qui en
+  /** Les mots encore douteux, en motifs : une ligne de la journée qui en
       contient un porte « à vérifier », les autres « confirmé ». La casse est
       ignorée — le carnet écrit « Gratin de courgettes », la machine a signalé
-      « gratin de courgettes ». */
+      « gratin de courgettes » — et le mot doit être trouvé EN TANT QUE MOT
+      (cf. `wordMatcher`). */
   const flaggedValues = useMemo(
     () =>
       uncertainties
         .filter((u) => !u.resolved)
-        .map((u) => u.original.toLowerCase()),
+        .map((u) => wordMatcher(u.original))
+        .filter((re): re is RegExp => re !== null),
     [uncertainties],
   );
 
@@ -1055,41 +1120,23 @@ export default function Review() {
                 className="flex flex-col gap-3"
               >
                 {entry.attachments.map((a, i) => (
-                  <figure key={a.id} className="relative">
-                    <a
-                      href={a.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      aria-label={`Ouvrir la page ${i + 1} en grand`}
-                      className="seam block overflow-hidden rounded-xl bg-muted"
-                    >
-                      <img
-                        src={a.url}
-                        alt={`Page ${i + 1} du carnet`}
-                        className="block w-full"
-                      />
-                    </a>
-                    <figcaption className="surtitre mt-2 text-muted-foreground">
-                      Page {i + 1} sur {entry.attachments.length}
-                    </figcaption>
-                    {!published && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon-sm"
-                        /* En bas à droite : en haut, le bouton se posait sur la
-                           date manuscrite, la seule ligne qu'on veut relire. */
-                        className="absolute right-2 bottom-9 rounded-full"
-                        loading={removingAttachment === a.id}
-                        onClick={() => setConfirmRemoveAttachment(a.id)}
-                        aria-label={`Retirer la page ${i + 1}`}
-                      >
-                        {removingAttachment === a.id ? null : (
-                          <X aria-hidden="true" />
-                        )}
-                      </Button>
-                    )}
-                  </figure>
+                  <SourcePage
+                    key={a.id}
+                    attachment={a}
+                    index={i}
+                    total={entry.attachments.length}
+                    quarter={rotations[a.id] ?? 0}
+                    onRotate={() =>
+                      setRotations((prev) => ({
+                        ...prev,
+                        [a.id]: ((prev[a.id] ?? 0) + 1) % 4,
+                      }))
+                    }
+                    removing={removingAttachment === a.id}
+                    onRemove={
+                      published ? null : () => setConfirmRemoveAttachment(a.id)
+                    }
+                  />
                 ))}
                 {entry.attachments.length === 0 && (
                   <p className="rounded-xl bg-muted px-4 py-3 text-meta text-muted-foreground">
@@ -1675,7 +1722,7 @@ function MomentsGlance({
   flagged,
 }: {
   items: DraftItem[];
-  flagged: string[];
+  flagged: RegExp[];
 }) {
   return (
     <section aria-labelledby="rv-glance" className="flex flex-col gap-2">
@@ -1695,8 +1742,8 @@ function MomentsGlance({
         {items.map((it, i) => {
           const { label, value } = glanceOf(it);
           const Icon = ITEM_ICON[it.type];
-          const haystack = `${label} ${value}`.toLowerCase();
-          const flag = flagged.some((f) => f && haystack.includes(f));
+          const haystack = `${label} ${value}`;
+          const flag = flagged.some((re) => re.test(haystack));
           return (
             /* Deux lignes, trois colonnes : la tuile tient la hauteur, le
                libellé et l'état partagent la première ligne, la VALEUR prend
@@ -2013,6 +2060,133 @@ function Kbd({ children }: { children: React.ReactNode }) {
     <kbd className="rounded-md border bg-card px-1.5 font-sans text-overline font-bold leading-5 tracking-normal text-foreground">
       {children}
     </kbd>
+  );
+}
+
+/**
+ * UNE PAGE DE CARNET, DANS LE SENS OÙ ON PEUT LA LIRE.
+ *
+ * Un carnet de liaison se photographie d'une main, au-dessus d'un plan de
+ * travail, souvent en tendant le bras par-dessus la table de la nounou : une
+ * page sur deux arrive de travers ou franchement à l'envers. L'écran de
+ * relecture la posait alors telle quelle — et la SEULE chose que cet écran
+ * demande est justement de confronter ce qui est écrit à ce qui a été lu. Une
+ * page à l'envers rend cette confrontation impossible : il fallait ouvrir la
+ * photo dans un onglet, puis tourner la tête.
+ *
+ * Le bouton tourne la page d'un quart de tour à chaque appui. C'est une ROTATION
+ * DE LECTURE, pas une correction du fichier : rien n'est réenregistré, rien
+ * n'est envoyé au serveur, et la page repart droite à la prochaine ouverture.
+ * C'est exactement ce qu'on veut ici — on relit, on ne retouche pas — et c'est
+ * ce que dit l'infobulle.
+ *
+ * La géométrie : à un quart ou trois quarts de tour, la largeur et la hauteur
+ * s'échangent. Le cadre prend donc le rapport INVERSE de l'image et celle-ci est
+ * dimensionnée pour que son encombrement APRÈS rotation remplisse exactement ce
+ * cadre — sans quoi une page tournée déborderait sur la colonne voisine ou
+ * laisserait une bande de vide sous elle. Les dimensions viennent du serveur
+ * quand il les connaît, du chargement de l'image sinon.
+ */
+function SourcePage({
+  attachment,
+  index,
+  total,
+  quarter,
+  onRotate,
+  removing,
+  onRemove,
+}: {
+  attachment: AttachmentRef;
+  index: number;
+  total: number;
+  quarter: number;
+  onRotate: () => void;
+  removing: boolean;
+  onRemove: (() => void) | null;
+}) {
+  const [natural, setNatural] = useState<{ w: number; h: number } | null>(
+    attachment.width && attachment.height
+      ? { w: attachment.width, h: attachment.height }
+      : null,
+  );
+  // Tant que les proportions sont inconnues, la page reste droite : mieux vaut
+  // un bouton qui attend une fraction de seconde qu'une image qui déborde.
+  const known = natural !== null;
+  const q = known ? ((quarter % 4) + 4) % 4 : 0;
+  const quart = q % 2 === 1;
+  const w = natural?.w ?? 1;
+  const h = natural?.h ?? 1;
+
+  return (
+    <figure className="relative">
+      <a
+        href={attachment.url}
+        target="_blank"
+        rel="noreferrer"
+        aria-label={`Ouvrir la page ${index + 1} en grand`}
+        className="seam relative block w-full overflow-hidden rounded-xl bg-muted"
+        style={
+          known
+            ? { aspectRatio: quart ? `${h} / ${w}` : `${w} / ${h}` }
+            : undefined
+        }
+      >
+        <img
+          src={attachment.url}
+          alt={`Page ${index + 1} du carnet`}
+          onLoad={(e) => {
+            if (known) return;
+            const img = e.currentTarget;
+            if (img.naturalWidth && img.naturalHeight)
+              setNatural({ w: img.naturalWidth, h: img.naturalHeight });
+          }}
+          className={cn(
+            "block max-w-none",
+            known
+              ? "absolute top-1/2 left-1/2 origin-center transition-transform dur-base ease-carnet"
+              : "w-full",
+          )}
+          style={
+            known
+              ? {
+                  width: quart ? `${(w / h) * 100}%` : "100%",
+                  transform: `translate(-50%, -50%) rotate(${q * 90}deg)`,
+                }
+              : undefined
+          }
+        />
+      </a>
+      <figcaption className="surtitre mt-2 text-muted-foreground">
+        Page {index + 1} sur {total}
+      </figcaption>
+      {/* En bas, sur la photo : en haut, les boutons se posaient sur la date
+          manuscrite, la seule ligne qu'on veut relire. */}
+      <Button
+        type="button"
+        variant="outline"
+        size="icon-sm"
+        className="absolute bottom-9 left-2 rounded-full"
+        disabled={!known}
+        onClick={onRotate}
+        title="Tourner la page à l'écran (la photo n'est pas modifiée)"
+        aria-label={`Tourner la page ${index + 1} d'un quart de tour à l'écran`}
+      >
+        <RotateCw aria-hidden="true" />
+      </Button>
+      {onRemove && (
+        <Button
+          type="button"
+          variant="outline"
+          size="icon-sm"
+          className="absolute right-2 bottom-9 rounded-full"
+          loading={removing}
+          onClick={onRemove}
+          aria-label={`Retirer la page ${index + 1}`}
+        >
+          {removing ? null : <X aria-hidden="true" />}
+        </Button>
+      )}
+    </figure>
   );
 }
 
@@ -2639,7 +2813,11 @@ function ResolvedReading({
   item: Uncertainty;
   onEdit: () => void;
 }) {
-  const kept = item.resolved === item.original;
+  /* « Gardé tel quel » se compare sur le MOT, pas sur sa citation : une vieille
+     journée porte un `original` guillemeté que le bouton « Garder » n'a jamais
+     renvoyé tel quel — la ligne annonçait alors une correction « « mot » → mot »
+     qui n'a jamais eu lieu. */
+  const kept = unquoted(item.resolved ?? "") === unquoted(item.original);
   /* TOUTE LA LIGNE est la cible : un petit « Revenir dessus » de 44 px à droite
      rajoutait un objet et 8 px de hauteur pour la même action. */
   return (
@@ -2647,7 +2825,7 @@ function ResolvedReading({
       id={id}
       type="button"
       onClick={onEdit}
-      aria-label={`Revenir sur la lecture « ${item.original} »${
+      aria-label={`Revenir sur la lecture « ${unquoted(item.original)} »${
         item.champ ? ` (${FIELD_ORIGIN[item.champ]})` : ""
       }`}
       className="tap flex min-h-11 w-full items-center gap-2 rounded-xl bg-success-bg px-3 text-left text-success transition-colors dur-fast ease-carnet hover:bg-card"
@@ -2656,12 +2834,14 @@ function ResolvedReading({
       <span className="min-w-0 flex-1 truncate text-meta">
         {kept ? (
           <>
-            <span className="font-serif">« {item.original} »</span> gardé tel
-            quel
+            <span className="font-serif">« {unquoted(item.original)} »</span>{" "}
+            gardé tel quel
           </>
         ) : (
           <>
-            <span className="font-serif line-through">« {item.original} »</span>{" "}
+            <span className="font-serif line-through">
+              « {unquoted(item.original)} »
+            </span>{" "}
             <span aria-hidden="true">→</span>{" "}
             <span className="font-bold">{item.resolved}</span>
           </>
@@ -2692,7 +2872,7 @@ function CollapsedReading({
       type="button"
       onClick={onOpen}
       aria-expanded={false}
-      aria-label={`Trancher la lecture « ${item.original} »`}
+      aria-label={`Trancher la lecture « ${unquoted(item.original)} »`}
       className="tap flex min-h-14 w-full items-center gap-3 rounded-xl border border-warning bg-warning-bg px-3 py-2 text-left transition-colors dur-fast ease-carnet hover:bg-card"
     >
       <TriangleAlert aria-hidden="true" className="size-4 shrink-0 text-warning" />
@@ -2701,7 +2881,7 @@ function CollapsedReading({
           À vérifier{item.champ ? ` · ${FIELD_ORIGIN[item.champ]}` : ""}
         </span>
         <span className="block truncate font-serif text-ui text-foreground">
-          « {item.original} »
+          « {unquoted(item.original)} »
         </span>
       </span>
       <ChevronDown aria-hidden="true" className="size-4 shrink-0 text-warning" />
@@ -2724,14 +2904,38 @@ function UncertaintyCard({
 }) {
   const [custom, setCustom] = useState("");
   const [choice, setChoice] = useState<string | null>(null);
-  /** La saisie libre est derrière une pastille : elle coûtait 52 px de hauteur
-      en permanence pour un usage rare, et ces 52 px sont exactement ce qui
-      manquait pour voir la journée. */
-  const [customOpen, setCustomOpen] = useState(false);
+
+  /** Le mot lu, sans la citation que le modèle met parfois autour. */
+  const word = unquoted(item.original);
 
   // Le mot lu figure parfois déjà dans les suggestions : on ne propose pas deux
-  // fois la même réponse, « Garder » porte déjà ce choix.
-  const suggestions = item.suggestions.filter((s) => s !== item.original);
+  // fois la même réponse, « Garder » porte déjà ce choix. La comparaison est
+  // faite hors casse et hors guillemets, sinon « Gratin » et « gratin »
+  // s'affichaient tous les deux à côté de « Garder « gratin » ».
+  const suggestions = item.suggestions
+    .map((sug) => unquoted(sug))
+    .filter(
+      (sug, i, self) =>
+        sug &&
+        sug.toLowerCase() !== word.toLowerCase() &&
+        self.findIndex((o) => o.toLowerCase() === sug.toLowerCase()) === i,
+    );
+
+  /** La saisie libre est derrière une pastille : elle coûtait 52 px de hauteur
+      en permanence pour un usage rare, et ces 52 px sont exactement ce qui
+      manquait pour voir la journée.
+      SAUF QUAND IL N'Y A RIEN D'AUTRE. Sans suggestion, la carte ne proposait
+      que « Garder » et une pastille « Autre… » : le seul geste utile — écrire ce
+      qui est sur le papier — demandait un tap de plus, et rien ne disait que la
+      machine n'avait AUCUNE autre lecture à offrir. Le champ est alors ouvert
+      d'emblée, et la carte le dit. */
+  const [customOpen, setCustomOpen] = useState(suggestions.length === 0);
+  /** Ouvert PAR UN GESTE, et non parce qu'il n'y avait rien d'autre à montrer :
+      seul le premier cas mérite le clavier. Sans cette distinction, l'`autoFocus`
+      du champ et le focus donné à la carte à l'arrivée sur l'écran se
+      disputaient le curseur, et la carte gagnait — le champ perdait le caret
+      qu'il venait de prendre. */
+  const [customAsked, setCustomAsked] = useState(false);
 
   function pick(value: string) {
     setChoice(value);
@@ -2748,7 +2952,7 @@ function UncertaintyCard({
          suggestions. Le groupe porte son nom : « Lecture à vérifier : gratin ». */
       tabIndex={-1}
       role="group"
-      aria-label={`Lecture à vérifier : ${item.original}`}
+      aria-label={`Lecture à vérifier : ${word}`}
       className="flex flex-col gap-2 rounded-xl border border-warning bg-warning-bg p-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-warning"
     >
       <p className="surtitre flex items-center gap-2 text-warning">
@@ -2762,13 +2966,23 @@ function UncertaintyCard({
       <p className="font-serif text-body text-foreground">
         «{" "}
         <span className="underline decoration-warning decoration-wavy underline-offset-4">
-          {item.original}
+          {word}
         </span>{" "}
         »
       </p>
       {item.contexte && (
         <p className="text-meta text-muted-foreground">
-          {highlightToken(item.contexte, item.original)}
+          {highlightToken(item.contexte, word)}
+        </p>
+      )}
+      {/* L'ABSENCE DE SUGGESTION EST UNE INFORMATION. La carte montrait alors un
+          mot et deux boutons sans jamais dire pourquoi elle ne proposait rien :
+          on ne pouvait pas distinguer « la machine n'a aucune autre lecture » de
+          « la carte est cassée ». */}
+      {suggestions.length === 0 && (
+        <p className="text-meta text-muted-foreground">
+          Aucune autre lecture proposée : gardez ce mot, ou écrivez ce qui est
+          sur le papier.
         </p>
       )}
 
@@ -2784,7 +2998,7 @@ function UncertaintyCard({
             type="button"
             variant="outline"
             size="sm"
-            className="h-auto min-h-11 rounded-full border-warning py-2 text-left whitespace-normal text-warning hover:bg-card"
+            className="h-auto max-w-full min-h-11 rounded-full border-warning py-2 text-left whitespace-normal text-warning hover:bg-card"
             loading={resolving && choice === s}
             disabled={disabled}
             onClick={() => pick(s)}
@@ -2796,22 +3010,27 @@ function UncertaintyCard({
           type="button"
           variant="ghost"
           size="sm"
-          className="h-auto min-h-11 rounded-full py-2 text-left whitespace-normal text-warning hover:bg-card"
-          loading={resolving && choice === item.original}
+          className="h-auto max-w-full min-h-11 rounded-full py-2 text-left whitespace-normal text-warning hover:bg-card"
+          loading={resolving && choice === word}
           disabled={disabled}
-          onClick={() => pick(item.original)}
+          /* Le MOT, pas la citation : « Garder » écrit sa valeur dans le récit
+             publié — y renvoyer « « Roueil » » y poserait les guillemets. */
+          onClick={() => pick(word)}
         >
-          Garder « {item.original} »
+          Garder « {word} »
         </Button>
         {!customOpen && (
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            className="h-auto min-h-11 rounded-full py-2 text-left whitespace-normal text-warning hover:bg-card"
+            className="h-auto max-w-full min-h-11 rounded-full py-2 text-left whitespace-normal text-warning hover:bg-card"
             disabled={disabled}
-            onClick={() => setCustomOpen(true)}
-            aria-label={`Saisir une autre lecture pour « ${item.original} »`}
+            onClick={() => {
+              setCustomOpen(true);
+              setCustomAsked(true);
+            }}
+            aria-label={`Saisir une autre lecture pour « ${word} »`}
           >
             <PenLine aria-hidden="true" />
             Autre…
@@ -2822,7 +3041,7 @@ function UncertaintyCard({
       {customOpen && (
         <div className="flex items-center gap-2">
           <Input
-            autoFocus
+            autoFocus={customAsked}
             value={custom}
             onChange={(e) => setCustom(e.target.value)}
             onKeyDown={(e) => {
@@ -2833,7 +3052,7 @@ function UncertaintyCard({
               if (e.key === "Escape" && !custom) setCustomOpen(false);
             }}
             placeholder="Ce qui est écrit sur le papier…"
-            aria-label={`Autre lecture pour « ${item.original} »`}
+            aria-label={`Autre lecture pour « ${word} »`}
             disabled={disabled}
           />
           {/* Le bouton n'existe que quand il a quelque chose à valider : au
