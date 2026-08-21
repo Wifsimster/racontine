@@ -21,6 +21,7 @@ import {
 } from "../access.js";
 import {
   ingestCarnetImages,
+  retryEntryRead,
   DATE_RE,
   SOURCES,
   ITEM_TYPES,
@@ -468,6 +469,35 @@ export async function entriesRoutes(app: FastifyInstance) {
 
     return serializeEntry(id);
   });
+
+  /**
+   * Relance la lecture d'une journée en échec, sur ses pages déjà téléversées.
+   *
+   * La seule sortie d'un échec était « Reprendre la photo » : correct quand la
+   * page est floue, faux quand la lecture est morte avec le processus (un
+   * redémarrage du serveur, cf. `reclaimStuckEntries`). Dans ce second cas les
+   * pages sont intactes sur le disque et le carnet papier est déjà reparti chez
+   * la nounou — la relance est la seule sortie honnête.
+   */
+  app.post<{ Params: { id: string } }>(
+    "/api/entries/:id/retry",
+    async (req, reply) => {
+      const childId = await entryChildId(req.params.id);
+      if (!childId)
+        return reply.code(404).send({ error: "entrée introuvable" });
+      // Relire consomme la clé API du demandeur : contributeur au minimum.
+      if (!(await hasChildRole(req.user!.id, childId, "contributor")))
+        return reply.code(404).send({ error: "entrée introuvable" });
+
+      const started = await retryEntryRead(req.params.id, req.user!.id);
+      if (!started)
+        return reply.code(409).send({
+          error:
+            "Cette journée n'est pas en échec, ou elle n'a aucune page à relire.",
+        });
+      return reply.code(202).send({ id: req.params.id, status: "processing" });
+    },
+  );
 
   app.delete<{ Params: { id: string } }>(
     "/api/entries/:id",

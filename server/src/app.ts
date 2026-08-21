@@ -3,6 +3,7 @@ import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
 import { dbHealthy } from "./db/index.js";
 import { config, validateConfig } from "./config.js";
+import { redactUrl } from "./log.js";
 import { authPlugin } from "./plugins/auth.js";
 import { entriesRoutes } from "./routes/entries.js";
 import { attachmentsRoutes } from "./routes/attachments.js";
@@ -15,7 +16,28 @@ import { mcpRoutes } from "./routes/mcp.js";
 export async function buildApp() {
   validateConfig();
 
-  const app = Fastify({ logger: true });
+  const app = Fastify({
+    logger: {
+      /* Fastify journalise l'URL de chaque requête, et plusieurs de nos URL
+         portent une capacité en clair (jeton d'invitation dans le chemin, jeton
+         de magic link en query). Elles partaient donc dans `docker logs` à
+         chaque clic : quiconque lisait les logs prenait un compte ou entrait
+         dans le cercle d'un enfant. Le sérialiseur les caviarde à la source —
+         voir `log.ts`. On reproduit les champs du sérialiseur par défaut, sans
+         quoi on perdrait la méthode et l'adresse d'appel au passage. */
+      serializers: {
+        req(req) {
+          return {
+            method: req.method,
+            url: redactUrl(req.url),
+            host: req.host,
+            remoteAddress: req.ip,
+            remotePort: req.socket?.remotePort,
+          };
+        },
+      },
+    },
+  });
 
   await app.register(cors, {
     origin: config.corsOrigins,

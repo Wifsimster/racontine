@@ -221,6 +221,93 @@ async function currentUncertainties(entryId: string): Promise<Uncertainty[]> {
 }
 
 /**
+ * Message porté par une journée dont la lecture est morte avec le processus.
+ * Il dit CE QUI S'EST PASSÉ et CE QU'ON PEUT FAIRE : la carte d'échec du
+ * journal l'affiche tel quel, et sa sortie est « Reprendre la lecture ».
+ */
+const INTERRUPTED_REASON =
+  "La lecture a été interrompue par un redémarrage du serveur. Vos pages sont intactes : relancez la lecture, il n'y a rien à rephotographier.";
+
+/**
+ * Récupère les journées restées en « processing » au démarrage.
+ *
+ * `processEntry` tourne EN MÉMOIRE, en fire-and-forget (voir plus bas), et le
+ * homelab redémarre le conteneur à chaque déploiement — c'est-à-dire à chaque
+ * merge sur `main`. Une journée photographiée pendant ce redémarrage perdait
+ * son lecteur : plus personne pour la faire passer en `draft` ou en `failed`,
+ * et la carte affichait « Racontine relit la page… » POUR TOUJOURS. Le front
+ * sonde tant qu'une journée est en lecture, donc la promesse « cette carte se
+ * remplira toute seule » restait ouverte indéfiniment, sans aucune sortie.
+ *
+ * Au démarrage, aucune lecture ne peut être en cours : le processus vient de
+ * naître et les lectures ne survivent pas à leur processus. Toute journée
+ * encore en `processing` est donc, par construction, orpheline — on la bascule
+ * en `failed` avec un message qui dit quoi faire. Les pages sont conservées :
+ * l'utilisateur relance la lecture, il ne rephotographie pas le carnet.
+ *
+ * NB : ceci suppose UN seul processus serveur (c'est le déploiement livré :
+ * un service `server` dans `docker-compose.prod.yml`). Avec plusieurs
+ * instances, ce balayage annulerait les lectures en cours chez les voisines ;
+ * il faudrait alors une file de travaux partagée, pas un balayage au boot.
+ */
+export async function reclaimStuckEntries(): Promise<number> {
+  const reclaimed = await db
+    .update(entries)
+    .set({
+      status: "failed",
+      failureReason: INTERRUPTED_REASON,
+      updatedAt: new Date(),
+    })
+    .where(eq(entries.status, "processing"))
+    .returning({ id: entries.id });
+  return reclaimed.length;
+}
+
+/**
+ * Relance la lecture d'une journée en échec, sur les pages DÉJÀ téléversées.
+ *
+ * Sans elle, la seule sortie d'un échec était « Reprendre la photo » — et pour
+ * une lecture morte avec le processus (voir `reclaimStuckEntries`), c'est une
+ * sortie fausse : les pages sont sur le disque, intactes, et le carnet papier
+ * est déjà reparti chez la nounou. On ne demande pas à un parent de
+ * rephotographier un carnet qu'il n'a plus.
+ *
+ * Renvoie `false` si la journée n'est pas (ou plus) en échec, ou si elle n'a
+ * aucune page à relire. La bascule `failed → processing` est conditionnée en
+ * SQL sur l'état `failed` : deux relances simultanées ne lancent qu'une lecture.
+ */
+export async function retryEntryRead(
+  entryId: string,
+  userId: string,
+): Promise<boolean> {
+  const paths = (
+    await db
+      .select({ path: attachments.originalPath })
+      .from(attachments)
+      .where(eq(attachments.entryId, entryId))
+      .orderBy(attachments.position)
+  ).map((a) => a.path);
+  if (!paths.length) return false;
+
+  const [claimed] = await db
+    .update(entries)
+    .set({ status: "processing", failureReason: null, updatedAt: new Date() })
+    .where(and(eq(entries.id, entryId), eq(entries.status, "failed")))
+    .returning({ id: entries.id });
+  if (!claimed) return false;
+
+  // Même garde-fou que sur l'ingestion : `processEntry` gère ses erreurs, mais
+  // un appel fire-and-forget ne doit jamais laisser une promesse rejetée.
+  void processEntry(entryId, paths, userId).catch((err) => {
+    console.error(
+      "retryEntryRead — échec inattendu :",
+      err instanceof Error ? err.message : err,
+    );
+  });
+  return true;
+}
+
+/**
  * Traitement VLM en arrière-plan : processing → draft | failed.
  * Ré-extrait à partir de TOUTES les pages de l'entrée (chemins disque) pour
  * fusionner correctement un ajout de page à une journée existante. La lecture

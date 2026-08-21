@@ -72,7 +72,15 @@ invite des proches par email en choisissant un rôle :
 
 L'invitation génère un lien (`/invite/<token>`, valable `INVITATION_TTL_DAYS`
 jours). L'admin peut le copier pour l'envoyer lui-même, ou le laisser partir par
-magic link. Le proche ouvre le lien, se connecte **sans mot de passe** (magic
+e-mail.
+
+> **En production, un canal de livraison est requis.** Les liens de connexion
+> (magic link) et d'invitation sont des **identifiants** : qui tient le lien
+> tient le compte. Ils ne sont donc jamais écrits dans les logs quand
+> `NODE_ENV=production` — il faut `SMTP_HOST` ou `NOTIFY_WEBHOOK_URL`, sans quoi
+> le serveur journalise une erreur explicite au lieu de livrer. Le lien
+> d'invitation reste copiable depuis l'écran Partage ; le magic link, lui, n'a
+> pas d'autre chemin. En développement, le lien s'affiche dans la console. Le proche ouvre le lien, se connecte **sans mot de passe** (magic
 link) et rejoint le cercle — même quand `SIGNUP_ENABLED=false`. La visibilité et
 les droits sont vérifiés côté serveur, par enfant, sur chaque route.
 

@@ -127,6 +127,16 @@ export const api = {
   deleteEntry: (id: string) =>
     req<void>(`/api/entries/${id}`, { method: "DELETE" }),
 
+  /**
+   * Relance la lecture d'une journée en échec, sur les pages DÉJÀ téléversées.
+   * Le serveur repasse la journée en `processing` et rend la main aussitôt :
+   * l'appelant se remet à sonder, comme après un import.
+   */
+  retryEntryRead: (id: string) =>
+    req<{ id: string; status: string }>(`/api/entries/${id}/retry`, {
+      method: "POST",
+    }),
+
   resolveUncertainty: (id: string, index: number, value: string) =>
     req<Entry>(`/api/entries/${id}/uncertainties/${index}`, {
       method: "PATCH",
