@@ -23,6 +23,7 @@ import { extractFromImages, VlmError, type DayExtraction } from "./vlm.js";
 import { getUserAnthropicKey } from "./llm-keys.js";
 import { notifyEntryPublished } from "./notifications.js";
 import { getChildGlossary } from "./corrections.js";
+import { tidyUncertainties } from "./uncertainties.js";
 
 /** Où la journée a été passée — dimension de l'entrée (child + date + source). */
 export const SOURCES = ["nounou", "mam", "creche", "maison"] as const;
@@ -68,7 +69,7 @@ function extractionToItems(
 
 /** Incertitudes VLM → forme persistée (ajoute `resolved: null`, pas encore validées). */
 function toStoredUncertainties(x: DayExtraction): Uncertainty[] {
-  return x.incertitudes.map((u) => ({ ...u, resolved: null }));
+  return tidyUncertainties(x.incertitudes.map((u) => ({ ...u, resolved: null })));
 }
 
 /** `date` (AAAA-MM-JJ) + `n` jours, en arithmétique calendaire (pas de fuseau). */
@@ -834,15 +835,10 @@ export async function createTranscribedEntry(
         story: input.story ?? null,
         highlight: input.highlight ?? null,
         transcription: input.transcription ?? null,
-        uncertainties: (input.uncertainties ?? []).map(
-          (original): Uncertainty => ({
-            original,
-            contexte: "",
-            suggestions: [],
-            champ: null,
-            resolved: null,
-          }),
-        ),
+        /* Même remise en forme que pour la lecture VLM : un agent MCP envoie
+           lui aussi « «mot» : explication » dans une simple chaîne, et c'est
+           `original` qui sera remplacé dans le récit à la relecture. */
+        uncertainties: tidyUncertainties(input.uncertainties ?? []),
         createdBy: input.userId,
         publishedAt: publish ? new Date() : null,
       })

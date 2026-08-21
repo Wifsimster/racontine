@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { getSettings } from "./settings.js";
+import { tidyUncertainty } from "./uncertainties.js";
 
 /**
  * Incertitude telle que renvoyée par le VLM : le mot tel que lu, pourquoi il
@@ -42,12 +43,13 @@ const UNCERTAINTY_SCHEMA = {
     properties: {
       original: {
         type: "string",
-        description: "le mot ou passage tel que lu, incertain",
+        description:
+          "UNIQUEMENT le mot ou le court passage tel que lu, recopié à l'identique et sans guillemets ni explication — c'est cette chaîne exacte qui sera remplacée dans le texte une fois la lecture validée. Ex. « Roueil », et non « «Roueil» : mot incertain après Nounour ».",
       },
       contexte: {
         type: "string",
         description:
-          "brève explication de l'incertitude (position dans le texte, raison)",
+          "brève explication de l'incertitude (position dans le texte, raison). C'est ICI que va tout ce qui n'est pas le mot lui-même.",
       },
       suggestions: {
         type: "array",
@@ -291,7 +293,22 @@ function normalizeUncertainties(raw: unknown): VlmUncertainty[] {
       champ: UNCERTAINTY_CHAMPS.includes(u.champ as string)
         ? (u.champ as VlmUncertainty["champ"])
         : null,
-    }));
+    }))
+    /* Le modèle écrit régulièrement le mot ET son explication dans `original`
+       (« «Roueil» : mot incertain après «Nounour»… »). On les sépare ici, à
+       l'écriture : c'est `original` que le serveur remplacera dans le récit
+       quand la lecture sera tranchée — une phrase n'y trouve jamais son mot.
+       Voir uncertainties.ts. */
+    .map((u) => {
+      const tidy = tidyUncertainty({ ...u, resolved: null });
+      return {
+        original: tidy.original,
+        contexte: tidy.contexte,
+        suggestions: tidy.suggestions,
+        champ: u.champ,
+      };
+    })
+    .filter((u) => u.original.trim());
 }
 
 /**
