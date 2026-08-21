@@ -11,7 +11,7 @@ Photographiez le carnet papier de la nounou / MAM / crèche → un LLM vision li
 - **Front** : Vite + React + TypeScript + shadcn/ui + Tailwind (PWA)
 - **Back** : Fastify + TypeScript
 - **BDD** : PostgreSQL
-- **Auth** : Better Auth (magic links pour les proches)
+- **Auth** : Better Auth (mot de passe pour le foyer, magic links pour les proches)
 - **Extraction** : API Claude (vision) — option VLM local à terme
 
 ## Développement
@@ -82,14 +82,33 @@ jours). L'admin peut le copier pour l'envoyer lui-même, ou le laisser partir pa
 e-mail.
 
 > **En production, un canal de livraison est requis.** Les liens de connexion
-> (magic link) et d'invitation sont des **identifiants** : qui tient le lien
-> tient le compte. Ils ne sont donc jamais écrits dans les logs quand
+> (magic link), de **réinitialisation de mot de passe** et d'invitation sont des
+> **identifiants** : qui tient le lien tient le compte. Ils ne sont donc jamais écrits dans les logs quand
 > `NODE_ENV=production` — il faut `SMTP_HOST` ou `NOTIFY_WEBHOOK_URL`, sans quoi
 > le serveur journalise une erreur explicite au lieu de livrer. Le lien
-> d'invitation reste copiable depuis l'écran Partage ; le magic link, lui, n'a
-> pas d'autre chemin. En développement, le lien s'affiche dans la console. Le proche ouvre le lien, se connecte **sans mot de passe** (magic
+> d'invitation reste copiable depuis l'écran Partage ; le magic link et le lien
+> de réinitialisation, eux, n'ont pas d'autre chemin. En développement, le lien s'affiche dans la console. Le proche ouvre le lien, se connecte **sans mot de passe** (magic
 link) et rejoint le cercle — même quand `SIGNUP_ENABLED=false`. La visibilité et
 les droits sont vérifiés côté serveur, par enfant, sur chaque route.
+
+## Se connecter, et récupérer un mot de passe
+
+L'écran de connexion porte **deux chemins**, pour deux publics, et ils ne se
+confondent pas :
+
+- **mot de passe** — le foyer. Oublié ? « Mot de passe oublié ? » sous le champ
+  envoie un lien de **réinitialisation** (`/reset-password`, valable **1 heure**,
+  à usage unique) qui mène au choix d'un nouveau mot de passe. Toutes les
+  sessions ouvertes sont fermées au passage : un mot de passe qu'on réinitialise
+  est un mot de passe dont on a pu perdre le contrôle.
+- **lien par e-mail** (magic link) — les proches invités, qui n'ont pas de mot de
+  passe et n'en auront jamais. Ce lien **connecte**, il ne change rien.
+
+Le serveur répond « c'est parti » même pour une adresse inconnue : l'écran de
+connexion ne dit jamais qui a un compte sur l'instance. En production, Better
+Auth limite la demande de réinitialisation à **3 par minute** et l'envoi d'un
+magic link à **3 par 10 secondes**, par adresse IP (d'où l'importance de
+`TRUSTED_PROXIES`, plus bas).
 
 ## Connexion MCP (sessions Claude)
 

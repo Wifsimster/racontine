@@ -21,6 +21,28 @@ test("redactUrl masque le jeton de magic link en chaîne de requête", () => {
   assert.ok(redacted.includes("callbackURL"));
 });
 
+test("redactUrl masque le jeton de réinitialisation de mot de passe", () => {
+  // Le lien de l'e-mail « mot de passe oublié » est une CAPACITÉ : qui le tient
+  // choisit le mot de passe du compte. Il arrive au serveur en clair, deux fois
+  // — dans le chemin (la vérification), puis en query (le POST du nouveau mot
+  // de passe). Ni l'un ni l'autre ne doit finir dans `docker logs`.
+  const chemin = redactUrl(
+    "/api/auth/reset-password/jeton-de-reinitialisation?callbackURL=%2Freset-password",
+  );
+  assert.ok(!chemin.includes("jeton-de-reinitialisation"));
+  assert.ok(chemin.startsWith("/api/auth/reset-password/REDACTED"));
+  // La demande, elle, ne porte aucun secret : elle reste lisible en entier.
+  assert.equal(
+    redactUrl("/api/auth/request-password-reset"),
+    "/api/auth/request-password-reset",
+  );
+  assert.ok(
+    !redactUrl("/api/auth/reset-password?token=jeton-en-query").includes(
+      "jeton-en-query",
+    ),
+  );
+});
+
 test("redactUrl masque le segment qui suit magic-link", () => {
   assert.ok(!redactUrl("/api/auth/magic-link/abc123").includes("abc123"));
 });
