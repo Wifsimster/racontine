@@ -2,6 +2,13 @@
 
 Toutes les versions notables de Racontine. Format issu des messages de commit conventionnels (`feat`, `fix`, …).
 
+## [1.14.1](https://github.com/Wifsimster/racontine/compare/v1.14.0...v1.14.1) (2026-08-21)
+
+
+### Bug Fixes
+
+* **server:** rendre visibles les deux façons de rater TRUSTED_PROXIES ([#41](https://github.com/Wifsimster/racontine/issues/41)) ([29c1676](https://github.com/Wifsimster/racontine/commit/29c1676029f71f2f0e2f9b55f737a4c2a7d42b25)), closes [#43](https://github.com/Wifsimster/racontine/issues/43)
+
 # [1.14.0](https://github.com/Wifsimster/racontine/compare/v1.13.0...v1.14.0) (2026-08-21)
 
 
