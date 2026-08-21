@@ -2,6 +2,13 @@
 
 Toutes les versions notables de Racontine. Format issu des messages de commit conventionnels (`feat`, `fix`, …).
 
+## [1.14.2](https://github.com/Wifsimster/racontine/compare/v1.14.1...v1.14.2) (2026-08-21)
+
+
+### Bug Fixes
+
+* **web:** cesser d'écraser le https du reverse proxy ([#45](https://github.com/Wifsimster/racontine/issues/45)) ([fc57c5d](https://github.com/Wifsimster/racontine/commit/fc57c5d63f1e6115100eca834a849be138aa9516))
+
 ## [1.14.1](https://github.com/Wifsimster/racontine/compare/v1.14.0...v1.14.1) (2026-08-21)
 
 
