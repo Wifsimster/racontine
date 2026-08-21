@@ -148,7 +148,7 @@ export async function sharingRoutes(app: FastifyInstance) {
         .returning();
 
       const url = inviteUrl(token);
-      await deliverLink(email, "Invitation à suivre un enfant sur Racontine", url);
+      await deliverLink(email, "invitation", url);
 
       return reply.code(201).send({
         id: invitation.id,

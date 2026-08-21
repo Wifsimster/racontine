@@ -8,18 +8,9 @@ import {
 } from "./db/schema.js";
 import { config } from "./config.js";
 import { sendMail, mailEnabled } from "./mailer.js";
+import { renderEmail } from "./email-template.js";
 import { sendPushToUser } from "./push.js";
 import { getSettings } from "./settings.js";
-
-/** Échappe le texte destiné à être interpolé dans du HTML d'e-mail. */
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
 
 function formatDateFr(iso: string): string {
   const d = new Date(iso + "T00:00:00");
@@ -86,7 +77,7 @@ export async function notifyEntryPublished(params: {
 
     // E-mail envoyé seulement si SMTP est configuré ET si le propriétaire n'a pas
     // coupé globalement les e-mails de notification depuis les réglages.
-    const { emailNotificationsEnabled } = await getSettings();
+    const { appName, emailNotificationsEnabled } = await getSettings();
     const canEmail = mailEnabled() && emailNotificationsEnabled;
 
     // Une notif in-app par abonné, plus un e-mail si activé et SMTP configuré.
@@ -122,6 +113,7 @@ export async function notifyEntryPublished(params: {
           const emailedAt = await sendEntryEmail(
             s.email,
             s.name,
+            appName,
             title,
             body,
             link,
@@ -151,22 +143,23 @@ export async function notifyEntryPublished(params: {
 async function sendEntryEmail(
   to: string,
   name: string,
+  appName: string,
   title: string,
   body: string,
   link: string,
 ): Promise<Date | null> {
-  const greeting = name ? `Bonjour ${name},` : "Bonjour,";
-  const text = `${greeting}\n\n${body}\n\nVoir la journée : ${link}\n\n— Racontine`;
-  // childName (donc title/body) et le nom du destinataire sont saisis par des
-  // utilisateurs : on les échappe avant interpolation HTML pour éviter toute
-  // injection de balises (liens de phishing, images traçantes…). link est une
-  // URL construite côté serveur.
-  const html = `<div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#1f2937;line-height:1.5">
-  <p>${escapeHtml(greeting)}</p>
-  <p>${escapeHtml(body)}</p>
-  <p><a href="${encodeURI(link)}" style="display:inline-block;padding:10px 18px;background:#4f46e5;color:#fff;border-radius:8px;text-decoration:none">Voir la journée</a></p>
-  <p style="color:#6b7280;font-size:13px">— Racontine, le journal de l'enfance</p>
-</div>`;
+  // `childName` (donc title/body) et le nom du destinataire sont saisis par des
+  // utilisateurs ; `link` est une URL construite côté serveur. Le gabarit
+  // échappe le texte et n'accepte que des liens http(s) : rien de ce qui vient
+  // d'un utilisateur ne peut devenir une balise ni un lien de hameçonnage.
+  const { text, html } = renderEmail({
+    appName,
+    title,
+    greeting: name ? `Bonjour ${name},` : "Bonjour,",
+    paragraphs: [body],
+    action: { label: "Voir la journée", url: link },
+    note: "Vous recevez cet e-mail parce que vous suivez cet enfant. Vous pouvez couper ces envois depuis l'écran « Les proches ».",
+  });
   const ok = await sendMail({ to, subject: title, text, html });
   return ok ? new Date() : null;
 }
