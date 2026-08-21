@@ -42,7 +42,7 @@ l'application à chaud, sans redéploiement :
 
 | Réglage | Effet |
 |---|---|
-| **Nom de l'instance** | En-tête et écran de connexion |
+| **Nom de l'instance** | En-tête, écran de connexion et e-mails |
 | **Inscriptions ouvertes** | Autorise la création de comptes email/mot de passe (les proches invités par lien restent toujours acceptés) |
 | **Validité des invitations** | Durée avant expiration d'un lien d'invitation |
 | **E-mails de notification** | Interrupteur global des e-mails aux abonnés |
@@ -83,6 +83,23 @@ e-mail.
 > pas d'autre chemin. En développement, le lien s'affiche dans la console. Le proche ouvre le lien, se connecte **sans mot de passe** (magic
 link) et rejoint le cercle — même quand `SIGNUP_ENABLED=false`. La visibilité et
 les droits sont vérifiés côté serveur, par enfant, sur chaque route.
+
+## Les e-mails
+
+Tous les envois — lien de connexion, invitation, journée publiée — passent par
+un même gabarit (`server/src/email-template.ts`) qui reprend le dessin du
+produit : le papier, la feuille et son trait de marge groseille, le titre en
+serif souligné d'une réglure, le bouton groseille. Le nom affiché est celui de
+l'instance (réglage **Nom de l'instance**), en en-tête et en signature : un
+proche doit reconnaître d'où vient le lien qu'il reçoit — c'est ce qui distingue
+une invitation d'un hameçonnage.
+
+Chaque e-mail part en deux versions, texte et HTML, écrites depuis le même
+contenu (elles ne peuvent pas diverger). Le HTML est autonome : aucune image,
+aucune police ni feuille de style à charger, donc rien qui signale la lecture,
+et un mode sombre pour les clients qui l'annoncent. Les textes venus des
+utilisateurs (nom de l'enfant, nom du destinataire) sont échappés, et seules les
+URL `http(s)` deviennent des liens.
 
 ## Connexion MCP (sessions Claude)
 

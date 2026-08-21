@@ -48,7 +48,7 @@ export const auth = betterAuth({
     // fonctionne même quand l'inscription email/password est fermée.
     magicLink({
       async sendMagicLink({ email, url }) {
-        await deliverLink(email, "Votre lien de connexion Racontine", url);
+        await deliverLink(email, "magic-link", url);
       },
     }),
   ],
