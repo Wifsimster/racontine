@@ -33,6 +33,31 @@ function parseIntEnv(raw: string | undefined, fallback: number): number {
   return Number.isFinite(n) ? n : fallback;
 }
 
+/**
+ * Réseaux des relais de confiance, en CIDR. Défaut : la boucle locale et les
+ * trois plages privées — c'est EXACTEMENT la topologie livrée (nginx dans le
+ * conteneur `web`, plus un éventuel reverse proxy du homelab), et le serveur
+ * n'est joignable que depuis le réseau Docker dans `docker-compose.prod.yml`.
+ * Un déploiement qui expose l'API directement doit resserrer cette liste :
+ * `X-Forwarded-For` devient sinon une adresse que le client choisit lui-même.
+ */
+const DEFAULT_TRUSTED_PROXIES = [
+  "127.0.0.1/32",
+  "::1/128",
+  "10.0.0.0/8",
+  "172.16.0.0/12",
+  "192.168.0.0/16",
+];
+
+function parseList(raw: string | undefined, fallback: string[]): string[] {
+  if (!raw) return [...fallback];
+  const list = raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return list.length ? list : [...fallback];
+}
+
 const corsOrigins = parseOrigins(process.env.CORS_ORIGINS);
 const usingDefaultOrigins = !process.env.CORS_ORIGINS?.trim();
 
@@ -49,13 +74,46 @@ export const config = {
     secret: process.env.BETTER_AUTH_SECRET ?? DEFAULT_AUTH_SECRET,
     url: process.env.BETTER_AUTH_URL ?? "http://localhost:3010",
     /**
-     * Ouvre l'inscription email/password. Passer à false une fois les comptes
-     * parent + co-parent créés (MVP à foyer fermé).
+     * Ouvre l'inscription email/mot de passe. Ce n'est que le DÉFAUT : le
+     * réglage stocké en base (écran Réglages) prime dès qu'il est renseigné.
+     *
+     * Le défaut dépend de l'environnement, et c'est délibéré. En production,
+     * une instance dont on a oublié la variable laissait n'importe quel passant
+     * se créer un compte sur le homelab de quelqu'un d'autre. Le défaut y est
+     * donc FERMÉ. En développement il reste ouvert : on crée et recrée des
+     * comptes toute la journée.
+     *
+     * Le premier compte n'est pas concerné : une instance sans aucun
+     * utilisateur accepte toujours l'inscription (voir le hook `before` dans
+     * `auth.ts`), sinon un défaut fermé rendrait une installation neuve
+     * impossible à amorcer.
      */
-    signupEnabled: parseBool(process.env.SIGNUP_ENABLED, true),
+    signupEnabled: parseBool(
+      process.env.SIGNUP_ENABLED,
+      process.env.NODE_ENV !== "production",
+    ),
   },
   /** Origines autorisées par CORS (front en dev + reverse proxy). */
   corsOrigins,
+  /**
+   * Relais de confiance pour résoudre l'ADRESSE RÉELLE du client.
+   *
+   * Ce n'est pas un détail d'exploitation : sans cette liste, le limiteur de
+   * débit de Better Auth ne sait pas à qui attribuer une requête. nginx AJOUTE
+   * son maillon à `X-Forwarded-For` (`$proxy_add_x_forwarded_for`), et le
+   * reverse proxy du homelab en ajoute un autre — l'en-tête porte donc au moins
+   * deux valeurs, et Better Auth refuse par sécurité d'en croire une seule.
+   * Il retombe alors sur un SEUL SEAU PARTAGÉ (`no-trusted-ip`) pour toute
+   * l'instance : trois connexions par dix secondes pour le monde entier, mamie
+   * comprise. C'est à la fois inutile côté sécurité (personne n'est distingué)
+   * et cassant côté disponibilité (une famille se bloque toute seule).
+   * Avec la liste, la chaîne est dépilée par la droite jusqu'au premier maillon
+   * non fiable : on obtient l'adresse publique du client, et chacun son seau.
+   */
+  trustedProxies: parseList(
+    process.env.TRUSTED_PROXIES,
+    DEFAULT_TRUSTED_PROXIES,
+  ),
   /**
    * Base publique du front, pour construire les liens d'invitation, de magic
    * link et des e-mails de notification. Défaut : la 1re origine CORS.

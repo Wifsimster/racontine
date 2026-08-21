@@ -48,7 +48,14 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
     let message = `Erreur ${res.status}`;
     try {
       const body = await res.json();
-      if (body?.error) message = body.error;
+      // Nos routes répondent `{ error }`. Les erreurs fabriquées par Fastify
+      // lui-même (limite de débit, corps trop gros, route inconnue) répondent
+      // `{ statusCode, error, message }`, où `error` ne porte que la phrase
+      // HTTP anglaise (« Too Many Requests ») et `message` la vraie phrase.
+      // Sans cette seconde lecture, l'utilisateur voyait l'étiquette anglaise
+      // du protocole au lieu de ce qu'on a écrit pour lui.
+      if (typeof body?.message === "string" && body.message) message = body.message;
+      else if (typeof body?.error === "string" && body.error) message = body.error;
     } catch {
       /* pas de corps JSON */
     }

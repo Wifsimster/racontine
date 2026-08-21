@@ -34,6 +34,13 @@ pnpm dev               # server sur :3010, web sur :5173
 Premier lancement : ouvrir `http://localhost:5173`, créer le compte parent
 (puis le co-parent), et fermer les inscriptions.
 
+> En production, l'inscription est **fermée par défaut** : une instance dont on
+> aurait oublié `SIGNUP_ENABLED` ne doit pas laisser un passant se créer un
+> compte sur le homelab de quelqu'un d'autre. Le **premier** compte est toujours
+> accepté — une instance sans aucun utilisateur ne peut pas s'amorcer autrement,
+> et ce premier compte est justement celui du propriétaire. Pour ouvrir
+> l'inscription au co-parent, l'écran Réglages la rouvre à chaud.
+
 ## Réglages (propriétaire)
 
 Le **propriétaire** de l'instance — le premier compte créé — dispose d'un écran
@@ -176,5 +183,16 @@ docker compose -f docker-compose.prod.yml up -d
 
 Les migrations s'appliquent automatiquement au démarrage du serveur. Le front
 est servi sur `:8080` (nginx proxie `/api/` vers le serveur) — à placer
-derrière votre reverse proxy en HTTPS. Mise à jour : `docker compose -f
+derrière votre reverse proxy en HTTPS. nginx pose les en-têtes de sécurité
+(CSP, HSTS, `nosniff`, `frame-ancestors 'none'`) et le cache : un an sur les
+fichiers versionnés par empreinte, jamais sur `index.html` ni `sw.js`.
+
+**Adresse réelle des visiteurs.** Le serveur ne croit `X-Forwarded-For` que
+s'il vient d'un relais listé dans `TRUSTED_PROXIES` (défaut : boucle locale et
+plages privées, ce qui couvre nginx et un reverse proxy de homelab). C'est ce
+qui permet de limiter le débit **par visiteur** : sans cette liste, toutes les
+requêtes tombent dans un seau unique, et trois tentatives de connexion ratées
+par un inconnu bloquent la connexion de toute la famille pendant dix secondes.
+Si vous exposez l'API directement, resserrez la liste — un client peut sinon
+se fabriquer l'adresse de son choix. Mise à jour : `docker compose -f
 docker-compose.prod.yml pull && … up -d`.
