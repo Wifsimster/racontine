@@ -58,6 +58,38 @@ function parseList(raw: string | undefined, fallback: string[]): string[] {
   return list.length ? list : [...fallback];
 }
 
+/**
+ * Entrées de TRUSTED_PROXIES qui ne sont ni une IP ni un CIDR plausible.
+ *
+ * Une entrée mal écrite ne fait pas confiance « à peu près » : elle ne
+ * correspond à aucune adresse, donc à aucun relais. La liste se comporte alors
+ * comme si le maillon manquait — le débit repasse sur un seau partagé — mais
+ * sans rien signaler. C'est le pire des cas : la configuration a l'air en place.
+ *
+ * Contrôle de FORME uniquement, et c'est délibéré : il attrape la coquille
+ * (« /33 », un nom d'hôte, une plage écrite avec un tiret). La correspondance
+ * réelle reste l'affaire de `proxy-addr` et de Better Auth — redéfinir ici leur
+ * sémantique CIDR exacte créerait une deuxième vérité à maintenir, qui finirait
+ * par diverger de celle qui décide vraiment.
+ */
+export function findMalformedProxies(entries: string[]): string[] {
+  return entries.filter((entry) => {
+    const slash = entry.lastIndexOf("/");
+    const addr = slash === -1 ? entry : entry.slice(0, slash);
+    const isIPv4 =
+      /^\d{1,3}(\.\d{1,3}){3}$/.test(addr) &&
+      addr.split(".").every((o) => Number(o) <= 255);
+    // IPv6 : on se contente des caractères autorisés, la forme exacte
+    // (compression « :: », mapping IPv4) est l'affaire des bibliothèques.
+    const isIPv6 = addr.includes(":") && /^[0-9a-fA-F:.]+$/.test(addr);
+    if (!isIPv4 && !isIPv6) return true;
+    if (slash === -1) return false;
+    const prefixPart = entry.slice(slash + 1);
+    if (!/^\d+$/.test(prefixPart)) return true;
+    return Number(prefixPart) > (isIPv4 ? 32 : 128);
+  });
+}
+
 const corsOrigins = parseOrigins(process.env.CORS_ORIGINS);
 const usingDefaultOrigins = !process.env.CORS_ORIGINS?.trim();
 
@@ -180,6 +212,11 @@ export function validateConfig(): void {
   if (usingDefaultOrigins)
     warn.push(
       "CORS_ORIGINS non défini : origines CORS et liens e-mail par défaut sur localhost — les liens envoyés aux proches seront morts.",
+    );
+  const malformedProxies = findMalformedProxies(config.trustedProxies);
+  if (malformedProxies.length)
+    (isProd ? fatal : warn).push(
+      `TRUSTED_PROXIES contient des entrées qui ne sont ni une IP ni un CIDR : ${malformedProxies.join(", ")}. Elles ne correspondront à aucun relais, et la limitation de débit repassera sur un seau partagé sans le dire.`,
     );
 
   for (const w of warn) console.warn(`[config] ${w}`);
