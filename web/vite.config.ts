@@ -26,6 +26,21 @@ export default defineConfig({
       // que de passer à injectManifest : plus simple, précache inchangé.
       workbox: {
         importScripts: ["push-sw.js"],
+        // SANS CETTE LISTE, LES LIENS DE CONNEXION DES PROCHES NE MARCHENT PAS.
+        // `generateSW` pose une NavigationRoute qui répond `index.html` à TOUTE
+        // navigation de même origine. Or le lien de connexion d'un proche est
+        // une navigation vers `/api/auth/magic-link/verify?token=…` — même
+        // origine, puisque nginx sert le front et proxie `/api/`. Dès qu'un
+        // service worker était installé (donc dès la 2e visite), Workbox servait
+        // la coquille de l'app depuis le cache, le serveur ne voyait jamais le
+        // jeton, et le proche retombait sur l'écran de connexion sans qu'aucune
+        // erreur ne soit levée nulle part. Le magic link est le chemin de
+        // connexion PRINCIPAL des proches invités : c'était la panne la plus
+        // silencieuse du produit.
+        // Tout ce qui commence par `/api/` doit donc aller au réseau, jamais au
+        // cache : l'API, l'authentification et les pièces jointes ouvertes dans
+        // un onglet.
+        navigateFallbackDenylist: [/^\/api\//],
       },
       manifest: {
         name: "Racontine",

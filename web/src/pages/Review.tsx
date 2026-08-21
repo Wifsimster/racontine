@@ -262,6 +262,8 @@ export default function Review() {
   const [justResolved, setJustResolved] = useState<number | null>(null);
   /** Champ à faire remonter et à donner au clavier (revenir sur un choix). */
   const [focusField, setFocusField] = useState<UncertaintyField | null>(null);
+  /** Relance de lecture en cours : le bouton porte l'attente, pas une roue. */
+  const [retrying, setRetrying] = useState(false);
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const barRef = useRef<HTMLDivElement>(null);
   /** Le PATCH de publication en cours, pour pouvoir cesser de l'attendre. */
@@ -734,6 +736,30 @@ export default function Review() {
     nav("/");
   }
 
+  /* Relancer la lecture sur les pages DÉJÀ téléversées.
+     « Reprendre la photo » était la seule sortie d'un échec : c'est la bonne
+     quand la page est floue, c'est la mauvaise quand la lecture est morte avec
+     le serveur (un redémarrage). Dans ce cas les pages sont intactes et le
+     carnet papier est reparti chez la nounou — on ne peut PAS rephotographier.
+     Après la relance, la journée repasse en `processing` : `reloadKey` relance
+     `fetchEntry`, qui se remet à sonder tout seul jusqu'au brouillon. */
+  async function retryRead() {
+    setRetrying(true);
+    setError(null);
+    try {
+      await api.retryEntryRead(id);
+      setReloadKey((k) => k + 1);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Échec de la relance de la lecture",
+      );
+    } finally {
+      setRetrying(false);
+    }
+  }
+
   async function removeAttachment(attachmentId: string) {
     setRemovingAttachment(attachmentId);
     setError(null);
@@ -780,6 +806,10 @@ export default function Review() {
       <ReadFailed
         when={`${capitalize(longDate(entry.date))} · ${SOURCE_LABELS[entry.source]}`}
         reason={entry.failureReason}
+        canRetry={entry.attachments.length > 0 && canEditEntry}
+        retrying={retrying}
+        error={error}
+        onRetry={retryRead}
         onDelete={() => setConfirmDelete(true)}
         confirmOpen={confirmDelete}
         onConfirmOpenChange={setConfirmDelete}
@@ -2282,10 +2312,14 @@ function ProcessingView({ attachments }: { attachments: Entry["attachments"] }) 
   );
 }
 
-/** La lecture a échoué : cause, remèdes, deux sorties, code brut sur demande. */
+/** La lecture a échoué : cause, sorties (relancer, rephotographier, supprimer). */
 function ReadFailed({
   when,
   reason,
+  canRetry,
+  retrying,
+  error,
+  onRetry,
   onDelete,
   confirmOpen,
   onConfirmOpenChange,
@@ -2293,6 +2327,11 @@ function ReadFailed({
 }: {
   when: string;
   reason: string | null;
+  /** Des pages sont sur le serveur ET l'appelant a le droit de les relire. */
+  canRetry: boolean;
+  retrying: boolean;
+  error: string | null;
+  onRetry: () => void;
   onDelete: () => void;
   confirmOpen: boolean;
   onConfirmOpenChange: (open: boolean) => void;
@@ -2329,23 +2368,49 @@ function ReadFailed({
             "La lecture s'est arrêtée avant la fin, sans raison enregistrée."}
         </p>
         <p className="max-w-[34ch] text-meta text-muted-foreground">
-          Rien n'a été publié et rien n'a été perdu : la journée se réécrira sur
-          la nouvelle photo.
+          Rien n'a été publié et rien n'a été perdu : vos pages sont
+          conservées telles quelles.
         </p>
       </div>
 
-      <ul className="flex w-full flex-col gap-2">
-        <Tip Icon={Camera}>
-          Toute la page dans le cadre, à plat, sans doigt sur le bord.
-        </Tip>
-        <Tip Icon={Sparkles}>
-          Une lumière du côté de la fenêtre plutôt qu'au-dessus : moins d'ombre
-          sur l'écriture.
-        </Tip>
-      </ul>
+      {/* LES CONSEILS DE PRISE DE VUE NE S'ADRESSENT QU'À UNE PAGE ILLISIBLE.
+          Quand les pages sont là et relisibles, la première sortie est la
+          RELANCE, pas la reprise de photo : le carnet papier est souvent déjà
+          reparti chez la nounou, et « reprenez la photo » est alors un conseil
+          qu'on ne peut pas suivre. On ne montre donc les conseils de cadrage
+          que lorsqu'il n'y a effectivement rien à relire. */}
+      {!canRetry && (
+        <ul className="flex w-full flex-col gap-2">
+          <Tip Icon={Camera}>
+            Toute la page dans le cadre, à plat, sans doigt sur le bord.
+          </Tip>
+          <Tip Icon={Sparkles}>
+            Une lumière du côté de la fenêtre plutôt qu'au-dessus : moins d'ombre
+            sur l'écriture.
+          </Tip>
+        </ul>
+      )}
+
+      {error && (
+        <p role="alert" className="text-ui text-destructive">
+          {error}
+        </p>
+      )}
 
       <div className="flex w-full flex-col gap-2">
-        <Button asChild size="lg">
+        {/* La relance prend la place de tête : c'est la sortie qui n'existait
+            pas, et celle qui n'exige rien de plus que ce qu'on a déjà donné. */}
+        {canRetry && (
+          <Button size="lg" loading={retrying} onClick={onRetry}>
+            <RotateCcw aria-hidden="true" />
+            Relancer la lecture
+          </Button>
+        )}
+        <Button
+          asChild
+          size={canRetry ? "default" : "lg"}
+          variant={canRetry ? "outline" : "default"}
+        >
           <Link to="/capture">
             <Camera aria-hidden="true" />
             Reprendre la photo

@@ -249,7 +249,19 @@ function clientFor(apiKey: string): Anthropic {
     throw new VlmError(
       "Aucune clé API Anthropic configurée. Ajoutez la vôtre dans les réglages.",
     );
-  return new Anthropic({ apiKey });
+  return new Anthropic({
+    apiKey,
+    /* Le défaut du SDK est de DIX MINUTES par tentative, deux réessais compris :
+       une lecture bloquée pouvait donc tenir une journée en « Lecture en cours »
+       une demi-heure durant, pendant que le parent regarde une carte qui ne
+       bouge pas. Une lecture de carnet qui réussit prend quelques dizaines de
+       secondes ; au-delà de trois minutes, elle ne réussira pas, et l'échec
+       explicite (avec sa sortie « relancer la lecture ») vaut mieux qu'une
+       attente sans fin. Un seul réessai : le budget total reste borné à ~6 min,
+       sous le pas de sondage du front comme sous la patience d'un parent. */
+    timeout: 3 * 60 * 1000,
+    maxRetries: 1,
+  });
 }
 
 /** Correction déjà validée par un proche pour un enfant — voir `corrections.ts`. */
