@@ -17,6 +17,9 @@ concurrency:
 
 permissions:
   contents: read
+  # `docker compose pull` tire des images GHCR privées : sans ce scope, le
+  # registre répond « error from registry: denied ».
+  packages: read
 
 jobs:
   deploy:
@@ -29,6 +32,13 @@ jobs:
       run:
         working-directory: /opt/docker/racontine
     steps:
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Pull latest image(s)
         run: docker compose pull
 
