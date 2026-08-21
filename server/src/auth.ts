@@ -7,6 +7,7 @@ import * as schema from "./db/schema.js";
 import { config } from "./config.js";
 import { deliverLink } from "./notify.js";
 import { getSettings } from "./settings.js";
+import { ownerUserId } from "./access.js";
 
 export const auth = betterAuth({
   secret: config.auth.secret,
@@ -36,12 +37,27 @@ export const auth = betterAuth({
     // continuent de rejoindre le cercle même inscriptions fermées.
     before: createAuthMiddleware(async (ctx) => {
       if (ctx.path !== "/sign-up/email") return;
+      // AMORÇAGE : une instance sans aucun compte accepte toujours le premier.
+      // Sans cette exception, le défaut fermé en production (voir `config.ts`)
+      // rendrait une installation neuve impossible à démarrer — l'écran de
+      // création de compte refuserait le compte du propriétaire lui-même.
+      // Le premier compte créé EST le propriétaire (cf. `ownerUserId`) : cette
+      // porte se referme donc d'elle-même, dès qu'elle a servi une fois.
+      if ((await ownerUserId()) === null) return;
       const { signupEnabled } = await getSettings();
       if (!signupEnabled)
         throw new APIError("FORBIDDEN", {
           message: "Les inscriptions sont fermées sur cette instance.",
         });
     }),
+  },
+  advanced: {
+    ipAddress: {
+      // Sans cette liste, Better Auth ne résout aucune adresse cliente derrière
+      // nginx et limite le débit sur un seau unique partagé par toute
+      // l'instance — voir `config.trustedProxies` pour le détail.
+      trustedProxies: config.trustedProxies,
+    },
   },
   plugins: [
     // Magic link : connexion sans mot de passe pour les proches invités —
