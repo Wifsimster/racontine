@@ -7,6 +7,7 @@ import {
   Mail,
   MailCheck,
   NotebookPen,
+  RotateCcwKey,
   ShieldCheck,
   TriangleAlert,
 } from "lucide-react";
@@ -45,7 +46,16 @@ import { LoginBackground } from "@/components/LoginBackground";
      parent qui a un mot de passe, et le proche invité qui n'en aura jamais et
      se connecte par lien e-mail.
 
-   Trois portes au total (`Door`), un seul écran, aucune navigation.
+   Une QUATRIÈME porte s'ouvre depuis la première, sans jamais s'imposer : le
+   mot de passe oublié. Elle n'était pas là, et son absence coûtait cher — le
+   seul secours affiché était « recevoir un lien par e-mail », c'est-à-dire un
+   MAGIC LINK, qui ouvre une session et ne touche pas au mot de passe. On
+   demandait à le réinitialiser, on recevait un lien de connexion, et le mot de
+   passe restait oublié. Les deux besoins ont donc chacun leur affordance
+   (« Mot de passe oublié ? » sous le champ, « Recevoir un lien par e-mail »
+   après la séparation), chacun leur e-mail, et chacun leur accusé de réception.
+
+   Quatre portes au total (`Door`), un seul écran, aucune navigation.
 
    COULEUR : le groseille ne dit que deux choses ici, et elles ne se confondent
    pas — l'ACTION (une surface pleine : le bouton) et l'IDENTITÉ du carnet (un
@@ -98,7 +108,7 @@ import { LoginBackground } from "@/components/LoginBackground";
       seule chose à faire, elle ne coûte plus un tap de plus.
    =========================================================================== */
 
-type Door = "password" | "magic" | "signup";
+type Door = "password" | "magic" | "signup" | "forgot";
 type FieldId = "name" | "email" | "password";
 
 /** Un problème EXPLIQUÉ : la cause (le message serveur), le remède, une issue. */
@@ -122,6 +132,13 @@ const NETWORK: Problem = {
 };
 
 function problemFor(raw: string | undefined, door: Door): Problem {
+  if (door === "forgot")
+    return {
+      cause: raw ?? "L’envoi du lien a échoué.",
+      remedy:
+        "Vérifiez l’orthographe : c’est l’adresse avec laquelle vous vous connectez.",
+      field: "email",
+    };
   if (door === "magic")
     return {
       cause: raw ?? "L’envoi du lien a échoué.",
@@ -139,7 +156,7 @@ function problemFor(raw: string | undefined, door: Door): Problem {
   return {
     cause: raw ?? "La connexion a échoué.",
     remedy:
-      "Vérifiez l’adresse et le mot de passe — ou recevez un lien par e-mail, sans mot de passe.",
+      "Vérifiez l’adresse et le mot de passe. Oublié ? Demandez un lien de réinitialisation. Jamais eu de mot de passe ? Recevez un lien de connexion.",
     field: "both",
   };
 }
@@ -154,7 +171,14 @@ const FIELDS: Record<Door, FieldId[]> = {
   password: ["email", "password"],
   magic: ["email"],
   signup: ["name", "email", "password"],
+  forgot: ["email"],
 };
+
+/** Cette porte demande-t-elle un mot de passe ? Les deux autres n'ont qu'une
+ *  adresse — et c'est le seul endroit où la question se pose. */
+function hasPassword(door: Door): boolean {
+  return FIELDS[door].includes("password");
+}
 
 export default function Login() {
   /* ── OÙ L'ON ALLAIT ───────────────────────────────────────────────────────
@@ -188,6 +212,10 @@ export default function Login() {
   const [busy, setBusy] = useState(false);
   /** Lien envoyé : l'écran change de nature, il ne montre plus un formulaire. */
   const [sentTo, setSentTo] = useState<string | null>(null);
+  /** QUEL lien est parti. Les deux e-mails se ressemblent dans une boîte de
+   *  réception ; l'accusé de réception, lui, doit dire lequel on attend et ce
+   *  qu'il fera — se connecter, ou mener au choix d'un nouveau mot de passe. */
+  const [sentKind, setSentKind] = useState<"magic" | "forgot">("magic");
   const [resent, setResent] = useState(false);
 
   const [appName, setAppName] = useState("Racontine");
@@ -267,6 +295,31 @@ export default function Login() {
       fail(problemFor(res.error.message ?? undefined, "magic"));
       return false;
     }
+    setSentKind("magic");
+    setSentTo(target);
+    return true;
+  }
+
+  /**
+   * Le lien de RÉINITIALISATION — celui qui mène au choix d'un nouveau mot de
+   * passe, et pas à une session ouverte. `redirectTo` est un chemin INTERNE
+   * (même garde-fou que `next`) : le serveur vérifie le jeton, puis y redirige
+   * en le repassant en query.
+   *
+   * Le serveur répond toujours OUI, même pour une adresse inconnue : c'est
+   * voulu, sans quoi cet écran dirait qui a un compte sur l'instance. L'accusé
+   * de réception est donc écrit au conditionnel, et il ne ment pas.
+   */
+  async function sendResetLink(target: string) {
+    const res = await authClient.requestPasswordReset({
+      email: target,
+      redirectTo: "/reset-password",
+    });
+    if (res.error) {
+      fail(problemFor(res.error.message ?? undefined, "forgot"));
+      return false;
+    }
+    setSentKind("forgot");
     setSentTo(target);
     return true;
   }
@@ -278,7 +331,7 @@ export default function Login() {
     // et surtout pas d'une bulle native : on rend NOTRE erreur, en français,
     // instantanément. (Le formulaire est `noValidate` exprès.)
     const trimmed = email.trim();
-    const noPass = door !== "magic" && !password;
+    const noPass = hasPassword(door) && !password;
     if (!trimmed || noPass) {
       fail({
         cause: "Il manque une information.",
@@ -298,6 +351,8 @@ export default function Login() {
         // On coupe les espaces : une adresse recopiée depuis un e-mail en
         // traîne presque toujours un, et l'erreur serveur serait incompréhensible.
         await sendMagicLink(trimmed);
+      } else if (door === "forgot") {
+        await sendResetLink(trimmed);
       } else {
         const res =
           door === "password"
@@ -322,7 +377,11 @@ export default function Login() {
     setBusy(true);
     setResent(false);
     try {
-      if (await sendMagicLink(sentTo)) setResent(true);
+      const sent =
+        sentKind === "forgot"
+          ? await sendResetLink(sentTo)
+          : await sendMagicLink(sentTo);
+      if (sent) setResent(true);
     } catch {
       fail(NETWORK);
     } finally {
@@ -335,24 +394,30 @@ export default function Login() {
   // Le libellé du bouton PORTE l'état d'attente (« Connexion… ») : il n'est
   // jamais remplacé par une roue, on ne perd donc pas ce qu'on a demandé.
   const cta =
-    door === "magic"
+    door === "forgot"
       ? busy
         ? "Envoi du lien…"
-        : "Recevoir mon lien"
-      : door === "signup"
+        : "Recevoir le lien"
+      : door === "magic"
         ? busy
-          ? "Création du compte…"
-          : "Créer mon carnet"
-        : busy
-          ? "Connexion…"
-          : "Se connecter";
+          ? "Envoi du lien…"
+          : "Recevoir mon lien"
+        : door === "signup"
+          ? busy
+            ? "Création du compte…"
+            : "Créer mon carnet"
+          : busy
+            ? "Connexion…"
+            : "Se connecter";
 
   const heading =
-    door === "magic"
-      ? "Lien de connexion"
-      : door === "signup"
-        ? "Créer un compte"
-        : "Connexion";
+    door === "forgot"
+      ? "Mot de passe oublié"
+      : door === "magic"
+        ? "Lien de connexion"
+        : door === "signup"
+          ? "Créer un compte"
+          : "Connexion";
 
   return (
     <div
@@ -384,6 +449,7 @@ export default function Login() {
         {/* ── La feuille ───────────────────────────────────────────────────── */}
         {sentTo ? (
           <LinkSent
+            kind={sentKind}
             email={sentTo}
             resent={resent}
             busy={busy}
@@ -392,7 +458,9 @@ export default function Login() {
               setSentTo(null);
               setResent(false);
               wantFocus.current = true;
-              setDoor("magic");
+              // On revient à la porte d'où l'on vient : corriger l'adresse ne
+              // doit pas changer la nature du lien qu'on attend.
+              setDoor(sentKind === "forgot" ? "forgot" : "magic");
             }}
           />
         ) : (
@@ -406,11 +474,13 @@ export default function Login() {
             <SheetTitle
               id="feuille-titre"
               icon={
-                door === "magic"
-                  ? Mail
-                  : door === "signup"
-                    ? NotebookPen
-                    : KeyRound
+                door === "forgot"
+                  ? RotateCcwKey
+                  : door === "magic"
+                    ? Mail
+                    : door === "signup"
+                      ? NotebookPen
+                      : KeyRound
               }
               title={heading}
             />
@@ -418,6 +488,16 @@ export default function Login() {
             {door === "magic" && (
               <p className="text-meta text-muted-foreground">
                 {"Aucun mot de passe à retenir : nous vous envoyons un lien qui vous connecte au journal."}
+              </p>
+            )}
+
+            {/* La porte du mot de passe oublié dit EXACTEMENT ce que fera le
+                lien — parce que la porte d'à côté en envoie un autre, qui
+                ressemble au premier dans une boîte de réception et qui, lui, ne
+                touche pas au mot de passe. */}
+            {door === "forgot" && (
+              <p className="text-meta text-muted-foreground">
+                {"Nous vous envoyons un lien qui mène au choix d’un nouveau mot de passe. Il ne vaut qu’une heure."}
               </p>
             )}
 
@@ -451,11 +531,11 @@ export default function Login() {
                 placeholder="vous@exemple.fr"
                 autoComplete="email"
                 inputMode="email"
-                enterKeyHint={door === "magic" ? "send" : "next"}
+                enterKeyHint={hasPassword(door) ? "next" : "send"}
                 invalid={flags(problem, "email")}
               />
 
-              {door !== "magic" && (
+              {hasPassword(door) && (
                 <Field
                   id="password"
                   label="Mot de passe"
@@ -475,6 +555,33 @@ export default function Login() {
                     door === "signup" ? "8 caractères au minimum." : undefined
                   }
                 />
+              )}
+
+              {/* LA SORTIE DU MOT DE PASSE OUBLIÉ EST ICI, collée au champ qui
+                  vient de résister — pas en pied de page, et surtout pas
+                  confondue avec la seconde porte. Avant, l'écran n'offrait
+                  qu'un seul secours (« recevoir un lien par e-mail ») : on
+                  demandait à changer son mot de passe, on recevait un lien de
+                  CONNEXION, et le mot de passe restait oublié. Deux besoins
+                  distincts, deux affordances distinctes, deux e-mails dont
+                  l'objet ne se confond pas.
+                  Réglée à l'ENCRE soulignée, comme l'affordance d'inscription :
+                  c'est une note, pas l'action de l'écran — le groseille reste
+                  au bouton. La cible fait 44 px de haut (taille `sm`) et son
+                  bord gauche tombe sur l'axe de texte (`px-0`). */}
+              {door === "password" && (
+                <div className="-mt-1 flex">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="justify-start px-0 font-normal underline decoration-input decoration-1 underline-offset-4 hover:bg-transparent hover:decoration-foreground"
+                    disabled={busy}
+                    onClick={() => switchTo("forgot")}
+                  >
+                    {"Mot de passe oublié ?"}
+                  </Button>
+                </div>
               )}
             </div>
 
@@ -819,14 +926,25 @@ function ProblemNote({
  * (vert = confirmé, le même vert que « journée publiée »), on dit quoi faire, on
  * donne l'unique conseil qui sert vraiment (les indésirables), et on laisse deux
  * issues — renvoyer, ou corriger l'adresse.
+ *
+ * DEUX LIENS PASSENT PAR ICI et ils ne font pas la même chose : celui de la
+ * porte du lien CONNECTE, celui du mot de passe oublié MÈNE AU CHOIX d'un
+ * nouveau mot de passe. La phrase le dit, parce que c'est la dernière fois
+ * qu'on peut le dire avant la boîte de réception.
+ *
+ * Nuance qui n'en est pas une : le serveur répond « c'est parti » même pour une
+ * adresse sans compte (sinon cet écran dirait qui est inscrit sur l'instance).
+ * L'accusé de réception du mot de passe oublié est donc écrit au conditionnel.
  */
 function LinkSent({
+  kind,
   email,
   resent,
   busy,
   onResend,
   onChange,
 }: {
+  kind: "magic" | "forgot";
   email: string;
   resent: boolean;
   busy: boolean;
@@ -839,12 +957,15 @@ function LinkSent({
       <SheetTitle icon={MailCheck} title="Le lien est parti" tone="done" />
 
       <p className="carnet-story text-foreground">
-        {"Ouvrez-le depuis cet appareil : il vous connecte au journal, sans mot de passe."}
+        {kind === "forgot"
+          ? "Ouvrez-le depuis cet appareil : il vous mènera au choix d’un nouveau mot de passe. Passé une heure, il ne vaut plus rien."
+          : "Ouvrez-le depuis cet appareil : il vous connecte au journal, sans mot de passe."}
       </p>
 
       <div className="flex flex-col gap-2">
         <p className="text-meta text-muted-foreground">
           Envoyé à <span className="font-bold text-foreground">{email}</span>
+          {kind === "forgot" && ", si un compte y est ouvert"}
           {resent && " · renvoyé à l’instant"}
         </p>
         <p className="flex items-start gap-2 text-meta text-muted-foreground">
