@@ -2,6 +2,13 @@
 
 Toutes les versions notables de Racontine. Format issu des messages de commit conventionnels (`feat`, `fix`, …).
 
+# [1.13.0](https://github.com/Wifsimster/racontine/compare/v1.12.1...v1.13.0) (2026-08-21)
+
+
+### Features
+
+* **prod:** limiter le débit par visiteur, poser les en-têtes, fermer l'inscription par défaut ([#43](https://github.com/Wifsimster/racontine/issues/43)) ([4a050af](https://github.com/Wifsimster/racontine/commit/4a050af719914949881ee352cfd45fad55b611c5))
+
 ## [1.12.1](https://github.com/Wifsimster/racontine/compare/v1.12.0...v1.12.1) (2026-08-21)
 
 
