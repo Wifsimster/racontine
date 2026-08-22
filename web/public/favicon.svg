@@ -1,5 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Racontine">
   <title>Racontine</title>
+  <!-- LA SOURCE DE TOUTES LES ICÔNES DU PRODUIT. Les PNG d'à côté en sont des
+       rendus, et se refont depuis ce fichier — jamais à la main, jamais l'un
+       sans les autres :
+         pwa-512.png / pwa-192.png   ce dessin, tel quel
+         pwa-maskable-512.png        plein bord (la plateforme pose SON masque,
+                                     un disque posé sur un masque carré flotte)
+                                     et capitale ramenée à 260/512 pour tenir
+                                     dans la zone sûre (cercle de 80 %, rayon
+                                     204,8 px ; la demi-diagonale du R fait 183)
+         apple-touch-icon.png        plein bord à 180 px : iOS redessine le
+                                     squircle, et des coins transparents se
+                                     composent sur du noir sur les vieux iOS -->
   <!-- La tuile groseille des icônes d'accueil (#C0435F), au même rayon : une
        seule marque du carnet à l'onglet. -->
   <rect width="512" height="512" rx="112" ry="112" fill="#C0435F"/>
