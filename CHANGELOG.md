@@ -2,6 +2,13 @@
 
 Toutes les versions notables de Racontine. Format issu des messages de commit conventionnels (`feat`, `fix`, …).
 
+# [1.18.0](https://github.com/Wifsimster/racontine/compare/v1.17.0...v1.18.0) (2026-08-22)
+
+
+### Features
+
+* **relecture:** garder la page tournée, au lieu de la redresser à chaque fois ([#49](https://github.com/Wifsimster/racontine/issues/49)) ([054a6ca](https://github.com/Wifsimster/racontine/commit/054a6ca81ce8f8ec0a5fbf378fb9ef36fb314b5d))
+
 # [1.17.0](https://github.com/Wifsimster/racontine/compare/v1.16.0...v1.17.0) (2026-08-22)
 
 
