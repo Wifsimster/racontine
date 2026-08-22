@@ -4,6 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#faf8f3" />
+    <!-- L'ONGLET N'AVAIT PAS DE MARQUE. Sans `rel="icon"`, le navigateur va
+         chercher /favicon.ico, ne le trouve pas (404 à chaque visite), et pose
+         la page blanche générique : dans une barre de vingt onglets, Racontine
+         était le seul à ne pas se reconnaître, alors que l'app posée sur
+         l'écran d'accueil, elle, a son R depuis toujours.
+         Le PNG est déclaré AVANT le SVG : un navigateur qui sait lire les
+         favicons vectorielles prend la dernière déclaration qu'il comprend,
+         les autres s'arrêtent à la première. -->
+    <link rel="icon" type="image/png" sizes="192x192" href="/pwa-192.png" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Racontine" />

@@ -246,21 +246,110 @@ function wordMatcher(token: string): RegExp | null {
 /**
  * Met en gras le mot douteux à l'intérieur de son contexte : on voit d'un coup
  * d'œil OÙ le doute se trouve dans la phrase, sans relire la phrase.
+ *
+ * La recherche se fait EN TANT QUE MOT et HORS CASSE (mêmes bornes Unicode que
+ * `wordMatcher`) : un `split` sur la chaîne exacte ne trouvait pas « Écrite »
+ * quand la lecture douteuse est « écrite », et mettait en gras le milieu de
+ * « beaucoup » quand elle est « eau ». Le mot est réémis TEL QU'IL EST ÉCRIT
+ * dans la phrase — c'est cette forme-là qu'on va chercher sur la photo.
  */
 function highlightToken(text: string, token: string): React.ReactNode {
-  if (!token) return text;
-  const parts = text.split(token);
-  if (parts.length === 1) return text;
-  return parts.flatMap((part, i) =>
-    i === 0
-      ? [part]
-      : [
-          <span key={i} className="font-bold text-foreground">
-            {token}
-          </span>,
-          part,
-        ],
-  );
+  const t = unquoted(token);
+  if (!t) return text;
+  let re: RegExp;
+  try {
+    re = new RegExp(
+      `(^|[^\\p{L}\\p{N}])(${escapeRe(t)})([^\\p{L}\\p{N}]|$)`,
+      "giu",
+    );
+  } catch {
+    return text;
+  }
+  const out: React.ReactNode[] = [];
+  let last = 0;
+  for (const m of text.matchAll(re)) {
+    const start = (m.index ?? 0) + m[1].length;
+    if (start < last) continue;
+    out.push(text.slice(last, start));
+    out.push(
+      <span key={start} className="font-bold text-foreground">
+        {m[2]}
+      </span>,
+    );
+    last = start + m[2].length;
+  }
+  if (!out.length) return text;
+  out.push(text.slice(last));
+  return out;
+}
+
+/* ── OÙ CE MOT A-T-IL ÉTÉ LU ? ──────────────────────────────────────────────
+   La carte donnait le mot douteux seul (« écrite ») et, quand le modèle en
+   fournissait une, une glose (« mot incertain après «Nounour» »). Devant deux
+   pages de cursive photographiées, retrouver CE mot-là demandait de relire tout
+   le carnet : le seul repère était une périphrase écrite par la machine.
+   On affiche donc la PHRASE de la transcription qui porte le mot, mot en gras.
+   C'est la même suite de mots que sur le papier — l'œil la retrouve d'un
+   balayage, parce qu'il cherche une ligne, plus un mot isolé. */
+
+/** Au-delà, ce n'est plus un repère : c'est un paragraphe à relire. */
+const PHRASE_MAX = 150;
+
+/** Ce qui ferme une phrase sur un carnet : la ponctuation forte, ou la réglure
+    suivante (les cahiers de nounou sont écrits en lignes, pas en phrases). */
+const PHRASE_BOUND = /[.!?;\n\r]/;
+
+/**
+ * Recentre une phrase trop longue AUTOUR du mot, sur des espaces (jamais au
+ * milieu d'un mot), et signale ce qui a été coupé par une ellipse.
+ */
+function clipAround(phrase: string, token: string): string {
+  if (phrase.length <= PHRASE_MAX) return phrase;
+  const at = phrase.toLowerCase().indexOf(token.toLowerCase());
+  if (at < 0) return `${phrase.slice(0, PHRASE_MAX).trimEnd()} …`;
+  let start = Math.max(0, at - Math.round((PHRASE_MAX - token.length) / 2));
+  let end = Math.min(phrase.length, start + PHRASE_MAX);
+  if (start > 0) {
+    const sp = phrase.indexOf(" ", start);
+    if (sp !== -1 && sp < at) start = sp + 1;
+  }
+  if (end < phrase.length) {
+    const sp = phrase.lastIndexOf(" ", end);
+    if (sp > at + token.length) end = sp;
+  }
+  return `${start > 0 ? "… " : ""}${phrase.slice(start, end).trim()}${
+    end < phrase.length ? " …" : ""
+  }`;
+}
+
+/**
+ * La phrase d'un texte qui contient le mot douteux, ou `null` s'il n'y figure
+ * pas. Une phrase qui se réduit au mot lui-même ne repère rien de plus que la
+ * carte : elle vaut `null` elle aussi.
+ */
+function phraseAround(text: string, token: string): string | null {
+  const t = unquoted(token);
+  if (!t || !text) return null;
+  const re = wordMatcher(t);
+  if (!re) return null;
+  const m = re.exec(text);
+  if (!m) return null;
+  const at = (m.index ?? 0) + m[1].length;
+
+  const left = text.slice(0, at);
+  const cut = /[.!?;\n\r][^.!?;\n\r]*$/.exec(left);
+  const start = cut ? cut.index + 1 : 0;
+  const right = text.slice(at + t.length);
+  const stop = PHRASE_BOUND.exec(right);
+  /* La ponctuation forte fait partie de la phrase, le retour à la ligne non. */
+  const end =
+    at +
+    t.length +
+    (stop ? stop.index + (stop[0] === "\n" || stop[0] === "\r" ? 0 : 1) : right.length);
+
+  const phrase = text.slice(start, end).replace(/\s+/g, " ").trim();
+  if (!phrase || phrase.length <= t.length + 1) return null;
+  return clipAround(phrase, t);
 }
 
 /** « mercredi 11 mars » -> « Mercredi 11 mars » (et pas « Mercredi 11 Mars »). */
@@ -476,6 +565,30 @@ export default function Review() {
         .map((u) => wordMatcher(u.original))
         .filter((re): re is RegExp => re !== null),
     [uncertainties],
+  );
+
+  /** Où le mot douteux a été lu, dans l'ordre de ce qui aide à le RETROUVER
+      SUR LA PHOTO : la transcription d'abord (c'est le carnet mot pour mot),
+      puis le champ que le modèle désigne, puis le reste. Le champ désigné passe
+      en second à dessein — « dans le récit » situe le mot dans une reformulation
+      de la machine, la transcription le situe sur le papier. */
+  const phraseFor = useCallback(
+    (u: Uncertainty): string | null => {
+      const named =
+        u.champ === "titre"
+          ? title
+          : u.champ === "recit"
+            ? story
+            : u.champ === "temps_fort"
+              ? highlight
+              : "";
+      for (const text of [transcription, named, story, highlight, title]) {
+        const phrase = text ? phraseAround(text, u.original) : null;
+        if (phrase) return phrase;
+      }
+      return null;
+    },
+    [transcription, story, highlight, title],
   );
 
   /** L'incertitude dépliée : celle qu'on a choisie si elle est encore à
@@ -936,8 +1049,16 @@ export default function Review() {
           titre et poussait la première lecture à trancher SOUS la barre d'action
           (bas de carte à 731 px pour une barre à 717) — exactement la faute que
           cet écran a corrigée au tour précédent. Avec un lot, le rail cède la
-          place ; sans lot, il est là. */}
-      {!hasStepper && <CaptureSteps steps={steps} className="mb-4 max-w-sm" />}
+          place ; sans lot, il est là.
+
+          LE RAIL PREND TOUTE LA COLONNE (`w-full`, plus de `max-w-sm`). Bridé à
+          384 px dans une colonne de 992 px, il se tassait dans le coin haut
+          gauche : quatre ronds serrés sur le premier tiers, puis 600 px de vide
+          jusqu'au compteur « 5 à vérifier » — le regard lisait un fragment,
+          pas un parcours. Étendu, chaque temps tombe au quart de la colonne et
+          les filets deviennent lisibles comme un chemin. C'est la même largeur
+          que sur la capture, où le rail a toujours suivi la colonne. */}
+      {!hasStepper && <CaptureSteps steps={steps} className="mb-4 w-full" />}
 
       {hasStepper && (
         <div className="mb-4">
@@ -1195,6 +1316,7 @@ export default function Review() {
                       key={`${u.original}-${i}`}
                       id={`rv-u-${i}`}
                       item={u}
+                      phrase={phraseFor(u)}
                       /* Pendant une publication, trancher une lecture partirait
                          en même temps que le PATCH de la journée : deux écritures
                          sur la même journée, et un résultat qui dépend de l'ordre
@@ -1208,6 +1330,7 @@ export default function Review() {
                       key={`${u.original}-${i}`}
                       id={`rv-u-${i}`}
                       item={u}
+                      phrase={phraseFor(u)}
                       onOpen={() => setOpenUncertainty(i)}
                     />
                   ),
@@ -2257,7 +2380,7 @@ function ReviewSkeleton() {
           { key: "review", label: "Relecture", state: "current" },
           { key: "share", label: "Partage", state: "todo" },
         ]}
-        className="mb-4 max-w-sm"
+        className="mb-4 w-full"
       />
       {/* La ligne d'état est EN HAUT, pas en bas : en bas de 1 200 px de
           squelette, elle était sous la ligne de flottaison — un écran qui
@@ -2400,7 +2523,7 @@ function ProcessingView({ attachments }: { attachments: Entry["attachments"] }) 
           { key: "review", label: "Relecture", state: "todo" },
           { key: "share", label: "Partage", state: "todo" },
         ]}
-        className="w-full max-w-sm"
+        className="w-full"
       />
       <span className="grid size-16 place-items-center rounded-3xl bg-primary-soft text-primary">
         <ScanLine className="size-7" aria-hidden="true" />
@@ -2524,7 +2647,7 @@ function ReadFailed({
           { key: "review", label: "Relecture", state: "todo" },
           { key: "share", label: "Partage", state: "todo" },
         ]}
-        className="w-full max-w-sm"
+        className="w-full"
       />
       <span className="grid size-16 place-items-center rounded-3xl bg-warning-bg text-warning">
         <TriangleAlert className="size-7" aria-hidden="true" />
@@ -2856,23 +2979,36 @@ function ResolvedReading({
  * Une lecture à trancher, repliée : on n'ouvre qu'une carte à la fois pour que
  * les moments de la journée tiennent dans le même écran. La ligne dit quand
  * même le mot lu, où il se trouve, et qu'elle attend quelque chose.
+ *
+ * LA CITATION EST LÀ AUSSI, SUR UNE SEULE LIGNE. Quatre lectures repliées, c'est
+ * quatre mots nus (« écrite », « nu jeu d'eau »…) qu'il fallait déplier un par
+ * un pour savoir de quelle ligne du carnet chacun venait : le geste de tri se
+ * payait quatre allers-retours. La phrase tronquée à une ligne coûte 16 px par
+ * carte et rend la file TRIABLE À L'ŒIL — on ouvre la bonne du premier coup.
+ * `truncate` et non deux lignes : la file reste une liste, pas quatre pavés.
  */
 function CollapsedReading({
   id,
   item,
+  phrase,
   onOpen,
 }: {
   id: string;
   item: Uncertainty;
+  /** La phrase du carnet où ce mot a été lu, `null` si on ne l'y retrouve pas. */
+  phrase: string | null;
   onOpen: () => void;
 }) {
+  const word = unquoted(item.original);
   return (
     <button
       id={id}
       type="button"
       onClick={onOpen}
       aria-expanded={false}
-      aria-label={`Trancher la lecture « ${unquoted(item.original)} »`}
+      aria-label={`Trancher la lecture « ${word} »${
+        phrase ? `, dans « ${phrase} »` : ""
+      }`}
       className="tap flex min-h-14 w-full items-center gap-3 rounded-xl border border-warning bg-warning-bg px-3 py-2 text-left transition-colors dur-fast ease-carnet hover:bg-card"
     >
       <TriangleAlert aria-hidden="true" className="size-4 shrink-0 text-warning" />
@@ -2881,8 +3017,16 @@ function CollapsedReading({
           À vérifier{item.champ ? ` · ${FIELD_ORIGIN[item.champ]}` : ""}
         </span>
         <span className="block truncate font-serif text-ui text-foreground">
-          « {unquoted(item.original)} »
+          « {word} »
         </span>
+        {phrase && (
+          /* Sérif comme la page dépliée : c'est le même objet — ce qui est
+             écrit sur le papier — au même endroit d'une carte à l'autre. Le mot
+             y reste en gras, sinon la ligne n'est qu'une bande grise de plus. */
+          <span className="block truncate font-serif text-xs text-muted-foreground">
+            {highlightToken(phrase, word)}
+          </span>
+        )}
       </span>
       <ChevronDown aria-hidden="true" className="size-4 shrink-0 text-warning" />
     </button>
@@ -2892,12 +3036,15 @@ function CollapsedReading({
 function UncertaintyCard({
   id,
   item,
+  phrase,
   disabled,
   resolving,
   onResolve,
 }: {
   id: string;
   item: Uncertainty;
+  /** La phrase du carnet où ce mot a été lu, `null` si on ne l'y retrouve pas. */
+  phrase: string | null;
   disabled: boolean;
   resolving: boolean;
   onResolve: (value: string) => void;
@@ -2952,7 +3099,10 @@ function UncertaintyCard({
          suggestions. Le groupe porte son nom : « Lecture à vérifier : gratin ». */
       tabIndex={-1}
       role="group"
-      aria-label={`Lecture à vérifier : ${word}`}
+      /* La citation entre AUSSI dans le nom du groupe : au lecteur d'écran, la
+         carte annonçait « Lecture à vérifier : écrite » — un mot hors de toute
+         phrase, c'est-à-dire la difficulté même qu'on corrige à l'œil. */
+      aria-label={`Lecture à vérifier : ${word}${phrase ? `, dans « ${phrase} »` : ""}`}
       className="flex flex-col gap-2 rounded-xl border border-warning bg-warning-bg p-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-warning"
     >
       <p className="surtitre flex items-center gap-2 text-warning">
@@ -2970,6 +3120,22 @@ function UncertaintyCard({
         </span>{" "}
         »
       </p>
+      {/* LA PHRASE DU CARNET, PAS UNE PÉRIPHRASE. « mot incertain après
+          «Nounour» dans la ligne du matin » demande de chercher un repère pour
+          chercher un mot ; « Nott. **Befant.** pour le relais, premier atelier
+          musique » se retrouve d'un balayage sur la photo, parce que c'est
+          littéralement ce qui y est écrit. Sérif comme la page, encre pleine sur
+          le mot, encre pâlie autour : la phrase situe, elle ne se corrige pas.
+          Le filet à gauche la donne pour une CITATION — sans lui, elle se lisait
+          comme une suggestion de plus. */}
+      {phrase && (
+        <p className="border-l-2 border-warning pl-3 font-serif text-meta text-muted-foreground">
+          {highlightToken(phrase, word)}
+        </p>
+      )}
+      {/* La glose du modèle reste SOUS la citation : elle dit pourquoi la
+          machine doute (« abréviation », « peut-être Note : bébé/enfant »), ce
+          que la phrase ne dit pas. La citation situe, la glose explique. */}
       {item.contexte && (
         <p className="text-meta text-muted-foreground">
           {highlightToken(item.contexte, word)}
