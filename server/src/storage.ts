@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, writeFile, unlink } from "node:fs/promises";
+import { mkdir, readFile, writeFile, unlink } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
 import { config } from "./config.js";
@@ -74,6 +74,49 @@ export async function storeCarnetImage(input: Buffer): Promise<StoredImage> {
     width: normalized.info.width,
     height: normalized.info.height,
   };
+}
+
+/**
+ * TOURNE POUR DE BON une page déjà stockée : le JPEG plein cadre ET sa
+ * miniature sont réécrits d'un quart de tour horaire (`quarters`, compté modulo
+ * 4), et les nouvelles dimensions sont rendues à l'appelant pour la base.
+ *
+ * On réécrit les fichiers plutôt que de mémoriser un angle appliqué au rendu :
+ * une page tournée l'est alors PARTOUT — relecture, timeline, visionneuse,
+ * relance de lecture par le modèle — sans que chaque écran, chaque export et
+ * chaque appel MCP ait à connaître, puis à réappliquer, la même correction.
+ *
+ * L'écriture se fait en deux temps (tout décoder, puis tout écrire) : si la
+ * seconde image est indécodable, rien n'a encore été écrasé et la page reste
+ * telle qu'elle était, plutôt qu'à moitié tournée.
+ */
+export async function rotateStoredImage(
+  img: { originalPath: string; thumbPath: string | null },
+  quarters: number,
+): Promise<{ width: number; height: number }> {
+  const q = (((Math.trunc(quarters) % 4) + 4) % 4) as 0 | 1 | 2 | 3;
+  const angle = q * 90;
+
+  const original = await sharp(await readFile(absolute(img.originalPath)), {
+    failOn: "error",
+  })
+    .rotate(angle)
+    .jpeg({ quality: 88 })
+    .toBuffer({ resolveWithObject: true });
+
+  // La miniature est facultative en base (colonne nullable) : sans elle, seule
+  // la page plein cadre tourne.
+  const thumb = img.thumbPath
+    ? await sharp(await readFile(absolute(img.thumbPath)), { failOn: "error" })
+        .rotate(angle)
+        .jpeg({ quality: 72 })
+        .toBuffer()
+    : null;
+
+  await writeFile(absolute(img.originalPath), original.data);
+  if (thumb && img.thumbPath) await writeFile(absolute(img.thumbPath), thumb);
+
+  return { width: original.info.width, height: original.info.height };
 }
 
 /**

@@ -48,3 +48,22 @@ export async function compressImage(file: File): Promise<File> {
     return file;
   }
 }
+
+/**
+ * Attend qu'une image soit dans le cache du navigateur, sans jamais échouer.
+ *
+ * Sert après une rotation : le serveur a réécrit la photo et rend une nouvelle
+ * URL, mais tant que celle-ci n'est pas chargée le `<img>` continue d'afficher
+ * l'ancienne. Échanger la source tout de suite ferait donc revenir la page de
+ * travers le temps du téléchargement, juste après l'avoir vue se redresser.
+ * Un échec de préchargement se résout quand même : c'est le `<img>` de l'écran
+ * qui décide, on ne fait que lui laisser une longueur d'avance.
+ */
+export function preloadImage(src: string): Promise<void> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve();
+    img.onerror = () => resolve();
+    img.src = src;
+  });
+}
