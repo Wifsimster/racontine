@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { canWrite, roleMap } from "@/lib/access";
+import { preloadImage } from "@/lib/image";
 import {
   type AttachmentRef,
   type BatchEntrySummary,
@@ -394,9 +395,10 @@ export default function Review() {
       dépliée dès `md` où elle tient dans sa propre colonne. */
   const [sourceOpen, setSourceOpen] = useState(false);
   const [sourceTab, setSourceTab] = useState<"pages" | "texte">("pages");
-  /** Quarts de tour appliqués à chaque page, à l'affichage seulement : cf.
-      `SourcePage`. Par pièce jointe, et remis à zéro d'une journée à l'autre. */
-  const [rotations, setRotations] = useState<Record<string, number>>({});
+  /** Rotations EN COURS D'ENREGISTREMENT, par pièce jointe : le quart de tour
+      est montré tout de suite, le serveur réécrit la photo derrière. Retombe à
+      zéro dès que la page tournée revient (cf. `rotateAttachment`). */
+  const [rotating, setRotating] = useState<Record<string, number>>({});
   /** Le dépli de correction est piloté par l'état : `group-open:` ne génère
       aucune règle dans ce Tailwind, le chevron ne tournait jamais. */
   const [itemsOpen, setItemsOpen] = useState(false);
@@ -459,11 +461,11 @@ export default function Review() {
 
   const [reloadKey, setReloadKey] = useState(0);
 
-  /* Les rotations sont attachées à la journée qu'on relit, pas au composant :
-     d'une journée d'un lot à la suivante, la route est la même et l'état
-     survivait — la page 1 de la journée suivante arrivait tournée du quart de
-     tour donné à la précédente. */
-  useEffect(() => setRotations({}), [id]);
+  /* Les rotations en attente sont attachées à la journée qu'on relit, pas au
+     composant : d'une journée d'un lot à la suivante, la route est la même et
+     l'état survivait — la page 1 de la journée suivante arrivait tournée du
+     quart de tour donné à la précédente. */
+  useEffect(() => setRotating({}), [id]);
 
   useEffect(() => {
     // L'échec de CHARGEMENT est un état à part entière : avant, il était rangé
@@ -938,6 +940,51 @@ export default function Review() {
     }
   }
 
+  /* TOURNER UNE PAGE, ET QUE ÇA RESTE.
+     Le quart de tour part au serveur, qui réécrit la photo et sa miniature : la
+     page est droite pour de bon, ici comme sur la timeline, et à la prochaine
+     ouverture. En attendant sa réponse, on montre la rotation tout de suite —
+     le geste doit répondre à la main, pas au réseau. La photo réécrite n'est
+     mise à l'écran qu'une fois chargée, sinon la page semblerait se redresser
+     puis retomber de travers le temps du téléchargement. */
+  async function rotateAttachment(attachmentId: string) {
+    setRotating((prev) => ({
+      ...prev,
+      [attachmentId]: (prev[attachmentId] ?? 0) + 1,
+    }));
+    setError(null);
+    try {
+      const rotated = await api.rotateAttachment(attachmentId);
+      await preloadImage(rotated.url);
+      setEntry((prev) =>
+        prev
+          ? {
+              ...prev,
+              attachments: prev.attachments.map((a) =>
+                a.id === attachmentId ? { ...a, ...rotated } : a,
+              ),
+            }
+          : prev,
+      );
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Échec de la rotation de la page",
+      );
+    } finally {
+      // Un quart de tour de moins à montrer nous-mêmes : soit la photo la porte
+      // désormais, soit la rotation a échoué et la page revient comme elle
+      // était. Décrémenter (plutôt que remettre à zéro) garde le compte juste
+      // si un deuxième quart de tour est déjà parti.
+      setRotating((prev) => {
+        const pending = (prev[attachmentId] ?? 1) - 1;
+        const next = { ...prev };
+        if (pending > 0) next[attachmentId] = pending;
+        else delete next[attachmentId];
+        return next;
+      });
+    }
+  }
+
   async function removeAttachment(attachmentId: string) {
     setRemovingAttachment(attachmentId);
     setError(null);
@@ -1246,13 +1293,12 @@ export default function Review() {
                     attachment={a}
                     index={i}
                     total={entry.attachments.length}
-                    quarter={rotations[a.id] ?? 0}
-                    onRotate={() =>
-                      setRotations((prev) => ({
-                        ...prev,
-                        [a.id]: ((prev[a.id] ?? 0) + 1) % 4,
-                      }))
-                    }
+                    quarter={rotating[a.id] ?? 0}
+                    rotating={(rotating[a.id] ?? 0) > 0}
+                    /* Tourner écrit sur la photo source : un lecteur n'a pas ce
+                       droit, et le serveur le lui refuserait. Pas de bouton
+                       plutôt qu'un bouton qui échoue. */
+                    onRotate={canEditEntry ? () => rotateAttachment(a.id) : null}
                     removing={removingAttachment === a.id}
                     onRemove={
                       published ? null : () => setConfirmRemoveAttachment(a.id)
@@ -2197,11 +2243,16 @@ function Kbd({ children }: { children: React.ReactNode }) {
  * page à l'envers rend cette confrontation impossible : il fallait ouvrir la
  * photo dans un onglet, puis tourner la tête.
  *
- * Le bouton tourne la page d'un quart de tour à chaque appui. C'est une ROTATION
- * DE LECTURE, pas une correction du fichier : rien n'est réenregistré, rien
- * n'est envoyé au serveur, et la page repart droite à la prochaine ouverture.
- * C'est exactement ce qu'on veut ici — on relit, on ne retouche pas — et c'est
- * ce que dit l'infobulle.
+ * Le bouton tourne la page d'un quart de tour à chaque appui, ET LE GARDE : le
+ * serveur réécrit la photo et sa miniature. La page redressée l'est partout —
+ * ici, sur la timeline, dans la visionneuse — et le reste à la prochaine
+ * ouverture. Avant, la rotation n'était qu'un confort d'affichage perdu à la
+ * fermeture de l'écran : la même page de travers était à retourner à chaque
+ * relecture, et une journée publiée restait de travers pour tous ses lecteurs.
+ *
+ * `quarter` ne porte donc plus que la rotation EN ATTENTE de réponse du
+ * serveur : le geste s'affiche à la main, pas au réseau, et retombe à zéro dès
+ * que la photo réécrite arrive avec ses nouvelles proportions.
  *
  * La géométrie : à un quart ou trois quarts de tour, la largeur et la hauteur
  * s'échangent. Le cadre prend donc le rapport INVERSE de l'image et celle-ci est
@@ -2216,6 +2267,7 @@ function SourcePage({
   total,
   quarter,
   onRotate,
+  rotating,
   removing,
   onRemove,
 }: {
@@ -2223,7 +2275,8 @@ function SourcePage({
   index: number;
   total: number;
   quarter: number;
-  onRotate: () => void;
+  onRotate: (() => void) | null;
+  rotating: boolean;
   removing: boolean;
   onRemove: (() => void) | null;
 }) {
@@ -2232,6 +2285,13 @@ function SourcePage({
       ? { w: attachment.width, h: attachment.height }
       : null,
   );
+  /* La page tournée revient du serveur avec largeur et hauteur ÉCHANGÉES. Sans
+     cette reprise, le cadre garderait le rapport d'avant la rotation (l'état
+     n'est initialisé qu'au montage) et la photo redressée déborderait. */
+  useEffect(() => {
+    if (attachment.width && attachment.height)
+      setNatural({ w: attachment.width, h: attachment.height });
+  }, [attachment.width, attachment.height]);
   // Tant que les proportions sont inconnues, la page reste droite : mieux vaut
   // un bouton qui attend une fraction de seconde qu'une image qui déborde.
   const known = natural !== null;
@@ -2284,18 +2344,23 @@ function SourcePage({
       </figcaption>
       {/* En bas, sur la photo : en haut, les boutons se posaient sur la date
           manuscrite, la seule ligne qu'on veut relire. */}
-      <Button
-        type="button"
-        variant="outline"
-        size="icon-sm"
-        className="absolute bottom-9 left-2 rounded-full"
-        disabled={!known}
-        onClick={onRotate}
-        title="Tourner la page à l'écran (la photo n'est pas modifiée)"
-        aria-label={`Tourner la page ${index + 1} d'un quart de tour à l'écran`}
-      >
-        <RotateCw aria-hidden="true" />
-      </Button>
+      {onRotate && (
+        <Button
+          type="button"
+          variant="outline"
+          size="icon-sm"
+          className="absolute bottom-9 left-2 rounded-full"
+          // Une seule rotation à la fois : deux quarts de tour en vol
+          // réécriraient le même fichier chacun de son côté.
+          disabled={!known || rotating}
+          loading={rotating}
+          onClick={onRotate}
+          title="Tourner la page (la photo est enregistrée dans ce sens)"
+          aria-label={`Tourner la page ${index + 1} d'un quart de tour`}
+        >
+          {rotating ? null : <RotateCw aria-hidden="true" />}
+        </Button>
+      )}
       {onRemove && (
         <Button
           type="button"

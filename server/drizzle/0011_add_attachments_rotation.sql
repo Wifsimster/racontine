@@ -1,0 +1,1 @@
+ALTER TABLE "attachments" ADD COLUMN "rotation" integer DEFAULT 0 NOT NULL;

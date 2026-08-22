@@ -30,6 +30,7 @@ import {
 import { notifyEntryPublished } from "../notifications.js";
 import { recordCorrection } from "../corrections.js";
 import { tidyUncertainties } from "../uncertainties.js";
+import { attachmentUrls } from "./attachment-urls.js";
 
 /** Entrée complète (items + pièces jointes) sérialisée pour le front. */
 async function serializeEntry(entryId: string) {
@@ -55,8 +56,7 @@ async function serializeEntry(entryId: string) {
       mime: a.mime,
       width: a.width,
       height: a.height,
-      url: `/api/attachments/${a.id}`,
-      thumbUrl: `/api/attachments/${a.id}?size=thumb`,
+      ...attachmentUrls(a),
     })),
   };
 }
@@ -224,8 +224,7 @@ export async function entriesRoutes(app: FastifyInstance) {
           ...e,
           attachments: e.attachments.map((a) => ({
             id: a.id,
-            url: `/api/attachments/${a.id}`,
-            thumbUrl: `/api/attachments/${a.id}?size=thumb`,
+            ...attachmentUrls(a),
           })),
         })),
         nextOffset: rows.length === limit ? offset + limit : null,

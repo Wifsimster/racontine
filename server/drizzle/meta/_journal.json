@@ -78,6 +78,13 @@
       "when": 1784446690841,
       "tag": "0010_flowery_swarm",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1787399769147,
+      "tag": "0011_add_attachments_rotation",
+      "breakpoints": true
     }
   ]
 }

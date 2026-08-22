@@ -1,4 +1,5 @@
 import type {
+  AttachmentRef,
   BatchEntrySummary,
   Child,
   Entry,
@@ -148,6 +149,18 @@ export const api = {
     req<Entry>(`/api/entries/${id}/uncertainties/${index}`, {
       method: "PATCH",
       body: JSON.stringify({ value }),
+    }),
+
+  /**
+   * Tourne une page d'un quart de tour horaire, POUR DE BON : le serveur
+   * réécrit la photo et sa miniature, et rend la page telle qu'elle est
+   * désormais — nouvelle URL comprise, sans quoi le navigateur resservirait
+   * l'ancienne orientation depuis son cache.
+   */
+  rotateAttachment: (id: string, quarter = 1) =>
+    req<AttachmentRef>(`/api/attachments/${id}/rotate`, {
+      method: "POST",
+      body: JSON.stringify({ quarter }),
     }),
 
   deleteAttachment: (id: string) =>

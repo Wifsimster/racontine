@@ -282,6 +282,17 @@ export const attachments = pgTable(
     mime: text("mime").notNull(),
     width: integer("width"),
     height: integer("height"),
+    /**
+     * Quarts de tour DÉJÀ APPLIQUÉS aux fichiers, cumulés depuis l'import (0-3).
+     *
+     * Tourner une page réécrit vraiment le JPEG et sa miniature : la photo est
+     * droite partout (relecture, timeline, visionneuse, relance de lecture),
+     * sans que chaque écran ait à connaître un angle. Ce compteur ne sert donc
+     * pas au rendu mais de NUMÉRO DE RÉVISION : il est collé aux URL servies
+     * (`?v=`), sans quoi le `Cache-Control: immutable` de la route garderait
+     * l'ancienne orientation affichée jusqu'à vider le cache du navigateur.
+     */
+    rotation: integer("rotation").notNull().default(0),
     position: integer("position").notNull().default(0),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
