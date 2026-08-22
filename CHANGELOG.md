@@ -2,6 +2,13 @@
 
 Toutes les versions notables de Racontine. Format issu des messages de commit conventionnels (`feat`, `fix`, …).
 
+# [1.17.0](https://github.com/Wifsimster/racontine/compare/v1.16.0...v1.17.0) (2026-08-22)
+
+
+### Features
+
+* **pwa:** regénérer les icônes depuis la marque vectorielle ([#48](https://github.com/Wifsimster/racontine/issues/48)) ([590fcb5](https://github.com/Wifsimster/racontine/commit/590fcb5cf2690cbdd86e929e281aa9ffa9d90cc6))
+
 # [1.16.0](https://github.com/Wifsimster/racontine/compare/v1.15.0...v1.16.0) (2026-08-22)
 
 
