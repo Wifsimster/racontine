@@ -20,7 +20,7 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["apple-touch-icon.png", "push-sw.js"],
+      includeAssets: ["apple-touch-icon.png", "favicon.svg", "push-sw.js"],
       // On garde la stratégie generateSW (précache Workbox) et on y injecte nos
       // gestionnaires Web Push via un script séparé (public/push-sw.js) plutôt
       // que de passer à injectManifest : plus simple, précache inchangé.
