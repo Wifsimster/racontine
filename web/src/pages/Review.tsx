@@ -1330,6 +1330,7 @@ export default function Review() {
                       key={`${u.original}-${i}`}
                       id={`rv-u-${i}`}
                       item={u}
+                      phrase={phraseFor(u)}
                       onOpen={() => setOpenUncertainty(i)}
                     />
                   ),
@@ -2978,23 +2979,36 @@ function ResolvedReading({
  * Une lecture à trancher, repliée : on n'ouvre qu'une carte à la fois pour que
  * les moments de la journée tiennent dans le même écran. La ligne dit quand
  * même le mot lu, où il se trouve, et qu'elle attend quelque chose.
+ *
+ * LA CITATION EST LÀ AUSSI, SUR UNE SEULE LIGNE. Quatre lectures repliées, c'est
+ * quatre mots nus (« écrite », « nu jeu d'eau »…) qu'il fallait déplier un par
+ * un pour savoir de quelle ligne du carnet chacun venait : le geste de tri se
+ * payait quatre allers-retours. La phrase tronquée à une ligne coûte 16 px par
+ * carte et rend la file TRIABLE À L'ŒIL — on ouvre la bonne du premier coup.
+ * `truncate` et non deux lignes : la file reste une liste, pas quatre pavés.
  */
 function CollapsedReading({
   id,
   item,
+  phrase,
   onOpen,
 }: {
   id: string;
   item: Uncertainty;
+  /** La phrase du carnet où ce mot a été lu, `null` si on ne l'y retrouve pas. */
+  phrase: string | null;
   onOpen: () => void;
 }) {
+  const word = unquoted(item.original);
   return (
     <button
       id={id}
       type="button"
       onClick={onOpen}
       aria-expanded={false}
-      aria-label={`Trancher la lecture « ${unquoted(item.original)} »`}
+      aria-label={`Trancher la lecture « ${word} »${
+        phrase ? `, dans « ${phrase} »` : ""
+      }`}
       className="tap flex min-h-14 w-full items-center gap-3 rounded-xl border border-warning bg-warning-bg px-3 py-2 text-left transition-colors dur-fast ease-carnet hover:bg-card"
     >
       <TriangleAlert aria-hidden="true" className="size-4 shrink-0 text-warning" />
@@ -3003,8 +3017,16 @@ function CollapsedReading({
           À vérifier{item.champ ? ` · ${FIELD_ORIGIN[item.champ]}` : ""}
         </span>
         <span className="block truncate font-serif text-ui text-foreground">
-          « {unquoted(item.original)} »
+          « {word} »
         </span>
+        {phrase && (
+          /* Sérif comme la page dépliée : c'est le même objet — ce qui est
+             écrit sur le papier — au même endroit d'une carte à l'autre. Le mot
+             y reste en gras, sinon la ligne n'est qu'une bande grise de plus. */
+          <span className="block truncate font-serif text-xs text-muted-foreground">
+            {highlightToken(phrase, word)}
+          </span>
+        )}
       </span>
       <ChevronDown aria-hidden="true" className="size-4 shrink-0 text-warning" />
     </button>
