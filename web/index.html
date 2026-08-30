@@ -18,6 +18,14 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Racontine" />
     <title>Racontine</title>
+
+    <!-- Umami — mesure d'audience auto-hébergée, sans cookie.
+         `data-exclude-search`/`data-exclude-hash` : une URL de carnet peut
+         porter un identifiant d'enfant, qui n'a rien à faire dans
+         l'analytics. Le tracker envoie l'URL complète par défaut. -->
+    <script defer src="https://umami.battistella.ovh/stats.js"
+      data-website-id="5904ab0e-3399-4fbe-8a59-2363edd2a94f"
+      data-exclude-search="true" data-exclude-hash="true"></script>
   </head>
   <body>
     <div id="root"></div>
