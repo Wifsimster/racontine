@@ -362,8 +362,12 @@ export default function Timeline() {
         />
       )}
 
+      {/* `carnetOuvert` autant que `canCapture` : le vide propose la photo
+          seulement quand elle est encore possible — sinon il propose ce qui la
+          rend possible. La carte d'appel au-dessus dit déjà ce qui s'arrête et
+          ce qui continue. */}
       {phase === "ready" && entries.length === 0 && (
-        <JournalEmpty canCapture={canCapture} />
+        <JournalEmpty canCapture={canCapture} carnetOuvert={carnetOuvert} />
       )}
 
       {/* Les mois ne s’affichent QUE dans l’état prêt : une nouvelle tentative
