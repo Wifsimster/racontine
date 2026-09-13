@@ -1,3 +1,5 @@
+import { useId } from "react";
+
 import { MARQUE } from "@/components/marque.generated";
 import { cn } from "@/lib/utils";
 
@@ -29,6 +31,10 @@ import { cn } from "@/lib/utils";
 export function Marque({ className }: { className?: string }) {
   const { page, glyphR, tile, ink, radius } = MARQUE;
   const r = radius * 512;
+  // Un identifiant PAR INSTANCE. Un `id` figé marcherait tant que toutes les
+  // tuiles sont identiques — mais deux `id` identiques dans un document, c'est
+  // le genre de dette qui se paie le jour où une variante apparaît.
+  const clipId = `marque-${useId()}`;
   return (
     <svg
       viewBox="0 0 512 512"
@@ -36,13 +42,10 @@ export function Marque({ className }: { className?: string }) {
       aria-hidden="true"
       focusable="false"
     >
-      {/* L'identifiant de détourage est propre au composant : la tuile peut
-          être posée deux fois sur un même écran (en-tête + pied de page) sans
-          que le second détourage écrase le premier. */}
-      <clipPath id="marque-tuile">
+      <clipPath id={clipId}>
         <rect width="512" height="512" rx={r} ry={r} />
       </clipPath>
-      <g clipPath="url(#marque-tuile)">
+      <g clipPath={`url(#${clipId})`}>
         <rect width="512" height="512" fill={tile} />
         {page.rules.map((rule) => (
           <rect

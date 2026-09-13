@@ -69,8 +69,10 @@ export function ageLabel(
 
   const days = Math.floor((at.getTime() - born.getTime()) / 86_400_000);
   if (days < 31) {
+    // Sous la semaine, on ne compte pas : « 0 jour » n'est pas un âge, et
+    // personne ne dit « 3 jours » — on dit nouveau-né.
+    if (days < 7) return "nouveau-né";
     const weeks = Math.floor(days / 7);
-    if (weeks < 1) return days <= 1 ? `${days} jour` : `${days} jours`;
     return weeks === 1 ? "1 semaine" : `${weeks} semaines`;
   }
 

@@ -28,7 +28,15 @@
          La carte est STATIQUE, et c'est une décision : un aperçu qui porterait
          le prénom de l'enfant serait mis en cache par les serveurs de WhatsApp,
          de Slack et de Google. Elle dit le produit, jamais la famille.
-         `og.png` se regénère avec `pnpm brand`. -->
+         `og.png` se regénère avec `pnpm brand`.
+
+         `og:image` est RELATIF, et ne peut pas être autre chose : le produit
+         est auto-hébergé, son domaine n'est pas connu au build. Les robots
+         d'aperçu actuels (WhatsApp, Slack, Signal, Facebook, X) résolvent une
+         URL relative contre celle de la page ; un robot ancien ou strict qui
+         exigerait une URL absolue n'affichera pas la vignette — il affichera
+         quand même le titre et la description, ce qui reste très au-dessus de
+         l'URL nue d'avant. -->
     <meta
       name="description"
       content="Photographiez le carnet de la nounou : la journée devient un journal privé, hébergé chez vous, partagé avec les proches que vous choisissez."
