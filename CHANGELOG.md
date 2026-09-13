@@ -2,6 +2,13 @@
 
 Toutes les versions notables de Racontine. Format issu des messages de commit conventionnels (`feat`, `fix`, …).
 
+## [1.22.1](https://github.com/Wifsimster/racontine/compare/v1.22.0...v1.22.1) (2026-09-13)
+
+
+### Bug Fixes
+
+* **journal:** ne plus proposer la photo quand le carnet est fermé ([#56](https://github.com/Wifsimster/racontine/issues/56)) ([1df861d](https://github.com/Wifsimster/racontine/commit/1df861de9c3faff0489a9341bfa884d092ea14ad))
+
 # [1.22.0](https://github.com/Wifsimster/racontine/compare/v1.21.0...v1.22.0) (2026-09-13)
 
 
