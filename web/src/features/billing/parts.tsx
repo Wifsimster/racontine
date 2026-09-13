@@ -165,6 +165,29 @@ export function BilledToNote({ billing }: { billing: Billing }) {
   );
 }
 
+/**
+ * CE QUE L'ABONNEMENT COMPREND, en quatre lignes. Sorti de `OfferCard` parce
+ * que l'écran d'accueil public le montre AVANT toute idée de compte : la même
+ * liste, écrite une fois, ne peut pas diverger d'un écran à l'autre.
+ */
+export function OfferIncludes({ className }: { className?: string }) {
+  return (
+    <ul className={cn("flex flex-col gap-3", className)}>
+      {INCLUS.map(({ icon: Icon, text }) => (
+        <li key={text} className="flex items-start gap-3">
+          <span
+            aria-hidden="true"
+            className="grid size-7 shrink-0 place-items-center rounded-md bg-primary-soft text-primary"
+          >
+            <Icon className="size-4" />
+          </span>
+          <span className="text-meta text-muted-foreground">{text}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 /** L'offre, en entier : le prix, ce qu'il comprend, et le bouton. */
 export function OfferCard({ billing }: { billing: Billing }) {
   const price = billing.price;
@@ -201,19 +224,7 @@ export function OfferCard({ billing }: { billing: Billing }) {
         Pour tout le foyer · sans engagement, résiliable en deux clics.
       </p>
 
-      <ul className="mt-5 flex flex-col gap-3">
-        {INCLUS.map(({ icon: Icon, text }) => (
-          <li key={text} className="flex items-start gap-3">
-            <span
-              aria-hidden="true"
-              className="grid size-7 shrink-0 place-items-center rounded-md bg-primary-soft text-primary"
-            >
-              <Icon className="size-4" />
-            </span>
-            <span className="text-meta text-muted-foreground">{text}</span>
-          </li>
-        ))}
-      </ul>
+      <OfferIncludes className="mt-5" />
 
       <div className="mt-5">
         {billing.canManage ? (

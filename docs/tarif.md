@@ -78,6 +78,16 @@ l'essai n'en convertit.
 > (par exemple 39 €/an, deux mois offerts) et remplacez `STRIPE_PRICE_ID`. Le
 > montant, la période et le libellé affichés dans l'app sont **lus chez Stripe**.
 
+**L'offre est le premier écran.** Sans session, ouvrir Racontine montre le
+tarif, l'essai et ce que l'abonnement comprend ; la connexion est un lien sous
+le bouton, pas le péage de l'accueil. On ne demande pas un mot de passe à
+quelqu'un à qui l'on n'a encore rien proposé, et on n'enferme pas le prix
+derrière un compte. Cet écran ne lit qu'une route publique et sans session —
+`GET /api/billing/offer` : le péage est-il armé, le prix tel que Stripe le
+donne, la durée de l'essai. Rien d'un foyer n'y passe. Sur une instance
+auto-hébergée, où il n'y a pas de caisse, cet écran n'existe pas : la connexion
+reste la porte, comme avant.
+
 ## 4. Armer la caisse sur une instance hébergée
 
 ```bash

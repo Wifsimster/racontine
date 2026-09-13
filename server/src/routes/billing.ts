@@ -5,9 +5,11 @@ import {
   applyStripeEvent,
   billingState,
   openPortal,
+  planPrice,
   startCheckout,
   syncFromCheckoutSession,
 } from "../billing/index.js";
+import { TRIAL_DAYS } from "../domain/paywall.js";
 import { WebhookSignatureError, constructEvent } from "../billing/stripe.js";
 
 /* ===========================================================================
@@ -37,6 +39,33 @@ function serializeAccess(access: {
     until: access.until?.toISOString() ?? null,
     endingAt: access.endingAt?.toISOString() ?? null,
   };
+}
+
+/**
+ * L'OFFRE, SANS SESSION — la seule route de l'abonnement qui réponde à
+ * quelqu'un qu'on ne connaît pas encore.
+ *
+ * Elle existe pour l'écran d'accueil public : avant, ouvrir Racontine sans
+ * session menait droit à un formulaire de connexion, c'est-à-dire à un mot de
+ * passe demandé à quelqu'un qui ne sait pas encore ce qu'on lui propose ni
+ * combien ça coûte. Le tarif doit donc être lisible AVANT le compte.
+ *
+ * Ce qu'elle rend est public par nature et par construction : le péage est-il
+ * armé sur cette instance, le tarif public de Stripe, et la durée de l'essai.
+ * RIEN qui dépende d'un utilisateur — ni l'état du foyer, ni qui paie, ni la
+ * moindre date d'échéance : ces réponses-là restent derrière `requireUser`.
+ */
+export async function billingPublicRoutes(app: FastifyInstance) {
+  app.get("/api/billing/offer", async () => {
+    const enabled = billingEnabled();
+    return {
+      enabled,
+      // Pas de Stripe, pas de prix : une instance auto-hébergée n'a pas de
+      // caisse, et l'écran d'accueil le saura sans avoir à le deviner.
+      price: enabled ? await planPrice() : null,
+      trialDays: TRIAL_DAYS,
+    };
+  });
 }
 
 export async function billingRoutes(app: FastifyInstance) {
