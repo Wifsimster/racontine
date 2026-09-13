@@ -25,6 +25,7 @@ import {
   WaitBar,
 } from "@/features/login/parts";
 import { MarqueSignature } from "@/components/Marque";
+import { StudioSignature } from "@/components/Studio";
 
 /* ===========================================================================
    L'ouverture du carnet.
@@ -645,6 +646,10 @@ export default function Login() {
             foyer a donné à son carnet. Cette ligne-ci ne le lit pas : c'est le
             seul endroit de l'app où la marque est inconditionnelle. */}
         <MarqueSignature className="mt-6" />
+        {/* Et sous la marque, l'éditeur. C'est la première porte du produit :
+            l'endroit où l'on décide de faire confiance est aussi celui où l'on
+            doit pouvoir savoir qui est derrière. */}
+        <StudioSignature className="mt-1" />
       </div>
     </div>
   );

@@ -3,6 +3,7 @@ import { Link, Navigate, Outlet, useLocation } from "react-router-dom";
 import {
   BookOpenText,
   ChevronRight,
+  CreditCard,
   LogOut,
   Menu,
   Settings,
@@ -16,6 +17,8 @@ import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import NotificationsBell from "@/components/NotificationsBell";
 import { Marque } from "@/components/Marque";
+import { StudioSignature } from "@/components/Studio";
+import { useBilling } from "@/lib/billing";
 
 /* ===========================================================================
    La coquille : en-tête collant, navigation, transition de page, zones sûres.
@@ -46,6 +49,9 @@ export default function App() {
   const [appName, setAppName] = useState("Racontine");
   const [menuOpen, setMenuOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
+  /* L'entrée « L'abonnement » n'existe que sur une instance qui encaisse : sur
+     un homelab, un menu qui parle d'argent serait un menu qui ment. */
+  const { billing } = useBilling(Boolean(session));
 
   // Nom de l'instance + accès aux réglages (le lien n'apparaît qu'au propriétaire).
   const userId = session?.user.id;
@@ -109,6 +115,16 @@ export default function App() {
       hint: "Votre profil",
     },
   ];
+  if (billing?.enabled) {
+    items.push({
+      to: "/abonnement",
+      label: "L'abonnement",
+      icon: CreditCard,
+      hint: billing.access.open
+        ? "L'offre du foyer, et son échéance"
+        : "Rouvrir le carnet à l'écriture",
+    });
+  }
   if (isOwner) {
     items.push({
       to: "/reglages",
@@ -233,9 +249,16 @@ export default function App() {
                   </span>
                 </button>
 
-                <p className="px-4 pt-2 pb-1 text-meta text-muted-foreground">
-                  {appName} · version {__APP_VERSION__}
-                </p>
+                {/* Le pied du menu : la version, puis QUI ÉDITE. Deux lignes
+                    au même cran, et la seconde ne dépend pas de `appName` —
+                    un foyer qui a rebaptisé son carnet « Le carnet de Léo »
+                    doit quand même pouvoir savoir à qui il a affaire. */}
+                <div className="flex flex-col gap-0.5 px-4 pt-2 pb-1">
+                  <p className="text-meta text-muted-foreground">
+                    {appName} · version {__APP_VERSION__}
+                  </p>
+                  <StudioSignature />
+                </div>
               </div>
             </div>
           </nav>

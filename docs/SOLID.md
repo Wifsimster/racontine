@@ -151,7 +151,12 @@ la médiane est à deux. Les découpages suivent l'usage réel :
   (relecture humaine) sont séparés : aucun des deux appelants n'a besoin des
   méthodes de l'autre, et une doublure de test peut porter les deux ;
 - `ImageStore` dit « range, relis, efface, tourne » et rien de sharp ;
-- `NotificationChannel` a deux méthodes : « es-tu utilisable ? », « livre ».
+- `NotificationChannel` a deux méthodes : « es-tu utilisable ? », « livre » ;
+- `Paywall` n'en a qu'UNE — « ai-je le droit d'ouvrir une nouvelle journée ? »
+  — et ne nomme ni Stripe, ni abonnement, ni essai : un service qui crée une
+  journée n'a aucune raison de connaître un prestataire de paiement. Le refus
+  arrive déjà rédigé, la règle vit dans `domain/paywall.ts`, et un test le ferme
+  d'une ligne (`new FakePaywall("essai terminé")`).
 
 **Pourquoi pas 5** : deux contrats restent larges. `EntryRepository` porte onze
 méthodes — c'est le cycle de vie complet d'une journée, et l'ingestion n'en

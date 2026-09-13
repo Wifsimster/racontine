@@ -3,6 +3,8 @@ import { Link, useLocation } from "react-router-dom";
 import { Camera } from "lucide-react";
 import { api } from "@/lib/api";
 import { canWrite, roleMap } from "@/lib/access";
+import { useBilling } from "@/lib/billing";
+import { BillingCallout } from "@/features/billing/parts";
 import { type AttachmentRef, type Entry, type MemberRole } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -110,6 +112,11 @@ type Viewer = { pages: AttachmentRef[]; index: number; date: string };
 
 export default function Timeline() {
   const location = useLocation();
+  /* L'ABONNEMENT SUR L'ACCUEIL. Il ne conditionne PAS l'affichage du journal :
+     `billing` peut rester null (requête en vol, ou tombée) et le carnet
+     s'affiche quand même. Le serveur refuse pour de bon s'il le faut — un
+     écran ne ferme jamais un carnet à la place du serveur. */
+  const { billing } = useBilling();
   const [entries, setEntries] = useState<Entry[]>([]);
   const [nextOffset, setNextOffset] = useState<number | null>(0);
   const [phase, setPhase] = useState<"loading" | "ready" | "error">("loading");
@@ -295,6 +302,22 @@ export default function Timeline() {
     [...roleByChild.values()].some((r) => canWrite(r)) ||
     roleByChild.size === 0;
 
+  /* Le carnet accepte-t-il une NOUVELLE journée ? Inconnu (`billing` null, ou
+     requête tombée) = OUI : comme pour le rôle, on n'enlève pas le geste
+     central du produit à quelqu'un dont la seule requête ayant échoué est
+     celle de l'abonnement. */
+  const carnetOuvert = billing?.access.open !== false;
+
+  /* À QUI L'ON PARLE D'ARGENT. Plus strict que `canCapture`, et c'est
+     délibéré : tant que les rôles ne sont pas revenus, on ne montre RIEN. Un
+     appel à s'abonner qui clignote une frame devant une mamie venue lire le
+     journal de sa petite-fille est exactement ce qu'on ne veut pas — alors
+     qu'un parent, lui, verra l'appel 200 ms plus tard sans rien perdre. */
+  const sellable =
+    roleByChild !== null &&
+    (roleByChild.size === 0 ||
+      [...roleByChild.values()].some((r) => canWrite(r)));
+
   return (
     <div className="shell-width flex flex-col gap-4 px-4 pt-4 pb-8">
       {/* Le bandeau : la coquille porte le nom de l’INSTANCE, cette ligne porte
@@ -320,6 +343,14 @@ export default function Timeline() {
           qu’on lit en arrivant, et il ne recouvre rien. Il s’affiche même quand
           le journal charge encore — la confirmation ne dépend pas du réseau. */}
       {flash && <Receipt flash={flash} onClose={() => setFlash(null)} />}
+
+      {/* L'APPEL. Il est SOUS le titre et AU-DESSUS du fil, à l'endroit exact
+          où l'œil arrive — jamais en pop-up, jamais par-dessus une journée.
+          Il ne s'affiche pas du tout pour un foyer abonné ni sur une instance
+          auto-hébergée : une app payée ne continue pas à se vendre. Et il ne
+          s'affiche pas à un LECTEUR : mamie n'a rien à acheter, elle vient
+          lire — `canCapture` est ce qui distingue les deux. */}
+      {billing && sellable && <BillingCallout billing={billing} />}
 
       {phase === "loading" && <JournalSkeleton />}
 
@@ -393,7 +424,7 @@ export default function Timeline() {
         <p
           className={cn(
             "surtitre pt-2 text-center text-muted-foreground",
-            canCapture ? "pb-32" : "pb-2",
+            canCapture && carnetOuvert ? "pb-32" : "pb-2",
           )}
         >
           {entries.length} journée{entries.length > 1 ? "s" : ""} dans le carnet
@@ -406,7 +437,10 @@ export default function Timeline() {
           au centre de l’écran, et deux boutons primaires n’en font aucun.
           ET il ne s’affiche pas pour un LECTEUR : le seul bouton groseille de
           l’écran ne peut pas être celui d’un écran qui la refuse. */}
-      {hasJournal && canCapture && (
+      {/* Le bouton flottant disparaît quand le carnet est fermé à l'écriture :
+          un bouton groseille qui mène à un refus est une promesse rompue, et
+          l'appel ci-dessus porte déjà la seule action possible. */}
+      {hasJournal && canCapture && carnetOuvert && (
         <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 flex justify-center bg-gradient-to-t from-background via-surface-bar to-transparent px-4 pt-8 pb-safe-6">
           <Button
             asChild

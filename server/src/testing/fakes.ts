@@ -19,6 +19,7 @@ import type {
   ImageStore,
   Logger,
   NewEntry,
+  Paywall,
   PublicationNotifier,
   RecordedCorrection,
   StoredImage,
@@ -443,6 +444,18 @@ export class FakeAccessPolicy implements AccessPolicy {
   }
   async roleOn(): Promise<MemberRole | null> {
     return this.role;
+  }
+}
+
+/**
+ * Le péage, en test : ouvert par défaut. Un service qui crée une journée ne doit
+ * pas avoir besoin d'un abonnement pour être testé — et le jour où le péage
+ * ferme, on le dit explicitement, ici, en une ligne.
+ */
+export class FakePaywall implements Paywall {
+  constructor(private readonly reason: string | null = null) {}
+  async blockedReason(): Promise<string | null> {
+    return this.reason;
   }
 }
 

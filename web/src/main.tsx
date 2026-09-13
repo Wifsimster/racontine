@@ -12,6 +12,7 @@ import Share from "./pages/Share";
 import Invite from "./pages/Invite";
 import Proches from "./pages/Proches";
 import Account from "./pages/Account";
+import Abonnement from "./pages/Abonnement";
 import Settings from "./pages/Settings";
 
 const router = createBrowserRouter([
@@ -33,6 +34,7 @@ const router = createBrowserRouter([
       { path: "partage", element: <Share /> },
       { path: "proches", element: <Proches /> },
       { path: "compte", element: <Account /> },
+      { path: "abonnement", element: <Abonnement /> },
       { path: "reglages", element: <Settings /> },
     ],
   },

@@ -75,11 +75,39 @@ Les journées des jeunes enfants gardés hors du domicile (nounou, MAM, crèche)
 
 ⚠️ **Ne pas construire au-delà du MVP tant que H2 n'est pas validée.** H1 validée le 2026-07-10 : l'extraction VLM sur le carnet réel fonctionne très bien → go pour la Phase 1.
 
-### 2.6 Monétisation
-Cohérent avec ton modèle homelab existant :
-1. **Phase 1 — Cercle premium** : accès proches payant (comme tes autres services), ex. 2-3 €/mois par foyer invité ou inclus dans ton bundle premium existant. Coût marginal ≈ appels API VLM (quelques centimes/page) ou nul si VLM local.
-2. **Phase 2 (optionnelle) — SaaS de niche** : si H4 validée, offre hébergée pour parents non-techniques : 4-5 €/mois. Positionnement « privacy-first, made in France, vos données ne nourrissent personne ». Stripe déjà dans ton outillage.
-3. **Upsell physique** : export livre imprimé annuel (marge sur impression à la demande) — c'est le modèle qui fait vivre Qeepsake.
+### 2.6 Monétisation ✅ **DÉCIDÉE ET IMPLÉMENTÉE**
+
+**Une seule offre : Racontine Famille — 4,99 €/mois**, pour tout le foyer, après
+**14 jours d'essai gratuit sans carte**. Détail, justification du prix et mise en
+place : [docs/tarif.md](./docs/tarif.md).
+
+Trois décisions qui ferment le sujet :
+
+1. **Ce qui est payant, c'est AJOUTER une journée** — pas la lire. Le journal
+   déjà écrit reste lisible, cherchable et partagé pour toujours, abonné ou non :
+   *on ne prend jamais les souvenirs en otage*. Un abonnement qui s'arrête met le
+   carnet en pause ; il ne le referme pas.
+2. **Un seul payeur : le foyer.** L'abonnement appartient à l'instance et se
+   règle par son propriétaire. Le co-parent contribue, les grands-parents lisent,
+   et on ne leur demande jamais de carte — faire payer mamie pour voir sa
+   petite-fille reviendrait à chasser la personne qui fait la valeur du carnet.
+   L'idée initiale d'un « cercle premium » payé par proche invité est donc
+   **abandonnée**.
+3. **Une instance auto-hébergée n'a pas de péage.** Sans clé Stripe configurée,
+   tout est ouvert et gratuit. L'abonnement paie l'offre *hébergée*, pas le droit
+   d'utiliser son propre homelab — la promesse de souveraineté du produit ne peut
+   pas se négocier contre une caisse.
+
+**Pourquoi 4,99 €** : c'est le haut de la fourchette validée par H4 (3-5 €), le
+prix de [Toko](https://toko.battistella.ovh/) — l'autre produit famille du studio
+— et le palier sous lequel un abonnement familial se compare à un café plutôt
+qu'à un abonnement vidéo. Le coût marginal réel est l'hébergement seul : les
+appels VLM sont facturés sur la clé API de chaque utilisateur. Le prix fixe une
+valeur, il ne couvre pas un coût.
+
+**Reste ouvert** : l'**upsell physique** (export livre imprimé annuel, marge sur
+l'impression à la demande) — c'est le modèle qui fait vivre Qeepsake, et il ne
+demande aucun changement de l'abonnement.
 
 ### 2.7 Risques
 - **RGPD / données d'enfants** : catégorie sensible. En cercle privé familial = exemption domestique. En SaaS = DPA, consentement, hébergement UE obligatoires. → Rester en phase 1 tant que non traité.
@@ -125,7 +153,7 @@ Cohérent avec ton modèle homelab existant :
 | BDD | **PostgreSQL** | Requêtes riches (timeline, recherche plein texte) |
 | Fichiers | Volume local ou MinIO | Homelab |
 | VLM | **API Claude (vision)** au départ → option **Qwen3-VL local** ensuite | Valider H1 vite avec la meilleure qualité, internaliser après |
-| Paiement | **Stripe** (déjà outillé) | Cohérent avec tes autres services |
+| Paiement | **Stripe** (Checkout + portail client, sans SDK) | Cohérent avec les autres produits du studio ; aucune donnée bancaire ne traverse l'app |
 
 ### 3.3 Pipeline d'ingestion (le cœur du produit)
 1. **Capture** : photo(s) de la/des pages du jour (multi-pages supporté).
@@ -174,7 +202,9 @@ Cohérent avec ton modèle homelab existant :
 - [ ] Mesurer H3
 
 **Phase 3 — Premium & confort**
-- [ ] Intégration à ton système premium existant (Stripe)
+- [x] Abonnement Stripe : offre unique 4,99 €/mois, essai 14 jours, péage sur
+      l'ajout de journées uniquement (lire reste gratuit), portail client pour
+      carte/factures/résiliation, et instance auto-hébergée exemptée
 - [ ] Graphiques tendances (sommeil, appétit), détection de jalons
 - [ ] Export PDF / livre annuel
 - [ ] Option VLM local (Qwen3-VL) pour couper la dépendance API

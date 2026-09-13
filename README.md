@@ -5,6 +5,7 @@
 Photographiez le carnet papier de la nounou / MAM / crèche → un LLM vision lit, structure et tague la journée (repas, siestes, humeur, activités, anecdotes) → un journal privé, hébergé chez vous, partagé avec les proches que vous choisissez.
 
 📄 Voir [PLAN-PRODUIT.md](./PLAN-PRODUIT.md) pour le plan produit et le phasage complet, et [docs/identite.md](./docs/identite.md) pour la marque, les couleurs et les surfaces qui sortent de l'app (e-mail, carte de lien, notifications).
+💶 Voir [docs/tarif.md](./docs/tarif.md) pour l'offre, son prix et ce qui reste gratuit pour toujours.
 🧱 Voir [docs/SOLID.md](./docs/SOLID.md) pour l'architecture du serveur (domaine,
 ports, adaptateurs) et la note SOLID du dépôt, barème compris.
 
@@ -71,6 +72,47 @@ l'environnement ; l'écran en affiche l'état en lecture seule. La **clé API
 Anthropic** est en revanche propre à chaque utilisateur (Réglages > Clé API
 d'extraction) : elle est chiffrée en base (AES-256-GCM via `BETTER_AUTH_SECRET`)
 et jamais réaffichée. Sans clé enregistrée, l'import de carnets est refusé.
+
+## Abonnement (offre hébergée)
+
+> **Une seule offre : Racontine Famille — 4,99 €/mois**, pour tout le foyer,
+> après **14 jours d'essai gratuit sans carte bancaire**.
+> Détail et justification du prix : [docs/tarif.md](./docs/tarif.md).
+
+**Sur une instance auto-hébergée, il n'y a pas de péage du tout.** Le paywall
+n'existe que si `STRIPE_SECRET_KEY` **et** `STRIPE_PRICE_ID` sont renseignés :
+sans eux, Racontine est gratuit et sans limite, et pas une ligne d'abonnement
+n'est écrite en base. L'abonnement paie l'offre **hébergée par le studio**, pas
+le droit d'utiliser son propre serveur.
+
+Quand il est armé, il ne ferme qu'une seule chose :
+
+| | |
+|---|---|
+| **Payant** | **Ajouter une journée** — photographier une page, la faire lire, créer une journée via MCP (HTTP 402 sinon) |
+| **Gratuit, pour toujours** | **Lire** le journal, le chercher, le partager ; les proches invités, sans limite ; les notifications ; publier un brouillon déjà commencé |
+
+On ne prend jamais les souvenirs en otage : un abonnement qui s'arrête met le
+carnet **en pause**, il ne le referme pas. Un prélèvement en échec ne coupe rien
+non plus (Stripe relance pendant deux à trois semaines, l'app le signale), et
+une période déjà payée reste due jusqu'à son terme.
+
+L'abonnement appartient au **foyer** et se règle depuis le compte du
+propriétaire. Le co-parent contribue, les grands-parents lisent : on ne leur
+demande jamais de carte.
+
+```bash
+# .env (instance hébergée uniquement)
+STRIPE_SECRET_KEY=sk_live_...
+STRIPE_PRICE_ID=price_...          # un prix récurrent : 4,99 €/mois
+STRIPE_WEBHOOK_SECRET=whsec_...    # endpoint POST /api/billing/webhook
+```
+
+Le **montant affiché est lu chez Stripe**, jamais recopié dans le code : changer
+le prix (ou passer à un tarif annuel) se fait dans le tableau de bord, sans
+redéploiement. Aucune donnée bancaire ne traverse Racontine — la page de
+paiement et le portail (carte, factures, **résiliation**) sont hébergés par
+Stripe.
 
 ## Partage avec les proches
 
@@ -222,3 +264,15 @@ par un inconnu bloquent la connexion de toute la famille pendant dix secondes.
 Si vous exposez l'API directement, resserrez la liste — un client peut sinon
 se fabriquer l'adresse de son choix. Mise à jour : `docker compose -f
 docker-compose.prod.yml pull && … up -d`.
+
+## Éditeur
+
+Racontine est conçu, développé et hébergé par
+**[BATTISTELLA](https://pro.battistella.ovh/)** — studio indépendant
+(micro-entreprise, Artigues-près-Bordeaux), qui exploite ses propres
+applications web, SaaS et outils d'IA auto-hébergés en France.
+
+[Mentions légales](https://pro.battistella.ovh/mentions-legales) ·
+[Conditions de vente](https://pro.battistella.ovh/cgv) ·
+[Résiliation & remboursement](https://pro.battistella.ovh/remboursement) ·
+[Confidentialité](https://pro.battistella.ovh/confidentialite)

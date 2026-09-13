@@ -11,6 +11,7 @@ import { attachmentsRoutes } from "./routes/attachments.js";
 import { sharingRoutes } from "./routes/sharing.js";
 import { subscriptionsRoutes } from "./routes/subscriptions.js";
 import { pushRoutes } from "./routes/push.js";
+import { billingRoutes, billingWebhookRoutes } from "./routes/billing.js";
 import { settingsRoutes } from "./routes/settings.js";
 import { mcpRoutes } from "./routes/mcp.js";
 
@@ -136,6 +137,9 @@ export async function buildApp() {
   await app.register(subscriptionsRoutes);
   await app.register(pushRoutes);
   await app.register(settingsRoutes);
+  await app.register(billingRoutes);
+  // Le webhook Stripe est à part : corps brut (signature) et pas de session.
+  await app.register(billingWebhookRoutes);
   await app.register(mcpRoutes);
 
   return app;

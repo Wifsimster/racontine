@@ -4,6 +4,7 @@ import {
   FakeAccessPolicy,
   FakeChildDirectory,
   FakeEntryRepository,
+  FakePaywall,
   FakePublicationNotifier,
   ImmediateRunner,
   entryRecord,
@@ -14,6 +15,8 @@ function build(
   opts: {
     entries?: ReturnType<typeof entryRecord>[];
     role?: "reader" | "contributor" | "admin" | null;
+    /** Phrase de refus du péage ; `null` = carnet ouvert. */
+    blocked?: string | null;
   } = {},
 ) {
   const entries = new FakeEntryRepository(opts.entries ?? []);
@@ -23,6 +26,7 @@ function build(
     entries,
     access: new FakeAccessPolicy(["child-1"], opts.role ?? "contributor"),
     children: new FakeChildDirectory("Lou"),
+    paywall: new FakePaywall(opts.blocked ?? null),
     notifier,
     background,
   });
@@ -115,4 +119,21 @@ test("les mêmes règles d'accès que l'ingestion s'appliquent", async () => {
   const badSource = await service.create({ userId: "u", source: "ecole" });
   assert.equal(badSource.ok, false);
   if (!badSource.ok) assert.match(badSource.error, /source invalide/);
+});
+
+test("l'abonnement terminé refuse aussi une journée DÉJÀ transcrite (402)", async () => {
+  // L'outil MCP ne doit pas être la porte dérobée du péage : il crée une
+  // journée sans photo ni clé d'API, mais c'est toujours une journée.
+  const { service, entries } = build({ blocked: "Votre essai gratuit est terminé." });
+
+  const result = await service.create({
+    userId: "user-1",
+    date: "2026-02-01",
+    title: "Journée douce",
+  });
+
+  assert.equal(result.ok, false);
+  if (result.ok) return;
+  assert.equal(result.httpCode, 402);
+  assert.equal(entries.rows.size, 0);
 });
