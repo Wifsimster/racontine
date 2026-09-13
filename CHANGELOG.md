@@ -2,6 +2,13 @@
 
 Toutes les versions notables de Racontine. Format issu des messages de commit conventionnels (`feat`, `fix`, …).
 
+# [1.23.0](https://github.com/Wifsimster/racontine/compare/v1.22.2...v1.23.0) (2026-09-13)
+
+
+### Features
+
+* **e-mails:** habiller les liens de connexion, d'invitation et de mot de passe ([#58](https://github.com/Wifsimster/racontine/issues/58)) ([f3ec8da](https://github.com/Wifsimster/racontine/commit/f3ec8dab955441a9140968d5f4595d476eae20af)), closes [#42](https://github.com/Wifsimster/racontine/issues/42)
+
 ## [1.22.2](https://github.com/Wifsimster/racontine/compare/v1.22.1...v1.22.2) (2026-09-13)
 
 
