@@ -9,6 +9,8 @@
     "brand": "node web/brand/build-assets.mjs",
     "brand:lettering": "node web/brand/build-lettering.mjs",
     "typecheck": "pnpm --filter server --filter web typecheck",
+    "stripe:setup": "node scripts/stripe-setup.mjs",
+    "stripe:check": "node scripts/stripe-setup.mjs --check",
     "test": "pnpm --filter server test"
   },
   "engines": {

@@ -87,14 +87,33 @@ STRIPE_PRICE_ID=price_...          # un prix récurrent, 4,99 €/mois
 STRIPE_WEBHOOK_SECRET=whsec_...    # endpoint /api/billing/webhook
 ```
 
-Chez Stripe :
+Ces trois objets se créent **dans votre compte Stripe**. Plutôt qu'à la main :
 
-1. un produit **Racontine Famille**, un prix récurrent mensuel en EUR ;
-2. un endpoint de webhook sur `https://<instance>/api/billing/webhook`, abonné à
-   `checkout.session.completed`, `customer.subscription.created|updated|deleted`,
-   `invoice.paid`, `invoice.payment_failed` ;
-3. le **portail client** activé (c'est lui qui porte la carte, les factures et
-   la résiliation — Racontine n'en réécrit aucun écran).
+```bash
+# dit ce qui existe et ce qui manque, sans rien écrire
+STRIPE_SECRET_KEY=sk_test_... pnpm stripe:check --url https://racontine.exemple.fr
+
+# crée ce qui manque, et rend les lignes à coller dans .env
+STRIPE_SECRET_KEY=sk_test_... pnpm stripe:setup --url https://racontine.exemple.fr
+```
+
+Le script ([`scripts/stripe-setup.mjs`](../scripts/stripe-setup.mjs)) est
+**idempotent** : il reconnaît ce qu'il a déjà créé (métadonnée `racontine`) et
+ne fabrique jamais un second prix actif sur le même produit — c'est le genre de
+doublon qui se découvre sur un relevé bancaire. Il crée :
+
+1. un produit **Racontine Famille**, et un prix récurrent mensuel en EUR ;
+2. un endpoint de webhook sur `https://<instance>/api/billing/webhook`, abonné
+   aux sept événements que le serveur sait traiter — et il **complète** un
+   endpoint existant auquel il en manquerait ;
+3. il **vérifie** le portail client (carte, factures, résiliation) et le signale
+   s'il n'est pas activé : Racontine n'en réécrit aucun écran, donc sans lui il
+   n'y a pas de bouton « résilier ».
+
+Le secret de signature n'est affiché **qu'à la création** de l'endpoint : si le
+vôtre existe déjà, révélez-le dans le tableau de bord. Une clé `sk_live_` est
+refusée sans `--live` : on déroule d'abord le parcours complet en `sk_test_`.
+`--amount 3900 --interval year` provisionne une offre annuelle.
 
 Sans `STRIPE_SECRET_KEY` / `STRIPE_PRICE_ID`, l'instance est gratuite et sans
 limite : c'est le cas par défaut, et celui de tout homelab. Le serveur le dit au
