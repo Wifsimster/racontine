@@ -101,6 +101,25 @@ L'abonnement appartient au **foyer** et se règle depuis le compte du
 propriétaire. Le co-parent contribue, les grands-parents lisent : on ne leur
 demande jamais de carte.
 
+### Armer la caisse en une commande
+
+Le produit, le prix et le point de webhook se créent **dans votre compte
+Stripe** — et se ratent facilement à la main (un prix ponctuel au lieu de
+récurrent, un webhook abonné à trois événements sur sept). Le script les crée
+dans le bon ordre et rend les lignes à coller :
+
+```bash
+# ce qui existe déjà, sans rien écrire
+STRIPE_SECRET_KEY=sk_test_... pnpm stripe:check --url https://racontine.exemple.fr
+
+# créer ce qui manque (idempotent : relançable sans fabriquer de doublon)
+STRIPE_SECRET_KEY=sk_test_... pnpm stripe:setup --url https://racontine.exemple.fr
+```
+
+Il refuse une clé `sk_live_` sans `--live` — on déroule d'abord le parcours en
+mode test. `--amount 3900 --interval year` provisionne une offre annuelle à la
+place. Puis, dans `.env` :
+
 ```bash
 # .env (instance hébergée uniquement)
 STRIPE_SECRET_KEY=sk_live_...
