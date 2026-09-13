@@ -5,6 +5,8 @@
 Photographiez le carnet papier de la nounou / MAM / crèche → un LLM vision lit, structure et tague la journée (repas, siestes, humeur, activités, anecdotes) → un journal privé, hébergé chez vous, partagé avec les proches que vous choisissez.
 
 📄 Voir [PLAN-PRODUIT.md](./PLAN-PRODUIT.md) pour le plan produit et le phasage complet, et [docs/identite.md](./docs/identite.md) pour la marque, les couleurs et les surfaces qui sortent de l'app (e-mail, carte de lien, notifications).
+🧱 Voir [docs/SOLID.md](./docs/SOLID.md) pour l'architecture du serveur (domaine,
+ports, adaptateurs) et la note SOLID du dépôt, barème compris.
 
 ## Stack
 

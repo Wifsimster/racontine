@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { renderEntryEmail, type Chip } from "./notifications.js";
+import { renderEntryEmail } from "./email-template.js";
+import type { DayChip } from "../domain/day-glance.js";
 
 /* ===========================================================================
    L'e-mail de publication est la SEULE surface du produit qui sorte de chez
@@ -31,7 +32,7 @@ const JOURNEE = {
     { label: "2 repas", tone: "meal" },
     { label: "sieste 2 h 05", tone: "nap" },
     { label: "joyeuse", tone: "mood" },
-  ] as Chip[],
+  ] as DayChip[],
 };
 
 test("l'e-mail porte les couleurs du carnet, et aucune autre", () => {

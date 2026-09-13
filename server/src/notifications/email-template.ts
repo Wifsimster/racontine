@@ -1,151 +1,13 @@
-import { and, eq, ne } from "drizzle-orm";
-import { db } from "./db/index.js";
-import {
-  subscriptions,
-  notifications,
-  memberships,
-  entries,
-  entryItems,
-  user,
-} from "./db/schema.js";
-import { config } from "./config.js";
-import { sendMail, mailEnabled } from "./mailer.js";
-import { sendPushToUser } from "./push.js";
-import { getSettings } from "./settings.js";
+import type { DayChip } from "../domain/day-glance.js";
 
 /** Échappe le texte destiné à être interpolé dans du HTML d'e-mail. */
-function escapeHtml(s: string): string {
+export function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
-}
-
-function formatDateFr(iso: string): string {
-  const d = new Date(iso + "T00:00:00");
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString("fr-FR", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
-}
-
-/**
- * Notifie tous les abonnés à la timeline d'un enfant qu'une journée vient
- * d'être publiée : une notification in-app par abonné + un e-mail pour ceux qui
- * l'ont activé. L'auteur de la publication (`actorUserId`) est exclu — inutile
- * de se notifier soi-même.
- *
- * Ne lève jamais : la notification est un effet de bord de la publication et ne
- * doit pas la faire échouer.
- */
-export async function notifyEntryPublished(params: {
-  entryId: string;
-  childId: string;
-  childName: string;
-  date: string;
-  actorUserId?: string | null;
-}): Promise<void> {
-  const { entryId, childId, childName, date, actorUserId } = params;
-  try {
-    // Uniquement les abonnés qui sont ENCORE membres du cercle de l'enfant : un
-    // proche dont l'accès a été révoqué ne doit plus recevoir de notifications,
-    // même si sa ligne d'abonnement subsiste (jointure sur memberships).
-    const subs = await db
-      .select({
-        userId: subscriptions.userId,
-        emailEnabled: subscriptions.emailEnabled,
-        email: user.email,
-        name: user.name,
-      })
-      .from(subscriptions)
-      .innerJoin(user, eq(subscriptions.userId, user.id))
-      .innerJoin(
-        memberships,
-        and(
-          eq(memberships.userId, subscriptions.userId),
-          eq(memberships.childId, subscriptions.childId),
-        ),
-      )
-      .where(
-        actorUserId
-          ? and(
-              eq(subscriptions.childId, childId),
-              ne(subscriptions.userId, actorUserId),
-            )
-          : eq(subscriptions.childId, childId),
-      );
-
-    if (subs.length === 0) return;
-
-    const dateLabel = formatDateFr(date);
-    const title = `Nouvelle journée de ${childName}`;
-    const body = `La journée du ${dateLabel} vient d'être publiée dans le journal de ${childName}.`;
-    const link = `${config.webBaseUrl}/entries/${entryId}`;
-
-    // E-mail envoyé seulement si SMTP est configuré ET si le propriétaire n'a pas
-    // coupé globalement les e-mails de notification depuis les réglages.
-    const { emailNotificationsEnabled } = await getSettings();
-    const canEmail = mailEnabled() && emailNotificationsEnabled;
-
-    // Une notif in-app par abonné, plus un e-mail si activé et SMTP configuré.
-    // On persiste d'abord la notification in-app, puis on tente l'e-mail : ainsi
-    // un échec d'envoi ne prive jamais l'abonné de sa notification. allSettled
-    // isole les échecs par destinataire (un abonné en échec n'annule pas les
-    // autres).
-    const results = await Promise.allSettled(
-      subs.map(async (s) => {
-        const [row] = await db
-          .insert(notifications)
-          .values({
-            userId: s.userId,
-            childId,
-            entryId,
-            type: "entry_published",
-            title,
-            body,
-          })
-          .returning({ id: notifications.id });
-
-        // Web Push : envoyé à tous les appareils enregistrés de l'abonné,
-        // indépendamment de la préférence e-mail. No-op si VAPID n'est pas
-        // configuré ou si l'abonné n'a aucun appareil. Ne lève jamais.
-        await sendPushToUser(s.userId, {
-          title,
-          body,
-          url: link,
-          tag: `entry-${entryId}`,
-        });
-
-        if (canEmail && s.emailEnabled && s.email) {
-          const emailedAt = await sendEntryEmail(s.email, s.name, title, body, link, {
-            entryId,
-            childName,
-            dateLabel,
-          });
-          if (emailedAt)
-            await db
-              .update(notifications)
-              .set({ emailedAt })
-              .where(eq(notifications.id, row.id));
-        }
-      }),
-    );
-
-    const failed = results.filter((r) => r.status === "rejected").length;
-    if (failed)
-      console.error(
-        `Notification des abonnés : ${failed}/${subs.length} en échec.`,
-      );
-  } catch (err) {
-    console.error(
-      "Échec de la notification des abonnés :",
-      err instanceof Error ? err.message : err,
-    );
-  }
 }
 
 /* ===========================================================================
@@ -212,90 +74,7 @@ const FEUTRE = {
   mood: { ink: "#242846", bg: "#EBECF2" }, // --foreground / --muted
 } as const;
 
-/** Espace insécable : « 2 h 05 » — typographie française. */
-const NBSP = "\u00a0";
-
-function parseTime(s?: string | null): number | null {
-  if (!s) return null;
-  const m = s.match(/(\d{1,2})\s*[h:]\s*(\d{2})?/);
-  if (!m) return null;
-  const h = Number(m[1]);
-  const min = m[2] ? Number(m[2]) : 0;
-  if (h > 23 || min > 59) return null;
-  return h * 60 + min;
-}
-
-function formatDuration(min: number): string {
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  if (h === 0) return `${m}${NBSP}min`;
-  if (m === 0) return `${h}${NBSP}h`;
-  return `${h}${NBSP}h${NBSP}${String(m).padStart(2, "0")}`;
-}
-
-/** L'humeur en un mot, comme sur la bande de feutres du journal. */
-function moodShort(mood: string): string | null {
-  const first = mood.split(/[,;]| et | puis /i)[0].trim();
-  if (first.length <= 16) return first;
-  const cut = first.slice(0, 16);
-  const space = cut.lastIndexOf(" ");
-  return space >= 4 ? cut.slice(0, space) + "\u2026" : null;
-}
-
-export type Chip = { label: string; tone: keyof typeof FEUTRE };
-
-/**
- * La bande de feutres de la journée, dans l'ORDRE des questions qu'on se pose
- * en ouvrant l'app : a-t-il mangé, a-t-il dormi, comment était-il. Trois au
- * plus — la même règle qu'à l'écran, pour la même raison : au-delà, la bande
- * crie plus fort que le titre.
- *
- * Les mots sont ceux du journal, au caractère près (« sieste 2 h 05 » pour une
- * seule, « siestes 2 h 05 » pour le cumul) : une même journée ne peut pas se
- * résumer différemment selon qu'on la lit dans l'app ou dans sa boîte.
- */
-async function glanceOf(entryId: string): Promise<Chip[]> {
-  const [rows, [entry]] = await Promise.all([
-    db
-      .select({ type: entryItems.type, data: entryItems.data })
-      .from(entryItems)
-      .where(eq(entryItems.entryId, entryId)),
-    db
-      .select({ mood: entries.mood })
-      .from(entries)
-      .where(eq(entries.id, entryId))
-      .limit(1),
-  ]);
-
-  const chips: Chip[] = [];
-
-  const meals = rows.filter((r) => r.type === "meal");
-  if (meals.length > 0)
-    chips.push({ label: `${meals.length} repas`, tone: "meal" });
-
-  const naps = rows.filter((r) => r.type === "nap");
-  if (naps.length > 0) {
-    let total = 0;
-    for (const n of naps) {
-      const d = n.data as { debut?: string; fin?: string };
-      const a = parseTime(d.debut);
-      const b = parseTime(d.fin);
-      if (a !== null && b !== null && b > a) total += b - a;
-    }
-    const noun = naps.length > 1 ? "siestes" : "sieste";
-    chips.push({
-      label: total > 0 ? `${noun} ${formatDuration(total)}` : `${naps.length} ${noun}`,
-      tone: "nap",
-    });
-  }
-
-  const short = entry?.mood ? moodShort(entry.mood) : null;
-  if (short) chips.push({ label: short, tone: "mood" });
-
-  return chips;
-}
-
-function chipsHtml(chips: Chip[]): string {
+function chipsHtml(chips: DayChip[]): string {
   if (chips.length === 0) return "";
   const cells = chips
     .map(
@@ -334,7 +113,7 @@ export function renderEntryEmail(params: {
   link: string;
   childName: string;
   dateLabel: string;
-  chips: Chip[];
+  chips: DayChip[];
 }): { text: string; html: string } {
   const { greeting, body, link, childName, dateLabel, chips } = params;
   const day = { childName, dateLabel };
@@ -384,24 +163,4 @@ export function renderEntryEmail(params: {
 </div>`;
 
   return { text, html };
-}
-
-async function sendEntryEmail(
-  to: string,
-  name: string,
-  title: string,
-  body: string,
-  link: string,
-  day: { entryId: string; childName: string; dateLabel: string },
-): Promise<Date | null> {
-  const { text, html } = renderEntryEmail({
-    greeting: name ? `Bonjour ${name},` : "Bonjour,",
-    body,
-    link,
-    childName: day.childName,
-    dateLabel: day.dateLabel,
-    chips: await glanceOf(day.entryId),
-  });
-  const ok = await sendMail({ to, subject: title, text, html });
-  return ok ? new Date() : null;
 }

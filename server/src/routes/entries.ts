@@ -1,48 +1,36 @@
 import type { FastifyInstance } from "fastify";
-import { and, eq, ne, desc, asc, inArray, or } from "drizzle-orm";
-import { db } from "../db/index.js";
 import {
-  entries,
-  entryItems,
-  attachments,
-  children,
-  memberships,
-  subscriptions,
-  type EntryItemData,
-  type Uncertainty,
-} from "../db/schema.js";
+  carnetReading,
+  childrenService,
+  entryEditing,
+  ingestService,
+} from "../composition.js";
+import { isIsoDate } from "../domain/dates.js";
+import { isSource } from "../domain/entry-metadata.js";
 import { requireUser } from "../plugins/auth.js";
 import {
-  accessibleChildIds,
-  childRole,
-  entryChildId,
-  hasChildRole,
-  roleAtLeast,
-} from "../access.js";
-import {
-  ingestCarnetImages,
-  retryEntryRead,
-  DATE_RE,
-  SOURCES,
-  ITEM_TYPES,
-  type ItemType,
-} from "../ingest.js";
-import { notifyEntryPublished } from "../notifications.js";
-import { recordCorrection } from "../corrections.js";
+  findVisibleEntry,
+  listAccessibleChildren,
+  listBatch,
+  listTimeline,
+} from "../queries/entry-feed.js";
 import { tidyUncertainties } from "../uncertainties.js";
 import { attachmentUrls } from "./attachment-urls.js";
 
-/** Entrée complète (items + pièces jointes) sérialisée pour le front. */
-async function serializeEntry(entryId: string) {
-  const entry = await db.query.entries.findFirst({
-    where: eq(entries.id, entryId),
-    with: {
-      child: true,
-      items: { orderBy: (i, { asc }) => [asc(i.position)] },
-      attachments: { orderBy: (a, { asc }) => [asc(a.position)] },
-    },
-  });
-  if (!entry) return null;
+/* ===========================================================================
+   LA COUCHE HTTP DU JOURNAL — et seulement elle.
+
+   Ces gestionnaires portaient les règles : contrôle d'accès, transition de
+   publication, substitution d'un mot tranché, jusqu'aux codes d'erreur de
+   Postgres. Tout cela est parti dans `services/` et `queries/` ; il ne reste ici
+   que ce qui est vraiment du ressort d'HTTP — lire une requête, choisir un code
+   de statut, mettre en forme la réponse.
+   =========================================================================== */
+
+type SerializableEntry = NonNullable<Awaited<ReturnType<typeof findVisibleEntry>>>;
+
+/** Entrée complète (moments + pages) mise en forme pour le front. */
+function serializeEntry(entry: SerializableEntry) {
   return {
     ...entry,
     /* Les journées déjà en base gardent le `original` fourre-tout que le modèle
@@ -66,54 +54,19 @@ export async function entriesRoutes(app: FastifyInstance) {
 
   /* --------------------------------- Enfants ---------------------------- */
 
-  app.get("/api/children", async (req) => {
-    const ids = await accessibleChildIds(req.user!.id);
-    if (!ids.length) return [];
-    const rows = await db
-      .select({
-        id: children.id,
-        name: children.name,
-        birthdate: children.birthdate,
-        createdAt: children.createdAt,
-        role: memberships.role,
-      })
-      .from(children)
-      .innerJoin(memberships, eq(memberships.childId, children.id))
-      .where(
-        and(inArray(children.id, ids), eq(memberships.userId, req.user!.id)),
-      )
-      .orderBy(children.createdAt);
-    return rows;
-  });
+  app.get("/api/children", async (req) => listAccessibleChildren(req.user!.id));
 
   app.post<{ Body: { name?: string; birthdate?: string } }>(
     "/api/children",
     async (req, reply) => {
-      const name = req.body?.name?.trim();
-      if (!name) return reply.code(400).send({ error: "name requis" });
-      const birthdate = req.body.birthdate?.trim();
-      if (birthdate && !DATE_RE.test(birthdate))
-        return reply
-          .code(400)
-          .send({ error: "birthdate invalide (attendu AAAA-MM-JJ)" });
-      // Le créateur devient admin de l'enfant et suit d'office sa timeline.
-      const child = await db.transaction(async (tx) => {
-        const [c] = await tx
-          .insert(children)
-          .values({ name, birthdate: birthdate ?? null })
-          .returning();
-        await tx
-          .insert(memberships)
-          .values({ userId: req.user!.id, childId: c.id, role: "admin" });
-        await tx
-          .insert(subscriptions)
-          .values({ userId: req.user!.id, childId: c.id })
-          .onConflictDoNothing({
-            target: [subscriptions.userId, subscriptions.childId],
-          });
-        return c;
+      const created = await childrenService.create({
+        userId: req.user!.id,
+        name: req.body?.name,
+        birthdate: req.body?.birthdate,
       });
-      return reply.code(201).send({ ...child, role: "admin" as const });
+      if (!created.ok)
+        return reply.code(created.httpCode).send({ error: created.error });
+      return reply.code(201).send({ ...created.child, role: "admin" as const });
     },
   );
 
@@ -138,7 +91,8 @@ export async function entriesRoutes(app: FastifyInstance) {
       }
     } catch (err) {
       const tooLarge =
-        err instanceof Error && /file too large|request.*too large/i.test(err.message);
+        err instanceof Error &&
+        /file too large|request.*too large/i.test(err.message);
       return reply.code(tooLarge ? 413 : 400).send({
         error: tooLarge
           ? "Photo trop volumineuse (max 20 Mo par page)."
@@ -149,15 +103,12 @@ export async function entriesRoutes(app: FastifyInstance) {
     // Le formulaire multipart reste tolérant : une date/source mal formée est
     // ignorée (défaut appliqué), comme historiquement. La validation stricte du
     // service (400 explicite) est réservée aux appels programmatiques (MCP).
-    const result = await ingestCarnetImages({
+    const result = await ingestService.ingest({
       userId: req.user!.id,
       images,
       childId,
-      date: date && DATE_RE.test(date) ? date : undefined,
-      source:
-        source && (SOURCES as readonly string[]).includes(source)
-          ? source
-          : undefined,
+      date: date && isIsoDate(date) ? date : undefined,
+      source: source && isSource(source) ? source : undefined,
     });
 
     if (!result.ok)
@@ -173,61 +124,24 @@ export async function entriesRoutes(app: FastifyInstance) {
   app.get<{ Querystring: { childId?: string; limit?: string; offset?: string } }>(
     "/api/entries",
     async (req, reply) => {
-      const limit = Math.min(Number(req.query.limit ?? 20) || 20, 50);
-      const offset = Math.max(Number(req.query.offset ?? 0) || 0, 0);
-
-      // Portée : uniquement les enfants suivis par l'utilisateur. Un lecteur ne
-      // voit que le journal publié ; contributeur/admin voient aussi les
-      // brouillons (relecture).
-      const rows0 = await db
-        .select({ childId: memberships.childId, role: memberships.role })
-        .from(memberships)
-        .where(eq(memberships.userId, req.user!.id));
-      const roleByChild = new Map(rows0.map((r) => [r.childId, r.role]));
-      const accessibleIds = [...roleByChild.keys()];
-      const draftableIds = accessibleIds.filter((id) =>
-        roleAtLeast(roleByChild.get(id)!, "contributor"),
-      );
-
-      if (!accessibleIds.length)
-        return { entries: [], nextOffset: null };
-
-      let scope = req.query.childId ? [req.query.childId] : accessibleIds;
-      if (req.query.childId && !roleByChild.has(req.query.childId))
+      const page = await listTimeline({
+        userId: req.user!.id,
+        childId: req.query.childId,
+        limit: Math.min(Number(req.query.limit ?? 20) || 20, 50),
+        offset: Math.max(Number(req.query.offset ?? 0) || 0, 0),
+      });
+      if (page.kind === "denied")
         return reply.code(403).send({ error: "accès refusé à cet enfant" });
 
-      const draftableInScope = draftableIds.filter((id) => scope.includes(id));
-      const where = and(
-        inArray(entries.childId, scope),
-        or(
-          eq(entries.status, "published"),
-          draftableInScope.length
-            ? inArray(entries.childId, draftableInScope)
-            : undefined,
-        ),
-      );
-
-      const rows = await db.query.entries.findMany({
-        where,
-        orderBy: [desc(entries.date), desc(entries.createdAt)],
-        limit,
-        offset,
-        with: {
-          child: true,
-          items: { orderBy: (i, { asc }) => [asc(i.position)] },
-          attachments: { orderBy: (a, { asc }) => [asc(a.position)] },
-        },
-      });
-
       return {
-        entries: rows.map((e) => ({
+        entries: page.entries.map((e) => ({
           ...e,
           attachments: e.attachments.map((a) => ({
             id: a.id,
             ...attachmentUrls(a),
           })),
         })),
-        nextOffset: rows.length === limit ? offset + limit : null,
+        nextOffset: page.nextOffset,
       };
     },
   );
@@ -235,54 +149,22 @@ export async function entriesRoutes(app: FastifyInstance) {
   /**
    * Journées sœurs d'un même envoi de photos couvrant plusieurs jours
    * (voir `batchId` en base). Alimente le stepper de relecture séquentielle
-   * du front : un résumé léger par journée (pas les pièces jointes ni le
-   * récit complet), triées chronologiquement.
+   * du front : un résumé léger par journée, trié chronologiquement.
    */
   app.get<{ Params: { batchId: string } }>(
     "/api/entries/batch/:batchId",
     async (req, reply) => {
-      const rows = await db.query.entries.findMany({
-        where: eq(entries.batchId, req.params.batchId),
-        orderBy: [asc(entries.date)],
-      });
-      if (!rows.length)
-        return reply.code(404).send({ error: "lot introuvable" });
-
-      // Toutes les journées d'un lot partagent le même enfant (par construction
-      // à l'ingestion) : un seul contrôle d'accès suffit.
-      const role = await childRole(req.user!.id, rows[0].childId);
-      if (!role) return reply.code(404).send({ error: "lot introuvable" });
-      const visible =
-        role === "reader" ? rows.filter((e) => e.status === "published") : rows;
-
-      return {
-        entries: visible.map((e) => ({
-          id: e.id,
-          date: e.date,
-          status: e.status,
-          title: e.title,
-        })),
-      };
+      const entries = await listBatch(req.user!.id, req.params.batchId);
+      if (!entries) return reply.code(404).send({ error: "lot introuvable" });
+      return { entries };
     },
   );
 
-  app.get<{ Params: { id: string } }>(
-    "/api/entries/:id",
-    async (req, reply) => {
-      const childId = await entryChildId(req.params.id);
-      if (!childId)
-        return reply.code(404).send({ error: "entrée introuvable" });
-      const role = await childRole(req.user!.id, childId);
-      if (!role) return reply.code(404).send({ error: "entrée introuvable" });
-
-      const entry = await serializeEntry(req.params.id);
-      if (!entry) return reply.code(404).send({ error: "entrée introuvable" });
-      // Un lecteur ne voit que le journal publié.
-      if (role === "reader" && entry.status !== "published")
-        return reply.code(404).send({ error: "entrée introuvable" });
-      return entry;
-    },
-  );
+  app.get<{ Params: { id: string } }>("/api/entries/:id", async (req, reply) => {
+    const entry = await findVisibleEntry(req.user!.id, req.params.id);
+    if (!entry) return reply.code(404).send({ error: "entrée introuvable" });
+    return serializeEntry(entry);
+  });
 
   /* ------------------------- Relecture / publication -------------------- */
 
@@ -300,211 +182,54 @@ export async function entriesRoutes(app: FastifyInstance) {
       publish?: boolean;
     };
   }>("/api/entries/:id", async (req, reply) => {
-    const { id } = req.params;
-    const body = req.body ?? {};
+    const result = await entryEditing.revise({
+      entryId: req.params.id,
+      userId: req.user!.id,
+      ...(req.body ?? {}),
+    });
+    if (!result.ok)
+      return reply.code(result.httpCode).send({ error: result.error });
 
-    const current = await db
-      .select()
-      .from(entries)
-      .where(eq(entries.id, id))
-      .limit(1);
-    if (!current.length)
-      return reply.code(404).send({ error: "entrée introuvable" });
-
-    // Relire / publier exige contributor+ sur l'enfant.
-    if (!(await hasChildRole(req.user!.id, current[0].childId, "contributor")))
-      return reply.code(404).send({ error: "entrée introuvable" });
-
-    const patch: Partial<typeof entries.$inferInsert> = {
-      updatedAt: new Date(),
-    };
-    if (body.mood !== undefined) patch.mood = body.mood;
-    if (body.title !== undefined) patch.title = body.title;
-    if (body.story !== undefined) patch.story = body.story;
-    if (body.highlight !== undefined) patch.highlight = body.highlight;
-    if (body.transcription !== undefined)
-      patch.transcription = body.transcription;
-    if (body.source && (SOURCES as readonly string[]).includes(body.source))
-      patch.source = body.source as (typeof SOURCES)[number];
-    // Valider le format de la date avant de l'appliquer (comme à l'ingestion),
-    // pour renvoyer un 400 explicite plutôt qu'un 500 sur date invalide.
-    if (body.date !== undefined) {
-      if (!DATE_RE.test(body.date))
-        return reply
-          .code(400)
-          .send({ error: "date invalide (attendu AAAA-MM-JJ)" });
-      patch.date = body.date;
-    }
-    // NB : la publication est gérée séparément par un compare-and-set atomique
-    // ci-dessous (et non via `patch`), pour ne notifier qu'à la vraie transition.
-
-    // Ne notifier qu'à la PREMIÈRE publication. On détecte la transition de
-    // façon atomique (UPDATE … WHERE status <> 'published' … RETURNING) : deux
-    // requêtes de publication concurrentes ne peuvent pas toutes deux « gagner »,
-    // ce qui évite les notifications/e-mails en double.
-    let isFirstPublish = false;
-    try {
-      await db.transaction(async (tx) => {
-        if (body.items) {
-          const rows = body.items
-            .filter((it) => (ITEM_TYPES as readonly string[]).includes(it.type))
-            .map((it, i) => ({
-              entryId: id,
-              type: it.type as ItemType,
-              data: it.data as EntryItemData,
-              position: it.position ?? i,
-            }));
-          await tx.delete(entryItems).where(eq(entryItems.entryId, id));
-          if (rows.length) await tx.insert(entryItems).values(rows);
-        }
-        await tx.update(entries).set(patch).where(eq(entries.id, id));
-        if (body.publish) {
-          const flipped = await tx
-            .update(entries)
-            .set({
-              status: "published",
-              publishedAt: new Date(),
-              failureReason: null,
-            })
-            .where(and(eq(entries.id, id), ne(entries.status, "published")))
-            .returning({ id: entries.id });
-          isFirstPublish = flipped.length > 0;
-        }
-      });
-    } catch (err) {
-      // Collision avec une autre journée (même enfant/date/source) → 409 ;
-      // date syntaxiquement valide mais impossible (ex. 2026-13-40) → 400.
-      const code =
-        typeof err === "object" && err && "code" in err
-          ? String((err as { code: unknown }).code)
-          : "";
-      if (code === "23505")
-        return reply.code(409).send({
-          error:
-            "Une journée existe déjà pour cet enfant à cette date et cette source.",
-        });
-      if (code === "22007" || code === "22008")
-        return reply.code(400).send({ error: "date invalide" });
-      throw err;
-    }
-
-    const result = await serializeEntry(id);
-
-    // Notification des abonnés en arrière-plan (n'impacte pas la réponse).
-    if (isFirstPublish && result?.child) {
-      void notifyEntryPublished({
-        entryId: id,
-        childId: result.child.id,
-        childName: result.child.name,
-        date: result.date,
-        actorUserId: req.user?.id ?? null,
-      });
-    }
-
-    return result;
+    const entry = await findVisibleEntry(req.user!.id, req.params.id);
+    return entry ? serializeEntry(entry) : null;
   });
 
   /**
-   * Valide une incertitude signalée à la relecture : la valeur choisie (une
-   * des suggestions du VLM, l'original conservé tel quel, ou une saisie
-   * libre) remplace le mot dans tous les champs de la valorisation où il
-   * apparaît, et alimente le glossaire de l'enfant (voir corrections.ts) pour
-   * améliorer la reconnaissance de l'écriture aux prochaines lectures.
+   * Valide une incertitude signalée à la relecture : la valeur choisie (une des
+   * suggestions du modèle, l'original conservé tel quel, ou une saisie libre)
+   * remplace le mot dans la valorisation et alimente le glossaire de l'enfant.
    */
   app.patch<{
     Params: { id: string; index: string };
     Body: { value?: string };
   }>("/api/entries/:id/uncertainties/:index", async (req, reply) => {
-    const { id } = req.params;
-    const index = Number(req.params.index);
-    const value = req.body?.value?.trim();
-    if (!value) return reply.code(400).send({ error: "value requis" });
-    if (!Number.isInteger(index) || index < 0)
-      return reply.code(400).send({ error: "index invalide" });
-
-    const current = await db
-      .select()
-      .from(entries)
-      .where(eq(entries.id, id))
-      .limit(1);
-    if (!current.length)
-      return reply.code(404).send({ error: "entrée introuvable" });
-    const row = current[0];
-
-    if (!(await hasChildRole(req.user!.id, row.childId, "contributor")))
-      return reply.code(404).send({ error: "entrée introuvable" });
-
-    /* Même remise en forme qu'à la sérialisation : c'est le MOT qui doit être
-       remplacé dans le récit, pas la phrase explicative que le modèle a parfois
-       glissée dans `original`. Sans ça, la substitution ci-dessous ne trouvait
-       rien et le mot douteux partait tel quel chez les proches — le parent
-       avait tranché pour rien. */
-    const uncertainties = tidyUncertainties(row.uncertainties);
-    const item = uncertainties[index];
-    if (!item)
-      return reply.code(404).send({ error: "incertitude introuvable" });
-    if (item.resolved)
-      return reply.code(409).send({ error: "incertitude déjà validée" });
-
-    const nextUncertainties = uncertainties.map((u, i) =>
-      i === index ? { ...u, resolved: value } : u,
-    );
-
-    // Le champ signalé par le VLM peut être imprécis : on remplace le mot
-    // partout où il apparaît réellement dans la valorisation.
-    const patch: Partial<typeof entries.$inferInsert> = {
-      uncertainties: nextUncertainties,
-      updatedAt: new Date(),
-    };
-    if (row.title?.includes(item.original))
-      patch.title = row.title.split(item.original).join(value);
-    if (row.story?.includes(item.original))
-      patch.story = row.story.split(item.original).join(value);
-    if (row.highlight?.includes(item.original))
-      patch.highlight = row.highlight.split(item.original).join(value);
-    if (row.transcription?.includes(item.original))
-      patch.transcription = row.transcription.split(item.original).join(value);
-
-    await db.transaction(async (tx) => {
-      await tx.update(entries).set(patch).where(eq(entries.id, id));
-      await recordCorrection({
-        childId: row.childId,
-        original: item.original,
-        corrected: value,
-        field: item.champ,
-        entryId: id,
-        createdBy: req.user!.id,
-      });
+    const result = await entryEditing.resolveUncertainty({
+      entryId: req.params.id,
+      userId: req.user!.id,
+      index: Number(req.params.index),
+      value: req.body?.value ?? "",
     });
+    if (!result.ok)
+      return reply.code(result.httpCode).send({ error: result.error });
 
-    return serializeEntry(id);
+    const entry = await findVisibleEntry(req.user!.id, req.params.id);
+    return entry ? serializeEntry(entry) : null;
   });
 
   /**
    * Relance la lecture d'une journée en échec, sur ses pages déjà téléversées.
    *
    * La seule sortie d'un échec était « Reprendre la photo » : correct quand la
-   * page est floue, faux quand la lecture est morte avec le processus (un
-   * redémarrage du serveur, cf. `reclaimStuckEntries`). Dans ce second cas les
-   * pages sont intactes sur le disque et le carnet papier est déjà reparti chez
-   * la nounou — la relance est la seule sortie honnête.
+   * page est floue, faux quand la lecture est morte avec le processus. Dans ce
+   * second cas les pages sont intactes sur le disque et le carnet papier est
+   * déjà reparti chez la nounou — la relance est la seule sortie honnête.
    */
   app.post<{ Params: { id: string } }>(
     "/api/entries/:id/retry",
     async (req, reply) => {
-      const childId = await entryChildId(req.params.id);
-      if (!childId)
-        return reply.code(404).send({ error: "entrée introuvable" });
-      // Relire consomme la clé API du demandeur : contributeur au minimum.
-      if (!(await hasChildRole(req.user!.id, childId, "contributor")))
-        return reply.code(404).send({ error: "entrée introuvable" });
-
-      const started = await retryEntryRead(req.params.id, req.user!.id);
-      if (!started)
-        return reply.code(409).send({
-          error:
-            "Cette journée n'est pas en échec, ou elle n'a aucune page à relire.",
-        });
+      const started = await carnetReading.retry(req.params.id, req.user!.id);
+      if (!started.ok)
+        return reply.code(started.httpCode).send({ error: started.error });
       return reply.code(202).send({ id: req.params.id, status: "processing" });
     },
   );
@@ -512,12 +237,9 @@ export async function entriesRoutes(app: FastifyInstance) {
   app.delete<{ Params: { id: string } }>(
     "/api/entries/:id",
     async (req, reply) => {
-      const childId = await entryChildId(req.params.id);
-      if (!childId) return reply.code(204).send();
-      // Supprimer une journée est réservé à l'admin de l'enfant.
-      if (!(await hasChildRole(req.user!.id, childId, "admin")))
-        return reply.code(403).send({ error: "accès refusé" });
-      await db.delete(entries).where(eq(entries.id, req.params.id));
+      const result = await entryEditing.remove(req.params.id, req.user!.id);
+      if (!result.ok)
+        return reply.code(result.httpCode).send({ error: result.error });
       return reply.code(204).send();
     },
   );

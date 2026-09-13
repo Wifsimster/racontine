@@ -602,6 +602,8 @@ export const attachmentsRelations = relations(attachments, ({ one }) => ({
 }));
 
 export type Entry = typeof entries.$inferSelect;
+/** États possibles d'une journée (aligné sur l'enum `entry_status`). */
+export type EntryStatus = (typeof entryStatus.enumValues)[number];
 export type EntryItem = typeof entryItems.$inferSelect;
 export type Attachment = typeof attachments.$inferSelect;
 export type Child = typeof children.$inferSelect;
