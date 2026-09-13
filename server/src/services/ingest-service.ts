@@ -8,6 +8,7 @@ import type {
   AttachmentRepository,
   EntryRepository,
   ImageStore,
+  Paywall,
   StoredImage,
 } from "../ports.js";
 import type { CarnetReadingService } from "./carnet-reading-service.js";
@@ -37,6 +38,7 @@ export type IngestDeps = {
   images: ImageStore;
   apiKeys: ApiKeyStore;
   access: AccessPolicy;
+  paywall: Paywall;
   reading: Pick<CarnetReadingService, "readInBackground">;
 };
 
@@ -59,6 +61,15 @@ export class IngestService {
 
     if (!input.images.length)
       return { ok: false, httpCode: 400, error: "aucune photo fournie" };
+
+    /* Le péage AVANT le disque et avant la clé d'API. Deux raisons, et la
+       seconde est la vraie : on ne veut pas écrire douze fichiers de 20 Mo pour
+       une journée qu'on va refuser (1), et surtout on ne veut pas répondre
+       « configurez votre clé API » à quelqu'un dont le problème est un
+       abonnement terminé (2) — une phrase juste vaut mieux qu'une phrase vraie
+       au mauvais moment. */
+    const blocked = await this.deps.paywall.blockedReason();
+    if (blocked) return { ok: false, httpCode: 402, error: blocked };
 
     // Chaque contributeur apporte sa propre clé d'API : sans clé, on ne stocke
     // rien et on répond tout de suite (plutôt qu'un échec en arrière-plan).

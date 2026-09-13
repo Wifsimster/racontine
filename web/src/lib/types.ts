@@ -229,3 +229,53 @@ export type CreatedMcpToken = {
   token: McpToken;
   secret: string;
 };
+
+/* ----------------------------- Abonnement ------------------------------ */
+
+/** Pourquoi le carnet est ouvert, ou fermé (miroir de `domain/paywall.ts`). */
+export type AccessReason =
+  | "self-hosted"
+  | "trial"
+  | "subscribed"
+  | "payment-late"
+  | "trial-over"
+  | "subscription-over";
+
+/**
+ * L'accès à l'ÉCRITURE du carnet. Lire n'est jamais concerné : le journal déjà
+ * publié reste lisible quoi qu'il arrive, et aucun écran ne doit laisser penser
+ * le contraire.
+ */
+export type CarnetAccess = {
+  /** Peut-on commencer une NOUVELLE journée ? */
+  open: boolean;
+  reason: AccessReason;
+  /** Jours entiers restants d'essai, ou null. */
+  daysLeft: number | null;
+  /** Date (ISO) jusqu'à laquelle l'accès est acquis, ou null. */
+  until: string | null;
+  /** Date (ISO) de fin d'un abonnement résilié, ou null. */
+  endingAt: string | null;
+};
+
+/** Le tarif, tel que Stripe le détient — jamais recopié dans le front. */
+export type PlanPrice = {
+  /** Montant en centimes. */
+  unitAmount: number;
+  currency: string;
+  /** « month », « year »… */
+  interval: string;
+  intervalCount: number;
+};
+
+export type Billing = {
+  /** false sur une instance auto-hébergée : aucun péage, rien à afficher. */
+  enabled: boolean;
+  access: CarnetAccess;
+  price: PlanPrice | null;
+  /** L'appelant peut-il payer / gérer (propriétaire du foyer) ? */
+  canManage: boolean;
+  hasSubscription: boolean;
+  /** Qui règle l'abonnement, pour les autres membres du foyer. */
+  billedTo: { name: string; email: string } | null;
+};

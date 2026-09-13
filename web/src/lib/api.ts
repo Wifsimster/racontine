@@ -1,5 +1,6 @@
 import type {
   AttachmentRef,
+  Billing,
   BatchEntrySummary,
   Child,
   Entry,
@@ -278,6 +279,28 @@ export const api = {
     req<SettingsResponse>("/api/settings", {
       method: "PATCH",
       body: JSON.stringify(patch),
+    }),
+
+  /* --------------------------- Abonnement ----------------------------- */
+
+  billing: () => req<Billing>("/api/billing"),
+
+  /** Ouvre la page de paiement Stripe (propriétaire du foyer). */
+  startCheckout: () =>
+    req<{ url: string }>("/api/billing/checkout", { method: "POST" }),
+
+  /** Portail Stripe : carte, factures, résiliation. */
+  openBillingPortal: () =>
+    req<{ url: string }>("/api/billing/portal", { method: "POST" }),
+
+  /**
+   * Rattrape le paiement au retour de Stripe, sans attendre le webhook : c'est
+   * ce qui évite d'afficher « essai terminé » trois secondes après un paiement.
+   */
+  syncBilling: (session: string) =>
+    req<Billing & { synced: boolean }>("/api/billing/sync", {
+      method: "POST",
+      body: JSON.stringify({ session }),
     }),
 
   /* ---------------------------- Jetons MCP ---------------------------- */

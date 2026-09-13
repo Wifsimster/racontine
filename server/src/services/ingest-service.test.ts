@@ -6,6 +6,7 @@ import {
   FakeAttachmentRepository,
   FakeEntryRepository,
   FakeImageStore,
+  FakePaywall,
   entryRecord,
 } from "../testing/fakes.js";
 import { IngestService } from "./ingest-service.js";
@@ -17,6 +18,8 @@ function build(
     apiKey?: string | null;
     childIds?: string[];
     role?: "reader" | "contributor" | "admin" | null;
+    /** Phrase de refus du péage ; `null` = carnet ouvert. */
+    blocked?: string | null;
   } = {},
 ) {
   const entries = new FakeEntryRepository(opts.entries ?? []);
@@ -31,6 +34,7 @@ function build(
       opts.apiKey === undefined ? "sk-ant-x" : opts.apiKey,
     ),
     access: new FakeAccessPolicy(opts.childIds ?? ["child-1"], opts.role ?? "contributor"),
+    paywall: new FakePaywall(opts.blocked ?? null),
     reading: {
       readInBackground: (entryId, paths, userId) =>
         reads.push({ entryId, paths, userId }),
@@ -193,4 +197,35 @@ test("les métadonnées mal formées sont refusées avant tout stockage", async 
   });
 
   assert.equal(images.stored.length, 0);
+});
+
+test("l'essai terminé refuse la journée (402) SANS écrire une seule photo", async () => {
+  // Le péage passe avant le disque et avant la clé d'API : refuser après avoir
+  // rangé douze pages de 20 Mo serait payer le stockage d'un refus.
+  const { service, entries, images } = build({
+    blocked: "Votre essai gratuit est terminé.",
+  });
+
+  const result = await service.ingest({
+    userId: "user-1",
+    images: [photo(), photo()],
+    date: "2026-02-01",
+  });
+
+  assert.equal(result.ok, false);
+  if (result.ok) return;
+  assert.equal(result.httpCode, 402);
+  assert.match(result.error, /essai gratuit/);
+  assert.equal(images.stored.length, 0);
+  assert.equal(entries.rows.size, 0);
+});
+
+test("le péage parle AVANT la clé d'API : la bonne phrase, pas la vraie d'à côté", async () => {
+  const { service } = build({ apiKey: null, blocked: "L'abonnement du carnet est terminé." });
+
+  const result = await service.ingest({ userId: "user-1", images: [photo()] });
+
+  assert.equal(result.ok, false);
+  if (result.ok) return;
+  assert.match(result.error, /abonnement/);
 });

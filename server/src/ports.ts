@@ -84,6 +84,22 @@ export interface AccessPolicy {
   roleOn(userId: string, childId: string): Promise<MemberRole | null>;
 }
 
+/**
+ * LE PÉAGE, vu par le code métier : une seule question, une seule réponse.
+ *
+ * Ni Stripe, ni abonnement, ni essai n'apparaissent ici — un service qui crée
+ * une journée n'a aucune raison de connaître un prestataire de paiement. Il
+ * demande s'il a le droit d'ouvrir une NOUVELLE journée, et reçoit soit `null`
+ * (vas-y), soit la phrase à afficher à qui a demandé.
+ *
+ * Rappel de la règle qu'implémente l'adaptateur : LIRE est toujours gratuit,
+ * pour toujours. Seul l'ajout d'une journée passe par ici.
+ */
+export interface Paywall {
+  /** `null` si le carnet est ouvert ; sinon la phrase du refus (HTTP 402). */
+  blockedReason(): Promise<string | null>;
+}
+
 /** Prévenir les abonnés d'une journée publiée. Ne lève jamais. */
 export interface PublicationNotifier {
   entryPublished(params: {

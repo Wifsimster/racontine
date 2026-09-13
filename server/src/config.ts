@@ -176,6 +176,27 @@ export const config = {
     subject: process.env.VAPID_SUBJECT ?? "mailto:no-reply@racontine.local",
   },
   /**
+   * LE PÉAGE, ET SON INTERRUPTEUR PRINCIPAL.
+   *
+   * Le paywall n'existe QUE si `STRIPE_SECRET_KEY` et `STRIPE_PRICE_ID` sont
+   * tous deux renseignés. Sans eux — le cas de toute instance auto-hébergée —
+   * `billingEnabled()` rend false, le carnet est ouvert et gratuit, et pas une
+   * ligne d'abonnement n'est écrite en base. Ce n'est pas une politesse : c'est
+   * la promesse du produit. Racontine est hébergeable chez soi ; l'abonnement
+   * paie l'offre HÉBERGÉE, pas le droit d'utiliser son propre homelab.
+   *
+   * `STRIPE_WEBHOOK_SECRET` est le troisième pied : sans lui, on ne saurait pas
+   * distinguer Stripe d'un inconnu qui poste sur une URL publique, et la route
+   * de webhook refuse tout (voir `routes/billing.ts`). Un paiement resterait
+   * malgré tout rattrapé au retour du client, mais une résiliation ou un impayé
+   * ne remonteraient jamais : `validateConfig` le signale bruyamment.
+   */
+  billing: {
+    secretKey: process.env.STRIPE_SECRET_KEY?.trim() || undefined,
+    priceId: process.env.STRIPE_PRICE_ID?.trim() || undefined,
+    webhookSecret: process.env.STRIPE_WEBHOOK_SECRET?.trim() || undefined,
+  },
+  /**
    * E-mail (SMTP) pour les notifications aux proches abonnés. Optionnel : si
    * SMTP_HOST est absent, les e-mails sont désactivés (notifs in-app seules).
    */
@@ -188,6 +209,15 @@ export const config = {
     from: process.env.MAIL_FROM ?? "Racontine <no-reply@racontine.local>",
   },
 };
+
+/**
+ * Le péage est-il armé sur cette instance ? Une seule réponse, lue partout :
+ * deux endroits qui décident chacun de leur côté qu'on fait payer, c'est la
+ * garantie qu'un jour l'un fera payer ce que l'autre donne.
+ */
+export function billingEnabled(): boolean {
+  return Boolean(config.billing.secretKey && config.billing.priceId);
+}
 
 /**
  * Vérifie la configuration au démarrage. En production (`NODE_ENV=production`),
@@ -213,6 +243,19 @@ export function validateConfig(): void {
     warn.push(
       "CORS_ORIGINS non défini : origines CORS et liens e-mail par défaut sur localhost — les liens envoyés aux proches seront morts.",
     );
+  if (config.billing.secretKey && !config.billing.priceId)
+    warn.push(
+      "STRIPE_SECRET_KEY est défini mais pas STRIPE_PRICE_ID : le péage reste DÉSARMÉ (tout est gratuit).",
+    );
+  if (billingEnabled() && !config.billing.webhookSecret)
+    warn.push(
+      "STRIPE_WEBHOOK_SECRET non défini : les webhooks Stripe seront refusés. Un paiement sera rattrapé au retour du client, mais une résiliation, un impayé ou un renouvellement ne remonteront jamais.",
+    );
+  if (billingEnabled() && config.billing.secretKey?.startsWith("sk_test_") && isProd)
+    warn.push(
+      "STRIPE_SECRET_KEY est une clé de TEST sur une instance de production : aucun paiement réel ne sera encaissé.",
+    );
+
   const malformedProxies = findMalformedProxies(config.trustedProxies);
   if (malformedProxies.length)
     (isProd ? fatal : warn).push(

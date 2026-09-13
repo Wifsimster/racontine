@@ -457,6 +457,40 @@ export const appSettings = pgTable("app_settings", {
 });
 
 /**
+ * L'ABONNEMENT DU FOYER — une seule ligne, `id = "singleton"`, comme les
+ * réglages. Ce n'est pas un oubli de multi-tenant : une instance Racontine EST
+ * un foyer, et l'abonnement se règle par son propriétaire. Le co-parent
+ * contribue et les proches lisent sans qu'on leur demande jamais de carte.
+ *
+ * La ligne n'existe QUE sur une instance dont le péage est armé (Stripe
+ * configuré) : un homelab sans caisse n'a pas d'abonnement, pas d'essai, et pas
+ * de ligne. Elle naît à la première consultation du péage, ce qui donne
+ * `TRIAL_DAYS` jours à tout le monde — y compris à une instance déjà installée
+ * le jour où l'on branche Stripe.
+ *
+ * Aucun détail de carte n'est stocké ici, et aucun ne le sera jamais : la page
+ * de paiement et le portail sont hébergés par Stripe.
+ */
+export const instanceSubscription = pgTable("instance_subscription", {
+  id: text("id").primaryKey().default("singleton"),
+  /** Fin de l'essai gratuit, posée à la première consultation du péage. */
+  trialEndsAt: timestamp("trial_ends_at").notNull(),
+  /** Client Stripe du foyer (`cus_…`), connu dès le premier paiement. */
+  stripeCustomerId: text("stripe_customer_id"),
+  /** Abonnement Stripe en cours (`sub_…`). */
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  /** Statut Stripe brut (« active », « past_due »…), ou null s'il n'y en a jamais eu. */
+  status: text("status"),
+  /** Fin de la période déjà payée : ce qui est payé reste dû au foyer. */
+  currentPeriodEnd: timestamp("current_period_end"),
+  /** Résiliation demandée : l'abonnement s'arrête au terme de la période. */
+  cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
+  /** Dernier événement Stripe appliqué — garde-fou contre les rejeux hors ordre. */
+  lastEventAt: timestamp("last_event_at"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+/**
  * Jeton d'accès personnel pour connecter un client MCP (session Claude cloud,
  * Claude Desktop, Claude Code…) au serveur. Le jeton porte les droits de
  * l'utilisateur qui l'a créé (mêmes rôles par enfant). On ne stocke que le
@@ -616,4 +650,5 @@ export type AppSettings = typeof appSettings.$inferSelect;
 export type McpToken = typeof mcpTokens.$inferSelect;
 export type McpUpload = typeof mcpUploads.$inferSelect;
 export type UserLlmSettings = typeof userLlmSettings.$inferSelect;
+export type InstanceSubscription = typeof instanceSubscription.$inferSelect;
 export type WordCorrection = typeof wordCorrections.$inferSelect;

@@ -6,6 +6,7 @@ import type {
   AccessPolicy,
   ChildDirectory,
   EntryRepository,
+  Paywall,
   PublicationNotifier,
 } from "../ports.js";
 import { resolveContributionTarget } from "./contribution-target.js";
@@ -32,6 +33,7 @@ export type TranscribedNoteDeps = {
   entries: EntryRepository;
   access: AccessPolicy;
   children: ChildDirectory;
+  paywall: Paywall;
   notifier: PublicationNotifier;
   /** Lance un effet de bord sans retarder la réponse (notification). */
   background: { run(label: string, task: () => Promise<void>): void };
@@ -58,6 +60,13 @@ export class TranscribedNoteService {
     const meta = normalizeEntryMetadata(input);
     if (!meta.ok) return meta;
     const { date, source } = meta.value;
+
+    /* Une journée déjà transcrite ne coûte ni photo ni appel au modèle — mais
+       c'est toujours une NOUVELLE journée dans le carnet, donc le même péage.
+       Sans cette ligne, l'outil MCP serait une porte dérobée autour de
+       l'abonnement, et le premier à la trouver serait un utilisateur. */
+    const blocked = await this.deps.paywall.blockedReason();
+    if (blocked) return { ok: false, httpCode: 402, error: blocked };
 
     const target = await resolveContributionTarget(
       this.deps.access,

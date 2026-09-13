@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { writableChildren } from "@/lib/access";
+import { useBilling } from "@/lib/billing";
+import { CapturePaused } from "@/features/billing/parts";
 import { compressImage } from "@/lib/image";
 import { type Child, type EntrySource } from "@/lib/types";
 import {
@@ -92,6 +94,10 @@ const SOURCES: EntrySource[] = ["nounou", "mam", "creche", "maison"];
 
 export default function Capture() {
   const nav = useNavigate();
+  /* On n'arrive plus ici par un bouton quand le carnet est fermé (l'accueil ne
+     le propose plus), mais on peut y arriver par un signet, un brouillon
+     retrouvé ou la touche « précédent » : l'écran doit savoir le dire. */
+  const { billing } = useBilling();
   const cameraRef = useRef<HTMLInputElement>(null);
   const albumRef = useRef<HTMLInputElement>(null);
   /** Les enfants dont on TIENT le carnet — un lecteur n'en a aucun. */
@@ -364,6 +370,13 @@ export default function Capture() {
      plus tout seul avant la réponse, et un envoi tenté dans cette fenêtre est
      de toute façon arbitré par le serveur. */
   if (access === "reader") return <CaptureDenied />;
+
+  /* Le péage, ensuite — et dans cet ordre : à un LECTEUR, on explique son rôle,
+     pas un abonnement qu'il n'a pas à payer. Le doute profite ici aussi au
+     parent (`billing` null = ouvert) ; c'est le serveur qui refusera pour de
+     bon, avec sa propre phrase, et l'écran d'envoi sait l'afficher. */
+  if (billing?.enabled && !billing.access.open)
+    return <CapturePaused billing={billing} />;
 
   return (
     <div className="shell-width flex flex-col gap-4 px-4 pt-4 pb-40">

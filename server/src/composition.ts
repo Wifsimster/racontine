@@ -21,6 +21,7 @@ import { DrizzlePageRepository } from "./adapters/drizzle-page-repository.js";
 import { FileSystemImageStore } from "./adapters/fs-image-store.js";
 import { ConsoleLogger, FireAndForgetRunner } from "./adapters/runtime.js";
 import { randomBytes } from "node:crypto";
+import { blockedReason } from "./billing/index.js";
 import { config } from "./config.js";
 import { getSettings } from "./settings.js";
 import {
@@ -61,6 +62,13 @@ const access = new MembershipAccessPolicy();
 const apiKeys = new EncryptedApiKeyStore();
 const children = new DrizzleChildDirectory();
 /**
+ * Le péage, branché en UN point : les deux chemins qui créent une journée (la
+ * route web et les deux outils MCP) passent par les services ci-dessous, donc
+ * par cette même fonction. Il n'y a pas de troisième porte — et s'il en naissait
+ * une, elle devrait demander ici aussi.
+ */
+const paywall = { blockedReason };
+/**
  * Les canaux de notification, dans l'ordre où on les tente. UNE ligne par
  * moyen de joindre les proches : c'est ici, et nulle part ailleurs, qu'on en
  * ajoute un.
@@ -93,6 +101,7 @@ export const ingestService = new IngestService({
   images,
   apiKeys,
   access,
+  paywall,
   reading: carnetReading,
 });
 
@@ -122,6 +131,7 @@ export const transcribedNotes = new TranscribedNoteService({
   entries,
   access,
   children,
+  paywall,
   notifier: subscriberNotifier,
   background,
 });
