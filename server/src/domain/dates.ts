@@ -10,9 +10,32 @@
 /** Forme d'une date de journée : AAAA-MM-JJ. */
 export const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-/** True si la chaîne a la forme AAAA-MM-JJ (la validité calendaire reste au SGBD). */
+/**
+ * True si la chaîne est une date de calendrier RÉELLE, écrite AAAA-MM-JJ.
+ *
+ * La forme ne suffit pas : « 2025-11-31 » et « 2026-02-29 » la respectent et
+ * n'existent pas. Laisser la validité calendaire au SGBD, comme on le faisait,
+ * revenait à transformer une donnée douteuse en PANNE, et toujours au plus
+ * mauvais endroit :
+ *
+ * · la lecture d'un carnet — le modèle vision lit un en-tête manuscrit et peut
+ *   rendre un 31 novembre ; l'écriture échouait alors, et c'est la journée
+ *   ENTIÈRE qui était perdue plutôt que sa seule date (on retombe maintenant
+ *   sur la date de capture, qui reste éditable à la relecture) ;
+ * · une date corrigée à la main — un 29 février d'année commune partait en
+ *   erreur 500 au lieu du 400 qui dit quoi corriger.
+ *
+ * La vérification est un ALLER-RETOUR : on relit la chaîne, et seule une date
+ * qui se réécrit à l'identique existe. Les analyseurs indulgents (« 2025-02-31 »
+ * ramené au 3 mars) ne peuvent donc pas passer.
+ */
 export function isIsoDate(value: string): boolean {
-  return DATE_RE.test(value);
+  if (!DATE_RE.test(value)) return false;
+  const parsed = new Date(`${value}T00:00:00Z`);
+  return (
+    !Number.isNaN(parsed.getTime()) &&
+    parsed.toISOString().slice(0, 10) === value
+  );
 }
 
 /** Date du jour, en AAAA-MM-JJ. */
