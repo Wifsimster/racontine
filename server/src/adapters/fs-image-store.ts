@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import {
   deleteStored,
   resolveUpload,
+  rotateStoredImage,
   storeCarnetImage,
 } from "../storage.js";
 import type { ImageStore, StoredImage } from "../ports.js";
@@ -23,5 +24,12 @@ export class FileSystemImageStore implements ImageStore {
 
   delete(img: { originalPath: string; thumbPath: string }): Promise<void> {
     return deleteStored(img);
+  }
+
+  rotate(
+    img: { originalPath: string; thumbPath: string | null },
+    quarters: number,
+  ): Promise<{ width: number; height: number }> {
+    return rotateStoredImage(img, quarters);
   }
 }

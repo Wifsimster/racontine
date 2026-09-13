@@ -1,6 +1,12 @@
 import { and, asc, eq } from "drizzle-orm";
 import { db } from "./db/index.js";
-import { memberships, entries, user, type MemberRole } from "./db/schema.js";
+import {
+  children,
+  memberships,
+  entries,
+  user,
+  type MemberRole,
+} from "./db/schema.js";
 
 /** Hiérarchie des rôles : un rôle « ≥ » englobe les droits des rôles inférieurs. */
 const RANK: Record<MemberRole, number> = {
@@ -66,6 +72,16 @@ export async function ownerUserId(): Promise<string | null> {
 export async function isOwner(userId: string): Promise<boolean> {
   const owner = await ownerUserId();
   return owner != null && owner === userId;
+}
+
+/** Cet enfant existe-t-il ? (404 contre 403 : une garde d'administration.) */
+export async function childExists(childId: string): Promise<boolean> {
+  const [row] = await db
+    .select({ id: children.id })
+    .from(children)
+    .where(eq(children.id, childId))
+    .limit(1);
+  return Boolean(row);
 }
 
 /** Enfant porteur d'une entrée (pour autoriser par entrée). */

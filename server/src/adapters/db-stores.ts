@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { children, type MemberRole } from "../db/schema.js";
-import { accessibleChildIds, hasChildRole } from "../access.js";
+import { accessibleChildIds, childRole, hasChildRole } from "../access.js";
 import { getChildGlossary } from "../corrections.js";
 import { getUserAnthropicKey } from "../llm-keys.js";
 import type {
@@ -37,6 +37,9 @@ export class MembershipAccessPolicy implements AccessPolicy {
     min: MemberRole,
   ): Promise<boolean> {
     return hasChildRole(userId, childId, min);
+  }
+  roleOn(userId: string, childId: string): Promise<MemberRole | null> {
+    return childRole(userId, childId);
   }
 }
 

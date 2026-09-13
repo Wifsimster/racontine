@@ -17,6 +17,7 @@ import {
   DrizzleUserDirectory,
   NotifyLinkDelivery,
 } from "./adapters/drizzle-sharing.js";
+import { DrizzlePageRepository } from "./adapters/drizzle-page-repository.js";
 import { FileSystemImageStore } from "./adapters/fs-image-store.js";
 import { ConsoleLogger, FireAndForgetRunner } from "./adapters/runtime.js";
 import { randomBytes } from "node:crypto";
@@ -34,6 +35,7 @@ import { DbStagedUploads } from "./mcp/uploads.js";
 import { CarnetReadingService } from "./services/carnet-reading-service.js";
 import { EntryEditingService } from "./services/entry-editing-service.js";
 import { IngestService } from "./services/ingest-service.js";
+import { PageService } from "./services/page-service.js";
 import { SharingService } from "./services/sharing-service.js";
 import { TranscribedNoteService } from "./services/transcribed-note-service.js";
 
@@ -103,6 +105,14 @@ export const entryEditing = new EntryEditingService({
   children,
   notifier: subscriberNotifier,
   background,
+});
+
+/** Les pages photographiées : les servir, les tourner, les retirer. */
+export const pages = new PageService({
+  pages: new DrizzlePageRepository(),
+  images,
+  access,
+  logger,
 });
 
 /** Création d'une journée déjà transcrite (outil MCP). */

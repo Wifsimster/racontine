@@ -39,6 +39,14 @@ export interface ImageStore {
   read(relPath: string): Promise<Buffer>;
   /** Efface une page rangée. Best-effort : un fichier absent n'est pas une erreur. */
   delete(img: { originalPath: string; thumbPath: string }): Promise<void>;
+  /**
+   * TOURNE POUR DE BON une page déjà rangée (le fichier plein cadre et sa
+   * miniature sont réécrits) et rend ses nouvelles dimensions.
+   */
+  rotate(
+    img: { originalPath: string; thumbPath: string | null },
+    quarters: number,
+  ): Promise<{ width: number; height: number }>;
 }
 
 /** Correction déjà validée par un proche pour un enfant. */
@@ -72,6 +80,8 @@ export interface GlossaryStore {
 export interface AccessPolicy {
   accessibleChildIds(userId: string): Promise<string[]>;
   hasChildRole(userId: string, childId: string, min: MemberRole): Promise<boolean>;
+  /** Rôle exact sur un enfant, ou null s'il n'y a pas accès. */
+  roleOn(userId: string, childId: string): Promise<MemberRole | null>;
 }
 
 /** Prévenir les abonnés d'une journée publiée. Ne lève jamais. */
@@ -259,6 +269,32 @@ export interface ChildRepository {
     birthdate: string | null;
     ownerUserId: string;
   }): Promise<{ id: string; name: string; birthdate: string | null; createdAt: Date }>;
+}
+
+/** Une page photographiée, avec la journée qui la porte. */
+export type PageRecord = {
+  id: string;
+  entryId: string;
+  originalPath: string;
+  thumbPath: string | null;
+  mime: string;
+  rotation: number;
+  width: number | null;
+  height: number | null;
+  childId: string;
+  entryStatus: string;
+};
+
+/** Dépôt des pages, vu du côté « une page à la fois ». */
+export interface PageRepository {
+  findWithEntry(attachmentId: string): Promise<PageRecord | null>;
+  /** Nombre de pages rattachées à la même journée (dont celle-ci). */
+  countSiblings(entryId: string): Promise<number>;
+  saveRotation(
+    attachmentId: string,
+    size: { width: number; height: number; rotation: number },
+  ): Promise<void>;
+  remove(attachmentId: string): Promise<void>;
 }
 
 /** Nom d'un enfant (pour les messages de notification). */

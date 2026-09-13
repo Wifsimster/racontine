@@ -1,9 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { eq } from "drizzle-orm";
-import { db } from "../db/index.js";
-import { children } from "../db/schema.js";
 import { requireUser } from "../plugins/auth.js";
-import { hasChildRole } from "../access.js";
+import { childExists, hasChildRole } from "../access.js";
 import { sharing } from "../composition.js";
 
 /* ===========================================================================
@@ -22,12 +19,7 @@ async function requireChildAdmin(
   reply: FastifyReply,
   childId: string,
 ): Promise<boolean> {
-  const [child] = await db
-    .select({ id: children.id })
-    .from(children)
-    .where(eq(children.id, childId))
-    .limit(1);
-  if (!child) {
+  if (!(await childExists(childId))) {
     reply.code(404).send({ error: "enfant introuvable" });
     return false;
   }

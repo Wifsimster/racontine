@@ -367,6 +367,22 @@ export class FakeImageStore implements ImageStore {
   async delete(img: { originalPath: string; thumbPath: string }): Promise<void> {
     this.deleted.push(img.originalPath);
   }
+
+  readonly rotated: { path: string; quarters: number }[] = [];
+  /** Si vrai, `rotate` lève — comme sharp sur un fichier illisible. */
+  rotateFails = false;
+
+  async rotate(
+    img: { originalPath: string; thumbPath: string | null },
+    quarters: number,
+  ): Promise<{ width: number; height: number }> {
+    if (this.rotateFails) throw new Error("image illisible");
+    this.rotated.push({ path: img.originalPath, quarters });
+    // Un quart de tour impair échange largeur et hauteur.
+    return quarters % 2 === 0
+      ? { width: 1200, height: 1600 }
+      : { width: 1600, height: 1200 };
+  }
 }
 
 /** Lecteur de carnet programmable : rend des journées, ou lève. */
@@ -424,6 +440,9 @@ export class FakeAccessPolicy implements AccessPolicy {
       admin: 3,
     };
     return rank[this.role] >= rank[min];
+  }
+  async roleOn(): Promise<MemberRole | null> {
+    return this.role;
   }
 }
 
