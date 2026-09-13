@@ -1,5 +1,6 @@
 import { config } from "./config.js";
 import { mailEnabled, sendMail } from "./mailer.js";
+import { renderLinkEmail, type LinkKind } from "./notifications/email-template.js";
 
 /**
  * Livraison d'un lien de CAPACITÉ (magic link de connexion, invitation à un
@@ -30,16 +31,22 @@ export async function deliverLink(
   to: string,
   subject: string,
   url: string,
+  /* CE QUE LE LIEN FAIT — et non l'objet du message, qui n'est qu'une phrase.
+     L'e-mail n'a pas les mêmes mots selon qu'il connecte, réinitialise un mot
+     de passe ou invite quelqu'un au carnet d'un enfant. */
+  kind: LinkKind,
 ): Promise<void> {
   const isProd = process.env.NODE_ENV === "production";
   let delivered = false;
 
   if (mailEnabled()) {
-    delivered = await sendMail({
-      to,
-      subject,
-      text: `${subject}\n\n${url}\n\nCe lien est personnel : ne le transmettez à personne.`,
-    });
+    /* Le corps porte la coquille du produit (papier, marque, feuille) plutôt
+       qu'une URL nue : c'est le premier — et parfois le seul — contact d'un
+       proche invité avec Racontine, et un lien nu ne se distingue pas d'un
+       hameçonnage. Les deux versions sortent du même gabarit, pour qu'elles ne
+       puissent pas se contredire. */
+    const { text, html } = renderLinkEmail({ kind, url });
+    delivered = await sendMail({ to, subject, text, html });
   }
 
   if (config.notifyWebhookUrl) {

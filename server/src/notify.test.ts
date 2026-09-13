@@ -33,7 +33,7 @@ afterEach(() => {
 test("en production, l'URL n'est jamais écrite dans les logs", async () => {
   process.env.NODE_ENV = "production";
   const sortie = await captureConsole(() =>
-    deliverLink("proche@example.test", "Votre lien", URL_SENSIBLE),
+    deliverLink("proche@example.test", "Votre lien", URL_SENSIBLE, "connexion"),
   );
   assert.equal(
     sortie.includes(URL_SENSIBLE),
@@ -50,7 +50,7 @@ test("en production, l'URL n'est jamais écrite dans les logs", async () => {
 test("en production sans canal, l'échec de livraison est signalé bruyamment", async () => {
   process.env.NODE_ENV = "production";
   const sortie = await captureConsole(() =>
-    deliverLink("proche@example.test", "Votre lien", URL_SENSIBLE),
+    deliverLink("proche@example.test", "Votre lien", URL_SENSIBLE, "connexion"),
   );
   // Un lien non livré doit être un incident visible, pas un silence.
   assert.match(sortie, /AUCUN CANAL DE LIVRAISON/);
@@ -61,7 +61,7 @@ test("en production sans canal, l'échec de livraison est signalé bruyamment", 
 test("en développement, l'URL reste affichée pour pouvoir se connecter", async () => {
   process.env.NODE_ENV = "development";
   const sortie = await captureConsole(() =>
-    deliverLink("dev@example.test", "Votre lien", URL_SENSIBLE),
+    deliverLink("dev@example.test", "Votre lien", URL_SENSIBLE, "connexion"),
   );
   assert.equal(sortie.includes(URL_SENSIBLE), true);
 });
@@ -70,7 +70,7 @@ test("deliverLink ne lève jamais, même sans aucun canal configuré", async () 
   process.env.NODE_ENV = "production";
   await captureConsole(async () => {
     await assert.doesNotReject(() =>
-      deliverLink("proche@example.test", "Votre lien", URL_SENSIBLE),
+      deliverLink("proche@example.test", "Votre lien", URL_SENSIBLE, "connexion"),
     );
   });
 });
