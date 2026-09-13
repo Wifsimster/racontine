@@ -94,6 +94,7 @@ une seule fonction de 400 lignes.
 |---|---|---|
 | un type de moment | `domain/entry-items.ts` + `web/src/lib/items.tsx` | conversions, outils MCP, journal, relecture, formulaire |
 | un canal de notification | une classe + une ligne dans `composition.ts` | l'orchestrateur, le registre in-app, les autres canaux |
+| une surface qui résume une journée | rien : `domain/day-glance.ts` la sert déjà | le journal et l'e-mail, qui partagent ce calcul |
 | un outil MCP | un fichier dans `mcp/tools/` + une ligne dans son `index.ts` | le constructeur du serveur |
 | un moteur de lecture de carnet | une classe implémentant `CarnetReader` | tous les services |
 
@@ -190,8 +191,8 @@ qui connaisse Drizzle, sharp, Anthropic, nodemailer et web-push à la fois.
 
 | | Avant | Après |
 |---|---:|---:|
-| Tests serveur | 75 | **152** |
-| Tests exécutant du métier sans Postgres | 0 | **77** |
+| Tests serveur | 75 | **166** |
+| Tests exécutant du métier sans Postgres | 0 | **91** |
 
 Et comme les doublures ne prouvent que les SERVICES, les dépôts Drizzle ont leur
 propre vérification contre un vrai Postgres — `pnpm --filter server
@@ -250,5 +251,5 @@ qu'une règle vivait au mauvais endroit :
 | DIP | 1,5 | 5,0 |
 | **Moyenne** | **2,3** | **4,7** |
 
-Vérifiable par `pnpm typecheck && pnpm test && pnpm build` : 152 tests, zéro
+Vérifiable par `pnpm typecheck && pnpm test && pnpm build` : 166 tests, zéro
 échec. Avec une base : `pnpm --filter server test:integration`.
