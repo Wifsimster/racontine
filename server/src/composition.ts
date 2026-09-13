@@ -11,9 +11,17 @@ import {
   DrizzleEntryRepository,
   DrizzleEntryRevisionRepository,
 } from "./adapters/drizzle-entry-repository.js";
+import {
+  DrizzleInvitationRepository,
+  DrizzleMembershipRepository,
+  DrizzleUserDirectory,
+  NotifyLinkDelivery,
+} from "./adapters/drizzle-sharing.js";
 import { FileSystemImageStore } from "./adapters/fs-image-store.js";
 import { ConsoleLogger, FireAndForgetRunner } from "./adapters/runtime.js";
+import { randomBytes } from "node:crypto";
 import { config } from "./config.js";
+import { getSettings } from "./settings.js";
 import {
   DrizzleNotificationLog,
   DrizzleSubscriberDirectory,
@@ -26,6 +34,7 @@ import { DbStagedUploads } from "./mcp/uploads.js";
 import { CarnetReadingService } from "./services/carnet-reading-service.js";
 import { EntryEditingService } from "./services/entry-editing-service.js";
 import { IngestService } from "./services/ingest-service.js";
+import { SharingService } from "./services/sharing-service.js";
 import { TranscribedNoteService } from "./services/transcribed-note-service.js";
 
 /* ===========================================================================
@@ -116,3 +125,15 @@ export const mcpTooling = {
   queries: new DrizzleEntryQueries(),
   uploads: new DbStagedUploads(),
 };
+
+/** Le cercle d'un enfant : invitations, rôles, dernier administrateur. */
+export const sharing = new SharingService({
+  memberships: new DrizzleMembershipRepository(),
+  invitations: new DrizzleInvitationRepository(),
+  users: new DrizzleUserDirectory(),
+  delivery: new NotifyLinkDelivery(),
+  invitationTtlDays: async () => (await getSettings()).invitationTtlDays,
+  inviteUrl: (token) => `${config.webBaseUrl}/invite/${token}`,
+  newToken: () => randomBytes(24).toString("base64url"),
+  now: () => new Date(),
+});
