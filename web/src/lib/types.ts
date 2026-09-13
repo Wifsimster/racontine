@@ -268,6 +268,19 @@ export type PlanPrice = {
   intervalCount: number;
 };
 
+/**
+ * L'OFFRE TELLE QU'ON PEUT LA MONTRER SANS SESSION — ce que rend
+ * `/api/billing/offer`, et tout ce dont l'écran d'accueil public a besoin.
+ * Aucun état de foyer ici : ni accès, ni échéance, ni payeur.
+ */
+export type BillingOffer = {
+  /** false sur une instance auto-hébergée : il n'y a pas de caisse. */
+  enabled: boolean;
+  price: PlanPrice | null;
+  /** Durée de l'essai gratuit, en jours — annoncée avant de créer un compte. */
+  trialDays: number;
+};
+
 export type Billing = {
   /** false sur une instance auto-hébergée : aucun péage, rien à afficher. */
   enabled: boolean;

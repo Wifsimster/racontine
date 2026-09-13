@@ -141,7 +141,17 @@ export default function Login() {
     return p + (from?.search ?? "");
   }, [location.state]);
 
-  const [door, setDoor] = useState<Door>("password");
+  /* La porte d'arrivée. Par défaut le mot de passe — mais l'accueil public
+     envoie ici pour CRÉER un carnet (`/login?porte=inscription`) : y arriver
+     sur le formulaire de connexion ferait recommencer le geste d'un cran en
+     arrière. La valeur est lue une seule fois, à l'ouverture ; ensuite, c'est
+     la personne qui choisit sa porte. Si les inscriptions sont fermées, l'effet
+     des réglages publics, plus bas, ramène à la porte du mot de passe. */
+  const [door, setDoor] = useState<Door>(() =>
+    new URLSearchParams(location.search).get("porte") === "inscription"
+      ? "signup"
+      : "password",
+  );
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

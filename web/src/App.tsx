@@ -19,6 +19,7 @@ import NotificationsBell from "@/components/NotificationsBell";
 import { Marque } from "@/components/Marque";
 import { StudioSignature } from "@/components/Studio";
 import { useBilling } from "@/lib/billing";
+import Bienvenue from "@/pages/Bienvenue";
 
 /* ===========================================================================
    La coquille : en-tête collant, navigation, transition de page, zones sûres.
@@ -86,6 +87,16 @@ export default function App() {
   if (isPending) return <AppSplash />;
 
   if (!session) {
+    /* SANS SESSION, LA RACINE N'EST PLUS UN FORMULAIRE DE CONNEXION.
+       Ouvrir l'app menait droit au mot de passe : on demandait un compte à
+       quelqu'un à qui l'on n'avait encore rien proposé, et le tarif était
+       enfermé derrière ce compte. L'accueil montre donc l'offre — le prix,
+       l'essai, ce qu'il comprend — et la connexion est un lien de plus.
+
+       Les AUTRES chemins, eux, redirigent comme avant en emportant la
+       destination : un proche qui suit « une nouvelle journée est en ligne »
+       veut se connecter et retomber sur la journée, pas lire une offre. */
+    if (location.pathname === "/") return <Bienvenue />;
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 

@@ -1,6 +1,7 @@
 import type {
   AttachmentRef,
   Billing,
+  BillingOffer,
   BatchEntrySummary,
   Child,
   Entry,
@@ -284,6 +285,12 @@ export const api = {
   /* --------------------------- Abonnement ----------------------------- */
 
   billing: () => req<Billing>("/api/billing"),
+
+  /**
+   * L'offre, SANS session : le tarif et l'essai, pour l'écran d'accueil de
+   * quelqu'un qui n'a pas encore de compte.
+   */
+  billingOffer: () => req<BillingOffer>("/api/billing/offer"),
 
   /** Ouvre la page de paiement Stripe (propriétaire du foyer). */
   startCheckout: () =>
