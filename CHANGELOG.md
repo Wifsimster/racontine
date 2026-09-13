@@ -2,6 +2,13 @@
 
 Toutes les versions notables de Racontine. Format issu des messages de commit conventionnels (`feat`, `fix`, …).
 
+# [1.21.0](https://github.com/Wifsimster/racontine/compare/v1.20.0...v1.21.0) (2026-09-13)
+
+
+### Features
+
+* **abonnement:** provisionner Stripe en une commande, sans rater un événement ([#54](https://github.com/Wifsimster/racontine/issues/54)) ([d9b7690](https://github.com/Wifsimster/racontine/commit/d9b7690d32d5327debe07cba45cad06343315c05))
+
 # [1.20.0](https://github.com/Wifsimster/racontine/compare/v1.19.0...v1.20.0) (2026-09-13)
 
 
