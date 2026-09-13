@@ -14,6 +14,7 @@ import Proches from "./pages/Proches";
 import Account from "./pages/Account";
 import Abonnement from "./pages/Abonnement";
 import Settings from "./pages/Settings";
+import Administration from "./pages/Administration";
 
 const router = createBrowserRouter([
   { path: "/login", element: <Login /> },
@@ -35,6 +36,7 @@ const router = createBrowserRouter([
       { path: "proches", element: <Proches /> },
       { path: "compte", element: <Account /> },
       { path: "abonnement", element: <Abonnement /> },
+      { path: "administration", element: <Administration /> },
       { path: "reglages", element: <Settings /> },
     ],
   },

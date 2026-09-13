@@ -49,6 +49,29 @@ Premier lancement : ouvrir `http://localhost:5173`, créer le compte parent
 > et ce premier compte est justement celui du propriétaire. Pour ouvrir
 > l'inscription au co-parent, l'écran Réglages la rouvre à chaud.
 
+## Administration (administrateur d'un carnet)
+
+L'écran **Administration** (visible de qui administre au moins un enfant)
+rassemble ce que « Partager » ne montre qu'un carnet à la fois :
+
+- **les carnets administrés** — proches, journées publiées, brouillons à
+  relire, lectures en échec, date de la dernière publication ;
+- **les proches, une carte par personne** — tous leurs rôles, carnet par
+  carnet, changeables sur place ;
+- **les invitations en attente**, tous carnets confondus, révocables.
+
+Le périmètre est TOUJOURS celui de l'appelant : `GET /api/admin/console` ne
+renvoie que les enfants dont il est `admin`, et rien de l'instance. Sur une
+instance qui abrite deux foyers, l'un n'y apprend rien de l'autre. Les gestes
+(changer un rôle, retirer un proche, révoquer une invitation) passent par les
+routes du partage, déjà gardées enfant par enfant : la console n'ouvre aucun
+chemin d'écriture nouveau, et le refus de retirer le **dernier administrateur**
+d'un carnet y est signalé avant le clic plutôt qu'après.
+
+> À ne pas confondre avec les **Réglages**, réservés au *propriétaire* de
+> l'instance (ci-dessous) : un co-parent nommé administrateur gère les cercles
+> sans jamais toucher au nom de l'instance, aux inscriptions ni au modèle VLM.
+
 ## Réglages (propriétaire)
 
 Le **propriétaire** de l'instance — le premier compte créé — dispose d'un écran

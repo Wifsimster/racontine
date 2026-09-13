@@ -8,6 +8,7 @@ import {
   Menu,
   Settings,
   Share2,
+  ShieldCheck,
   CircleUser,
   Users,
   X,
@@ -47,6 +48,11 @@ export default function App() {
   const { data: session, isPending } = useSession();
   const location = useLocation();
   const [isOwner, setIsOwner] = useState(false);
+  /* Administrateur d'au moins un carnet — ce n'est PAS le propriétaire de
+     l'instance : un co-parent nommé admin ouvre la console sans jamais toucher
+     aux réglages, et le propriétaire d'une instance où il n'administre aucun
+     enfant ne la voit pas. Deux portes, deux clés. */
+  const [isAdmin, setIsAdmin] = useState(false);
   const [appName, setAppName] = useState("Racontine");
   const [menuOpen, setMenuOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
@@ -60,8 +66,14 @@ export default function App() {
     if (!userId) return;
     api
       .me()
-      .then((me) => setIsOwner(me.isOwner))
-      .catch(() => setIsOwner(false));
+      .then((me) => {
+        setIsOwner(me.isOwner);
+        setIsAdmin(me.isAdmin);
+      })
+      .catch(() => {
+        setIsOwner(false);
+        setIsAdmin(false);
+      });
     api
       .publicSettings()
       .then((s) => setAppName(s.appName))
@@ -134,6 +146,14 @@ export default function App() {
       hint: billing.access.open
         ? "L'offre du foyer, et son échéance"
         : "Rouvrir le carnet à l'écriture",
+    });
+  }
+  if (isAdmin) {
+    items.push({
+      to: "/administration",
+      label: "Administration",
+      icon: ShieldCheck,
+      hint: "Les carnets, les rôles, les invitations",
     });
   }
   if (isOwner) {

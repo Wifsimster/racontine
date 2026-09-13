@@ -17,6 +17,7 @@ import {
   DrizzleUserDirectory,
   NotifyLinkDelivery,
 } from "./adapters/drizzle-sharing.js";
+import { DrizzleAdminRepository } from "./adapters/drizzle-admin.js";
 import { DrizzlePageRepository } from "./adapters/drizzle-page-repository.js";
 import { FileSystemImageStore } from "./adapters/fs-image-store.js";
 import { ConsoleLogger, FireAndForgetRunner } from "./adapters/runtime.js";
@@ -34,6 +35,7 @@ import { WebPushChannel } from "./notifications/push-channel.js";
 import { SubscriberNotifier } from "./notifications/subscriber-notifier.js";
 import { DrizzleEntryQueries } from "./mcp/queries.js";
 import { DbStagedUploads } from "./mcp/uploads.js";
+import { AdminService } from "./services/admin-service.js";
 import { CarnetReadingService } from "./services/carnet-reading-service.js";
 import { EntryEditingService } from "./services/entry-editing-service.js";
 import { IngestService } from "./services/ingest-service.js";
@@ -147,6 +149,13 @@ export const mcpTooling = {
   queries: new DrizzleEntryQueries(),
   uploads: new DbStagedUploads(),
 };
+
+/**
+ * La console d'administration : les carnets qu'on administre, les gens qui y
+ * tiennent un rôle, les invitations en attente. Lecture seule — les gestes
+ * restent ceux du partage, ci-dessous.
+ */
+export const adminConsole = new AdminService(new DrizzleAdminRepository());
 
 /** Le cercle d'un enfant : invitations, rôles, dernier administrateur. */
 export const sharing = new SharingService({

@@ -54,6 +54,22 @@ export async function hasChildRole(
 }
 
 /**
+ * Cet utilisateur administre-t-il au moins un enfant ? C'est la porte de la
+ * console d'administration : le rôle `admin` se porte PAR ENFANT, il n'existe
+ * pas d'administrateur d'instance en dehors du propriétaire (voir plus bas).
+ * Un parent pivot en tient donc la clé, sur ses carnets à lui — et sur eux
+ * seuls, car chaque lecture de la console redemande son périmètre.
+ */
+export async function isChildAdminSomewhere(userId: string): Promise<boolean> {
+  const [row] = await db
+    .select({ id: memberships.id })
+    .from(memberships)
+    .where(and(eq(memberships.userId, userId), eq(memberships.role, "admin")))
+    .limit(1);
+  return Boolean(row);
+}
+
+/**
  * Propriétaire de l'instance = le premier compte créé (celui qui a installé
  * Racontine sur son homelab et gère les réglages). Déterministe et auto-amorcé :
  * pas de colonne d'appartenance à migrer, pas d'étape de bootstrap manuelle.
