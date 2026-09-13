@@ -5,6 +5,7 @@ import {
   BookOpenText,
   Camera,
   ChevronDown,
+  CreditCard,
   CloudOff,
   Moon,
   RotateCcw,
@@ -86,7 +87,15 @@ export function JournalSkeleton() {
  * marge, son titre à venir et ses feutres. Un rond et deux phrases ne vendent
  * rien — et c’est le premier écran d’un nouveau compte.
  */
-export function JournalEmpty({ canCapture }: { canCapture: boolean }) {
+export function JournalEmpty({
+  canCapture,
+  carnetOuvert = true,
+}: {
+  canCapture: boolean;
+  /** Le carnet accepte-t-il une nouvelle journée ? Défaut : oui — l'inconnu ne
+   *  ferme rien, exactement comme dans `Timeline`. */
+  carnetOuvert?: boolean;
+}) {
   /* LE VIDE D’UN LECTEUR N’EST PAS LE MÊME VIDE. Mamie n’a pas de carnet de
      papier à photographier : lui vendre le geste (« Photographiez la page du
      soir », « Inviter un proche ») serait lui promettre deux écrans qui la
@@ -197,13 +206,30 @@ export function JournalEmpty({ canCapture }: { canCapture: boolean }) {
         </Tip>
       </ul>
 
+      {/* L'ACTION DU VIDE — et elle doit ABOUTIR. Quand le carnet est fermé à
+          l'écriture, « Photographier le carnet » mène tout droit à l'écran de
+          pause : un bouton groseille qui conduit à un refus est une promesse
+          rompue, et c'est la règle que le bouton flottant du journal applique
+          déjà (`Timeline`). Le cas se rencontre pour de bon : un foyer dont
+          l'essai s'achève avant la première journée voyait, sur un journal
+          encore vide, l'app lui proposer le seul geste qu'elle venait de lui
+          retirer. Le geste cède donc la place à ce qui le rouvre. */}
       <div className="flex w-full flex-col gap-3">
-        <Button asChild size="lg">
-          <Link to="/capture">
-            <Camera aria-hidden="true" />
-            Photographier le carnet
-          </Link>
-        </Button>
+        {carnetOuvert ? (
+          <Button asChild size="lg">
+            <Link to="/capture">
+              <Camera aria-hidden="true" />
+              Photographier le carnet
+            </Link>
+          </Button>
+        ) : (
+          <Button asChild size="lg">
+            <Link to="/abonnement">
+              <CreditCard aria-hidden="true" />
+              Reprendre l'abonnement
+            </Link>
+          </Button>
+        )}
         <Button asChild variant="outline">
           <Link to="/partage">
             <Users aria-hidden="true" />
