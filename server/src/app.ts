@@ -6,6 +6,7 @@ import { dbHealthy } from "./db/index.js";
 import { config, validateConfig } from "./config.js";
 import { redactUrl } from "./log.js";
 import { authPlugin } from "./plugins/auth.js";
+import { adminRoutes } from "./routes/admin.js";
 import { entriesRoutes } from "./routes/entries.js";
 import { attachmentsRoutes } from "./routes/attachments.js";
 import { sharingRoutes } from "./routes/sharing.js";
@@ -134,6 +135,7 @@ export async function buildApp() {
   await app.register(entriesRoutes);
   await app.register(attachmentsRoutes);
   await app.register(sharingRoutes);
+  await app.register(adminRoutes);
   await app.register(subscriptionsRoutes);
   await app.register(pushRoutes);
   await app.register(settingsRoutes);

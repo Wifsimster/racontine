@@ -1,4 +1,5 @@
 import type {
+  AdminConsole,
   AttachmentRef,
   Billing,
   BillingOffer,
@@ -281,6 +282,16 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify(patch),
     }),
+
+  /* ------------------------- Administration --------------------------- */
+
+  /**
+   * La console d'un administrateur : ses carnets, les gens qui y tiennent un
+   * rôle, les invitations en attente. Les GESTES, eux, restent ceux du partage
+   * (`setMemberRole`, `removeMember`, `revokeInvitation`) : une seule règle
+   * côté serveur, gardée enfant par enfant.
+   */
+  adminConsole: () => req<AdminConsole>("/api/admin/console"),
 
   /* --------------------------- Abonnement ----------------------------- */
 

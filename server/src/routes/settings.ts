@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { requireUser } from "../plugins/auth.js";
-import { isOwner } from "../access.js";
+import { isChildAdminSomewhere, isOwner } from "../access.js";
 import {
   getSettings,
   updateSettings,
@@ -56,17 +56,24 @@ export async function settingsRoutes(app: FastifyInstance) {
 
   /* ------------------------ Identité de l'appelant ---------------------- */
 
-  // Qui suis-je + suis-je le propriétaire (pour afficher l'accès aux réglages).
-  app.get(
-    "/api/me",
-    { preHandler: requireUser },
-    async (req) => ({
+  // Qui suis-je, et quelles portes s'ouvrent : les réglages pour le
+  // propriétaire de l'instance, la console d'administration pour qui
+  // administre au moins un enfant. Les deux se recoupent souvent (le
+  // propriétaire est l'admin du premier carnet) sans se confondre : un
+  // co-parent admin n'est pas propriétaire, et le restera.
+  app.get("/api/me", { preHandler: requireUser }, async (req) => {
+    const [owner, admin] = await Promise.all([
+      isOwner(req.user!.id),
+      isChildAdminSomewhere(req.user!.id),
+    ]);
+    return {
       id: req.user!.id,
       email: req.user!.email,
       name: req.user!.name,
-      isOwner: await isOwner(req.user!.id),
-    }),
-  );
+      isOwner: owner,
+      isAdmin: admin,
+    };
+  });
 
   /* -------------------- Clé API LLM (par utilisateur) ------------------- */
   // Chaque contributeur gère SA propre clé API Anthropic (facturation

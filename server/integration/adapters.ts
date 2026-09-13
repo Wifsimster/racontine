@@ -36,6 +36,7 @@ import {
   DrizzleMembershipRepository,
   DrizzleUserDirectory,
 } from "../src/adapters/drizzle-sharing.js";
+import { DrizzleAdminRepository } from "../src/adapters/drizzle-admin.js";
 import { DuplicateEntryError } from "../src/domain/errors.js";
 
 const ok = (label: string) => console.log("  ok —", label);
@@ -206,6 +207,17 @@ assert.equal(
 await memberships.remove(child.id, invitee);
 assert.equal(await memberships.isMember(child.id, invitee), false);
 ok("retirer un membre retire son adhésion");
+
+const admin = new DrizzleAdminRepository();
+const administered = await admin.administeredChildren(owner);
+assert.deepEqual(administered.map((c) => c.id), [child.id]);
+assert.deepEqual(await admin.administeredChildren(invitee), []);
+const counts = await admin.entryCounts([child.id]);
+assert.equal(counts.find((c) => c.status === "published")?.count, 1);
+assert.equal(counts.find((c) => c.status === "draft")?.count, 1);
+assert.equal((await admin.lastPublished([child.id]))[0]?.childId, child.id);
+assert.deepEqual((await admin.members([child.id])).map((m) => m.userId), [owner]);
+ok("la console d'administration ne voit que les carnets qu'on administre");
 
 const reclaimed = await repo.reclaimProcessing("interrompue");
 console.log("  ok — reclaimProcessing :", reclaimed, "journée(s) orpheline(s)");

@@ -167,12 +167,15 @@ export const ITEM_LABELS: Record<ItemType, string> = {
 
 /* ------------------------------ Réglages ------------------------------- */
 
-/** Utilisateur courant + s'il est le propriétaire de l'instance. */
+/** Utilisateur courant, et les portes qui s'ouvrent pour lui. */
 export type Me = {
   id: string;
   email: string;
   name: string;
+  /** Propriétaire de l'instance (premier compte) : accès aux réglages. */
   isOwner: boolean;
+  /** Administrateur d'au moins un enfant : accès à la console d'administration. */
+  isAdmin: boolean;
 };
 
 /** Réglages effectifs de l'instance, modifiables par le propriétaire. */
@@ -291,4 +294,55 @@ export type Billing = {
   hasSubscription: boolean;
   /** Qui règle l'abonnement, pour les autres membres du foyer. */
   billedTo: { name: string; email: string } | null;
+};
+
+/* --------------------------- Administration ----------------------------- */
+
+/** Un carnet administré, avec l'état de ses journées. */
+export type AdminChildRow = {
+  id: string;
+  name: string;
+  birthdate: string | null;
+  members: number;
+  entries: Record<EntryStatus, number> & { total: number };
+  lastPublishedAt: string | null;
+};
+
+/** Une personne du cercle, tous ses rôles rassemblés. */
+export type AdminPerson = {
+  userId: string;
+  name: string;
+  email: string;
+  isOwner: boolean;
+  /** L'administrateur qui regarde : on ne lui propose pas de se retirer. */
+  isSelf: boolean;
+  since: string;
+  roles: { childId: string; childName: string; role: MemberRole }[];
+  /** Enfants dont cette personne est le SEUL administrateur (gestes refusés). */
+  soleAdminOf: string[];
+};
+
+export type AdminInvitationRow = {
+  id: string;
+  childId: string;
+  childName: string;
+  email: string;
+  role: MemberRole;
+  expiresAt: string;
+  expired: boolean;
+};
+
+/** Ce que rend `/api/admin/console` : le périmètre administré, et lui seul. */
+export type AdminConsole = {
+  children: AdminChildRow[];
+  people: AdminPerson[];
+  invitations: AdminInvitationRow[];
+  totals: {
+    children: number;
+    people: number;
+    admins: number;
+    entries: number;
+    published: number;
+    pendingInvitations: number;
+  };
 };
