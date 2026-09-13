@@ -7,7 +7,7 @@ import type { BillingOffer } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { LoginBackground } from "@/components/LoginBackground";
 import { MarqueSignature } from "@/components/Marque";
-import { StudioSignature } from "@/components/Studio";
+import { StudioCard } from "@/components/Studio";
 import { MargeRule, SHEET } from "@/features/login/parts";
 import { OfferIncludes } from "@/features/billing/parts";
 
@@ -110,7 +110,6 @@ export default function Bienvenue() {
         </p>
 
         <MarqueSignature className="mt-6" />
-        <StudioSignature className="mt-1" />
       </div>
     </div>
   );
@@ -253,6 +252,23 @@ function Offre({
           </Button>
         </div>
       )}
+
+      {/* QUI ÉDITE, ET LES DOCUMENTS QUI ENGAGENT — la même règle que l'écran
+          de l'abonnement, appliquée à l'écran qui affiche maintenant le prix.
+
+          C'est tout l'objet de la distinction posée dans `Studio.tsx` : la
+          SIGNATURE (une ligne, « Édité par… ») suffit au pied d'une porte, mais
+          dès qu'un écran montre un tarif et mène à un engagement, il doit
+          nommer l'éditeur, sa forme juridique, sa ville, son e-mail, et donner
+          les conditions de vente, la résiliation et la confidentialité. Cet
+          écran-ci les doit d'autant plus qu'il s'adresse à quelqu'un qui n'a
+          pas encore de compte : avant, ces documents n'apparaissaient qu'après
+          l'inscription, c'est-à-dire après la décision.
+
+          L'encart REMPLACE la ligne de signature du pied de page — il la
+          contient déjà, et nommer deux fois l'éditeur sur le même écran ne le
+          rend pas plus clair. */}
+      <StudioCard className="mt-6" />
     </>
   );
 }
