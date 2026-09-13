@@ -20,7 +20,16 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["apple-touch-icon.png", "favicon.svg", "push-sw.js"],
+      // `badge-96.png` est précachée : la pastille est demandée par le service
+      // worker au moment où une notification arrive, donc potentiellement hors
+      // ligne. `og.png`, elle, n'est jamais lue par l'app — seulement par les
+      // robots d'aperçu de lien — et n'a rien à faire dans le précache.
+      includeAssets: [
+        "apple-touch-icon.png",
+        "favicon.svg",
+        "push-sw.js",
+        "badge-96.png",
+      ],
       // On garde la stratégie generateSW (précache Workbox) et on y injecte nos
       // gestionnaires Web Push via un script séparé (public/push-sw.js) plutôt
       // que de passer à injectManifest : plus simple, précache inchangé.
@@ -45,7 +54,10 @@ export default defineConfig({
       manifest: {
         name: "Racontine",
         short_name: "Racontine",
-        description: "Le journal numérique de l'enfance",
+        // La même phrase que la carte de lien et que la porte de connexion :
+        // la promesse du produit ne doit pas avoir trois formulations.
+        description:
+          "Votre carnet de liaison, dématérialisé sans rien demander à la nounou.",
         theme_color: "#faf8f3",
         background_color: "#faf8f3",
         display: "standalone",

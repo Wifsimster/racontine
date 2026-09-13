@@ -49,6 +49,7 @@ import { ITEM_CHIP } from "@/lib/ui";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ChildMark } from "@/components/ChildMark";
 
 /* ===========================================================================
    LE JOURNAL — l’écran qu’on ouvre chaque soir.
@@ -962,9 +963,24 @@ function EntryCard({
           <div className="flex items-baseline justify-between gap-3">
             {/* `flex-wrap` : sur un écran de 320 px, un prénom long fait passer
                 la date à la ligne au lieu de recouvrir la provenance. */}
-            <p className="surtitre flex min-w-0 flex-wrap items-baseline gap-x-1.5 gap-y-1">
+            <p className="surtitre flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1">
               {entry.child && (
                 <>
+                  {/* LA PASTILLE DE L'ENFANT. Un foyer à deux enfants voyait
+                      jusqu'ici deux journées différentes produire deux cartes
+                      strictement identiques : le prénom était un mot de plus
+                      dans une ligne de métadonnées.
+
+                      CE QU'ELLE COÛTE, dit franchement : 20 px contre les 16 px
+                      d'interligne du surtitre, donc +4 px par carte — un pas
+                      de la grille, pas un demi. Sur une carte de journée de
+                      609 px, c'est 0,7 %, et le pli mesuré ne bouge pas d'un
+                      cran. C'est le prix du seul signe qui distingue deux
+                      enfants dans le fil.
+
+                      ACHROMATIQUE : les cinq feutres ont déjà pris les
+                      couleurs, et une teinte ne peut pas dire deux choses. */}
+                  <ChildMark name={entry.child.name} />
                   <span className="text-foreground">{entry.child.name}</span>
                   <span aria-hidden="true" className="text-muted-foreground">
                     ·

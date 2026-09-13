@@ -1,4 +1,5 @@
 import { LoginBackground } from "@/components/LoginBackground";
+import { MarqueSignature } from "@/components/Marque";
 
 /* ===========================================================================
    LES PORTES — les écrans qui vivent HORS de la coquille.
@@ -28,6 +29,12 @@ export function DoorPage({ children }: { children: React.ReactNode }) {
       <LoginBackground />
       <div className="rise-enter mx-auto flex w-full max-w-[26rem] flex-col pt-[5.25rem] pr-5 pb-6 pl-10">
         {children}
+        {/* LA SIGNATURE, au pied de la porte. Le bandeau porte le nom de
+            l'INSTANCE — qui peut être « Le carnet de Léo » — et c'est très
+            bien ; mais alors il faut une ligne, une seule, où la marque ne
+            dépende d'aucun réglage. Elle est ici, sur l'écran que la moitié des
+            comptes (les proches invités) voient en premier. */}
+        <MarqueSignature className="mt-8" />
       </div>
     </div>
   );
