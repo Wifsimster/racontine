@@ -19,6 +19,37 @@
     <meta name="apple-mobile-web-app-title" content="Racontine" />
     <title>Racontine</title>
 
+    <!-- LE LIEN PARTAGÉ N'AVAIT AUCUNE CARTE. Le lien d'invitation
+         (`/invite/<token>`) se colle dans un SMS, un fil WhatsApp, un Signal :
+         sans ces balises il s'y affiche en URL nue, sans titre ni vignette, au
+         moment précis où l'on demande à quelqu'un de confier la journée de son
+         petit-enfant. C'est le seul chemin par lequel le produit se propage.
+
+         La carte est STATIQUE, et c'est une décision : un aperçu qui porterait
+         le prénom de l'enfant serait mis en cache par les serveurs de WhatsApp,
+         de Slack et de Google. Elle dit le produit, jamais la famille.
+         `og.png` se regénère avec `pnpm brand`. -->
+    <meta
+      name="description"
+      content="Photographiez le carnet de la nounou : la journée devient un journal privé, hébergé chez vous, partagé avec les proches que vous choisissez."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Racontine" />
+    <meta property="og:title" content="Racontine" />
+    <meta
+      property="og:description"
+      content="Votre carnet de liaison, dématérialisé sans rien demander à la nounou."
+    />
+    <meta property="og:image" content="/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="Racontine — votre carnet de liaison, dématérialisé sans rien demander à la nounou."
+    />
+    <meta property="og:locale" content="fr_FR" />
+    <meta name="twitter:card" content="summary_large_image" />
+
     <!-- Umami — mesure d'audience auto-hébergée, sans cookie.
          `data-exclude-search`/`data-exclude-hash` : une URL de carnet peut
          porter un identifiant d'enfant, qui n'a rien à faire dans

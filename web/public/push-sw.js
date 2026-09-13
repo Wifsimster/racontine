@@ -18,7 +18,12 @@ self.addEventListener("push", (event) => {
   const options = {
     body: data.body || "",
     icon: "/pwa-192.png",
-    badge: "/pwa-192.png",
+    // LA PASTILLE N'EST PAS L'ICÔNE. Android ne garde que l'ALPHA du `badge`
+    // et le repeint en monochrome : la tuile groseille pleine y devenait un
+    // carré gris, dans la barre d'état, à côté de notifications qui, elles,
+    // avaient un glyphe. `badge-96.png` est la silhouette de la marque —
+    // blanche sur transparent, dessinée pour cette taille-là.
+    badge: "/badge-96.png",
     // `tag` regroupe/écrase les notifications d'un même sujet (ex. une entrée)
     // au lieu d'en empiler plusieurs.
     tag: data.tag,

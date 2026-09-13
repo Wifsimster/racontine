@@ -15,6 +15,7 @@ import { useSession, signOut } from "@/lib/auth-client";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import NotificationsBell from "@/components/NotificationsBell";
+import { Marque } from "@/components/Marque";
 
 /* ===========================================================================
    La coquille : en-tête collant, navigation, transition de page, zones sûres.
@@ -136,10 +137,11 @@ export default function App() {
             to="/"
             className="-ml-1 flex min-h-11 min-w-0 items-center gap-2 rounded-xl px-1 transition-colors dur-fast hover:bg-accent"
           >
-            <BookOpenText
-              className="size-6 shrink-0 text-primary"
-              aria-hidden="true"
-            />
+            {/* LA MARQUE, et non plus `BookOpenText` — qui est l'icône de
+                l'entrée « Le journal » du menu, deux rangs plus bas : le
+                produit et l'une de ses destinations portaient le même glyphe.
+                C'est ici exactement la tuile de l'écran d'accueil. */}
+            <Marque />
             <span className="truncate font-serif text-title font-semibold">
               {appName}
             </span>
@@ -263,7 +265,7 @@ function AppSplash() {
     <div className="min-h-svh bg-background">
       <div className="border-b px-safe pt-safe">
         <div className="shell-width flex h-header items-center gap-2 px-4">
-          <BookOpenText className="size-6 text-primary" aria-hidden="true" />
+          <Marque />
           <span className="font-serif text-title font-semibold">Racontine</span>
         </div>
       </div>
