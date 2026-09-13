@@ -1,40 +1,23 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { getSettings } from "./settings.js";
 import { tidyUncertainty } from "./uncertainties.js";
+import type { CarnetDay, CarnetUncertainty } from "./domain/carnet.js";
+import { CarnetReadError } from "./domain/errors.js";
 
-/**
- * Incertitude telle que renvoyée par le VLM : le mot tel que lu, pourquoi il
- * est incertain, et des lectures alternatives plausibles. `resolved` n'existe
- * pas encore à ce stade — il est ajouté à la persistance une fois la relecture
- * humaine faite (voir `ingest.ts`).
- */
-export type VlmUncertainty = {
-  original: string;
-  contexte: string;
-  suggestions: string[];
-  champ: "titre" | "recit" | "temps_fort" | "transcription_integrale" | null;
-};
+/* ===========================================================================
+   L'ADAPTATEUR DE LECTURE — l'API vision d'Anthropic, et rien d'autre.
+
+   Le vocabulaire (« une journée lue », « une incertitude ») appartient au
+   domaine (`domain/carnet.ts`) ; ce fichier ne fait que le produire à partir
+   d'un fournisseur donné. Les anciens noms restent exportés : ils étaient déjà
+   employés ailleurs, et rien ne gagne à renommer tout un code appelant.
+   =========================================================================== */
+
+/** Incertitude telle que rendue par une lecture. */
+export type VlmUncertainty = CarnetUncertainty;
 
 /** Une journée extraite d'un sous-ensemble des pages envoyées. */
-export type DayExtraction = {
-  date: string | null;
-  enfant: string | null;
-  repas: { moment: string; contenu: string; appetit?: string }[];
-  siestes: { debut?: string; fin?: string; note?: string }[];
-  humeur: string | null;
-  activites: string[];
-  sante: string | null;
-  anecdotes: string[];
-  transcription_integrale: string | null;
-  /** Valorisation automatique — le cœur du produit. */
-  titre: string | null;
-  recit: string | null;
-  temps_fort: string | null;
-  incertitudes: VlmUncertainty[];
-  illisible: boolean;
-  /** Pages (1-based, dans l'ordre des images fournies) qui composent cette journée. */
-  pages: number[];
-};
+export type DayExtraction = CarnetDay;
 
 const UNCERTAINTY_SCHEMA = {
   type: "array",
@@ -207,11 +190,16 @@ Appelle toujours l'outil enregistrer_journees.`;
 
 /**
  * Erreur d'extraction dont le message est déjà sûr à afficher à l'utilisateur
- * (stocké tel quel dans `failureReason` et montré dans l'app). Les détails bruts
- * du fournisseur — corps JSON, request_id, mention de facturation — restent dans
- * les logs serveur et ne fuitent jamais vers les proches.
+ * (stocké tel quel dans `failureReason` et montré dans l'app). Les détails
+ * bruts du fournisseur — corps JSON, request_id, mention de facturation —
+ * restent dans les logs serveur et ne fuitent jamais vers les proches.
+ *
+ * C'est L'ERREUR DU DOMAINE (`CarnetReadError`), et non une classe jumelle :
+ * le service qui rattrape une lecture ratée ne connaît que celle-là, et deux
+ * classes distinctes lui auraient fait remplacer un message écrit pour le
+ * parent par la phrase générique.
  */
-export class VlmError extends Error {}
+export { CarnetReadError as VlmError };
 
 /** Traduit une erreur d'appel VLM en message français sûr pour l'utilisateur. */
 function vlmUserMessage(err: unknown): string {
@@ -237,7 +225,7 @@ function vlmUserMessage(err: unknown): string {
     // Autres erreurs de requête (ex. image refusée par l'API).
     return "La lecture automatique du carnet a échoué. Réessayez avec une photo plus nette.";
   }
-  if (err instanceof VlmError) return err.message;
+  if (err instanceof CarnetReadError) return err.message;
   return "La lecture automatique du carnet a échoué. Réessayez plus tard.";
 }
 
@@ -248,7 +236,7 @@ function vlmUserMessage(err: unknown): string {
  */
 function clientFor(apiKey: string): Anthropic {
   if (!apiKey.trim())
-    throw new VlmError(
+    throw new CarnetReadError(
       "Aucune clé API Anthropic configurée. Ajoutez la vôtre dans les réglages.",
     );
   return new Anthropic({
@@ -439,7 +427,7 @@ export async function extractFromImages(
       "Extraction VLM — échec de l'appel Anthropic :",
       err instanceof Error ? err.message : err,
     );
-    throw new VlmError(vlmUserMessage(err));
+    throw new CarnetReadError(vlmUserMessage(err));
   }
 
   const toolUse = message.content.find(
