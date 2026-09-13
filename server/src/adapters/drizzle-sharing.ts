@@ -210,9 +210,16 @@ export class DrizzleUserDirectory implements UserDirectory {
   }
 }
 
-/** La remise d'un lien de capacité (e-mail ou webhook), jamais par les logs. */
+/**
+ * La remise d'un lien de capacité (e-mail ou webhook), jamais par les logs.
+ *
+ * Ce port ne sert qu'à UNE chose dans le produit : inviter quelqu'un au carnet
+ * d'un enfant (`sharing-service`). Le genre est donc posé ici, et non remonté
+ * dans la signature du port : le service de partage n'a pas à connaître le
+ * vocabulaire des e-mails pour inviter une grand-mère.
+ */
 export class NotifyLinkDelivery implements LinkDelivery {
   deliver(to: string, subject: string, url: string): Promise<void> {
-    return deliverLink(to, subject, url);
+    return deliverLink(to, subject, url, "invitation");
   }
 }

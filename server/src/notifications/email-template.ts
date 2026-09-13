@@ -102,6 +102,49 @@ function markHtml(): string {
 }
 
 /**
+ * LA COQUILLE, commune à tous les e-mails du produit : le papier, la marque et
+ * son surtitre, la feuille posée sur son trait de marge, la signature.
+ *
+ * Elle est extraite parce qu'il y a maintenant DEUX sortes d'envois — la
+ * journée publiée et les liens de capacité — et que deux gabarits séparés
+ * finiraient par diverger. Un e-mail de Racontine doit se reconnaître avant
+ * d'être lu, quel que soit ce qu'il annonce.
+ */
+function shell(feuille: string): string {
+  return `<div style="margin:0;padding:24px 12px;background:${INK.paper};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:${INK.text}">
+  <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%;max-width:480px;margin:0 auto">
+    <tr><td style="padding-bottom:14px">
+      <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse"><tr>
+        <td style="vertical-align:middle">${markHtml()}</td>
+        <td style="vertical-align:middle;padding-left:10px;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:${INK.pale}">Carnet de liaison</td>
+      </tr></table>
+    </td></tr>
+
+    <tr><td>
+      <!-- La feuille : bord gauche carré, posé sur son trait de marge
+           groseille — la même géométrie que la feuille de l'écran de
+           connexion, où une page est reliée du côté de la couture. -->
+      <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%">
+        <tr>
+          <td style="width:3px;background:${INK.primary}"></td>
+          <td style="background:${INK.sheet};border:1px solid ${INK.border};border-left:0;border-radius:0 16px 16px 0;padding:20px">
+${feuille}
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+
+    <tr><td style="padding-top:16px;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:${INK.pale}">Propulsé par Racontine</td></tr>
+  </table>
+</div>`;
+}
+
+/** Le bouton de l'e-mail : le seul groseille plein du message. */
+function buttonHtml(link: string, label: string): string {
+  return `<a href="${encodeURI(link)}" style="display:inline-block;padding:12px 22px;background:${INK.primary};color:${INK.onPrimary};border-radius:16px;font-size:15px;font-weight:700;text-decoration:none">${escapeHtml(label)}</a>`;
+}
+
+/**
  * Le gabarit, isolé de l'envoi : c'est ce qui le rend testable (voir
  * `notifications.test.ts`). Un e-mail qui repart en #4f46e5 ou qui cesse
  * d'échapper un prénom doit faire rougir la CI, pas se découvrir dans la boîte
@@ -130,37 +173,96 @@ export function renderEntryEmail(params: {
   // par des utilisateurs ou écrits par le modèle : on les échappe avant
   // interpolation HTML pour éviter toute injection de balises (liens de
   // phishing, images traçantes…). `link` est une URL construite côté serveur.
-  const html = `<div style="margin:0;padding:24px 12px;background:${INK.paper};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:${INK.text}">
-  <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%;max-width:480px;margin:0 auto">
-    <tr><td style="padding-bottom:14px">
-      <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse"><tr>
-        <td style="vertical-align:middle">${markHtml()}</td>
-        <td style="vertical-align:middle;padding-left:10px;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:${INK.pale}">Carnet de liaison</td>
-      </tr></table>
-    </td></tr>
-
-    <tr><td>
-      <!-- La feuille : bord gauche carré, posé sur son trait de marge
-           groseille — la même géométrie que la feuille de l'écran de
-           connexion, où une page est reliée du côté de la couture. -->
-      <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%">
-        <tr>
-          <td style="width:3px;background:${INK.primary}"></td>
-          <td style="background:${INK.sheet};border:1px solid ${INK.border};border-left:0;border-radius:0 16px 16px 0;padding:20px">
-            <p style="margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:${INK.pale}">${escapeHtml(day.dateLabel)}</p>
+  const html = shell(`            <p style="margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:${INK.pale}">${escapeHtml(day.dateLabel)}</p>
             <p style="margin:0 0 14px;font-family:Georgia,'Times New Roman',serif;font-size:22px;line-height:28px;font-weight:600;color:${INK.text}">La journée de ${escapeHtml(day.childName)}</p>
             ${chipsHtml(chips)}
             <p style="margin:0 0 8px;font-size:16px;line-height:26px;color:${INK.text}">${escapeHtml(greeting)}</p>
             <p style="margin:0 0 18px;font-size:16px;line-height:26px;color:${INK.text}">${escapeHtml(body)}</p>
-            <a href="${encodeURI(link)}" style="display:inline-block;padding:12px 22px;background:${INK.primary};color:${INK.onPrimary};border-radius:16px;font-size:15px;font-weight:700;text-decoration:none">Ouvrir la journée</a>
-          </td>
-        </tr>
-      </table>
-    </td></tr>
+            ${buttonHtml(link, "Ouvrir la journée")}`);
 
-    <tr><td style="padding-top:16px;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:${INK.pale}">Propulsé par Racontine</td></tr>
-  </table>
-</div>`;
+  return { text, html };
+}
+
+/* ===========================================================================
+   LES E-MAILS DE LIEN — connexion, mot de passe, invitation.
+
+   Ces trois envois partaient en TEXTE BRUT : un objet, une URL nue, et rien
+   d'autre. C'est le premier contact de Racontine avec un proche invité, et
+   c'était aussi le message le plus facile à imiter du produit — un lien nu
+   dans une boîte de réception ne se distingue d'un hameçonnage que par la
+   confiance qu'on accorde à l'expéditeur. Or celui qui reçoit un lien de
+   CONNEXION est précisément celui qui n'a encore jamais vu l'app : il n'a que
+   cet e-mail pour décider s'il clique.
+
+   Ils portent donc la même coquille que la journée publiée, et disent trois
+   choses : d'où vient le message, ce que le lien fait, et combien de temps il
+   vaut. La version texte reste rendue depuis la MÊME source — deux versions
+   écrites séparément finissent toujours par se contredire.
+
+   Ce qu'ils ne font pas, et c'est délibéré : aucune image distante (elle
+   serait bloquée, et la marque disparaîtrait chez les plus prudents), aucun
+   pixel de suivi, et jamais l'URL en toutes lettres dans le corps HTML — elle
+   est sur le bouton, et rappelée en texte pour les clients qui n'en veulent
+   pas.
+   =========================================================================== */
+
+/** Les trois liens de capacité que le produit envoie. */
+export type LinkKind = "connexion" | "mot-de-passe" | "invitation";
+
+/**
+ * Ce que chaque lien dit. Un seul endroit : l'objet, le titre, la phrase, le
+ * bouton et la durée de validité d'un même envoi ne peuvent pas se répondre
+ * de trois fichiers différents.
+ */
+const LIENS: Record<
+  LinkKind,
+  { title: string; body: string; button: string; validity: string }
+> = {
+  connexion: {
+    title: "Votre lien de connexion",
+    body: "Ce lien vous ouvre le carnet directement, sans mot de passe à retenir.",
+    button: "Ouvrir le carnet",
+    validity: "Il ne sert qu'une fois, et expire dans quelques minutes.",
+  },
+  "mot-de-passe": {
+    title: "Choisir un nouveau mot de passe",
+    body: "Vous avez demandé à réinitialiser votre mot de passe : ce lien mène à l'écran qui en choisit un nouveau.",
+    button: "Choisir un mot de passe",
+    validity:
+      "Il vaut une heure. Si vous n'avez rien demandé, ignorez ce message : votre mot de passe actuel reste valable.",
+  },
+  invitation: {
+    title: "Vous êtes invité·e à suivre un enfant",
+    body: "Quelqu'un partage avec vous le journal d'un enfant : ses journées, écrites à partir des pages du carnet de liaison. Rien à installer, rien à payer.",
+    button: "Voir le journal",
+    validity: "L'invitation vous attend quelques jours.",
+  },
+};
+
+/** La phrase qui vaut pour les trois : ces URL SONT des identifiants. */
+const PERSONNEL = "Ce lien est personnel : ne le transmettez à personne.";
+
+/**
+ * L'e-mail d'un lien de capacité, dans les deux versions. `url` est construite
+ * par le serveur ; elle n'est jamais écrite dans le corps HTML, seulement
+ * portée par le bouton (et rappelée en texte).
+ */
+export function renderLinkEmail(params: {
+  kind: LinkKind;
+  url: string;
+}): { text: string; html: string } {
+  const { kind, url } = params;
+  const l = LIENS[kind];
+
+  const text =
+    `${l.title}\n\n${l.body}\n\n${l.button} : ${url}\n\n` +
+    `${l.validity}\n${PERSONNEL}\n\n— Propulsé par Racontine`;
+
+  const html = shell(`            <p style="margin:0 0 14px;font-family:Georgia,'Times New Roman',serif;font-size:22px;line-height:28px;font-weight:600;color:${INK.text}">${escapeHtml(l.title)}</p>
+            <p style="margin:0 0 18px;font-size:16px;line-height:26px;color:${INK.text}">${escapeHtml(l.body)}</p>
+            ${buttonHtml(url, l.button)}
+            <p style="margin:18px 0 0;font-size:13px;line-height:20px;color:${INK.pale}">${escapeHtml(l.validity)}</p>
+            <p style="margin:6px 0 0;font-size:13px;line-height:20px;color:${INK.pale}">${escapeHtml(PERSONNEL)}</p>`);
 
   return { text, html };
 }

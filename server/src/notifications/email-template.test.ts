@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { renderEntryEmail } from "./email-template.js";
+import { renderEntryEmail, renderLinkEmail } from "./email-template.js";
 import type { DayChip } from "../domain/day-glance.js";
 
 /* ===========================================================================
@@ -117,4 +117,72 @@ test("le texte d'une pastille est échappé lui aussi", () => {
 test("le lien d'ouverture est celui qu'on a passé, et il est encodé", () => {
   const { html } = renderEntryEmail(JOURNEE);
   assert.match(html, /href="https:\/\/racontine\.test\/entries\/abc-123"/);
+});
+
+/* ===========================================================================
+   LES E-MAILS DE LIEN. Ils partaient en texte brut : un objet et une URL nue.
+   C'est le premier contact d'un proche avec Racontine, et le message le plus
+   facile à imiter du produit — ces tests tiennent ce qui le rend
+   reconnaissable, et ce qui ne doit jamais y entrer.
+   =========================================================================== */
+
+const LIEN = "https://racontine.test/api/auth/magic-link/verify?token=abc-123";
+const GENRES = ["connexion", "mot-de-passe", "invitation"] as const;
+
+test("les trois liens portent la coquille du carnet, et aucune autre couleur", () => {
+  for (const kind of GENRES) {
+    const { html } = renderLinkEmail({ kind, url: LIEN });
+    assert.match(html, /#F9F7F2/, kind); // le papier
+    assert.match(html, /#242846/, kind); // l'encre
+    assert.match(html, /#B8284D/, kind); // le groseille de l'action
+    assert.match(html, /Carnet de liaison/, kind);
+    assert.match(html, /Propulsé par Racontine/, kind);
+    assert.doesNotMatch(html, /#4f46e5/i, kind);
+  }
+});
+
+test("chaque lien dit ce qu'il fait — un objet nu ne suffit pas", () => {
+  const connexion = renderLinkEmail({ kind: "connexion", url: LIEN });
+  assert.match(connexion.html, /Votre lien de connexion/);
+  assert.match(connexion.html, /Ouvrir le carnet/);
+
+  const motDePasse = renderLinkEmail({ kind: "mot-de-passe", url: LIEN });
+  assert.match(motDePasse.html, /Choisir un nouveau mot de passe/);
+  // Celui-là doit dire quoi faire quand on n'a RIEN demandé : c'est le seul
+  // des trois qui peut arriver à quelqu'un qui se fait attaquer.
+  assert.match(motDePasse.html, /ignorez ce message/);
+
+  const invitation = renderLinkEmail({ kind: "invitation", url: LIEN });
+  assert.match(invitation.html, /invité·e à suivre un enfant/);
+  assert.match(invitation.html, /Voir le journal/);
+});
+
+test("les deux versions sortent de la même source et portent le même lien", () => {
+  for (const kind of GENRES) {
+    const { text, html } = renderLinkEmail({ kind, url: LIEN });
+    assert.ok(text.includes(LIEN), kind);
+    assert.match(html, /href="https:\/\/racontine\.test/, kind);
+    // La phrase qui vaut pour les trois : ces URL SONT des identifiants.
+    assert.ok(text.includes("Ce lien est personnel"), kind);
+    assert.match(html, /Ce lien est personnel/, kind);
+  }
+});
+
+test("aucune image distante, aucun pixel de suivi", () => {
+  /* Une image distante serait bloquée par défaut chez les clients les plus
+     prudents — la marque disparaîtrait précisément chez eux — et un pixel
+     dirait à Racontine qui a ouvert son courrier. La tuile est dessinée en
+     tableau, et il n'y a pas un seul `<img>`. */
+  for (const kind of GENRES) {
+    const { html } = renderLinkEmail({ kind, url: LIEN });
+    assert.doesNotMatch(html, /<img/i, kind);
+    assert.doesNotMatch(html, /background-image/i, kind);
+  }
+});
+
+test("une URL à paramètres reste intacte et encodée dans le bouton", () => {
+  const url = "https://racontine.test/invite/jeton?x=1&y=2";
+  const { html, text } = renderLinkEmail({ kind: "invitation", url });
+  assert.match(html, /href="https:\/\/racontine\.test\/invite\/jeton\?x=1&y=2"/);
+  assert.ok(text.includes(url));
 });

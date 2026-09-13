@@ -58,6 +58,7 @@ export const auth = betterAuth({
         user.email,
         "Réinitialiser votre mot de passe Racontine",
         url,
+        "mot-de-passe",
       );
     },
     /**
@@ -110,7 +111,12 @@ export const auth = betterAuth({
     // `sendResetPassword` ci-dessus et mène au choix d'un nouveau mot de passe.
     magicLink({
       async sendMagicLink({ email, url }) {
-        await deliverLink(email, "Votre lien de connexion Racontine", url);
+        await deliverLink(
+          email,
+          "Votre lien de connexion Racontine",
+          url,
+          "connexion",
+        );
       },
     }),
   ],
