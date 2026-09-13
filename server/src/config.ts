@@ -190,11 +190,19 @@ export const config = {
    * de webhook refuse tout (voir `routes/billing.ts`). Un paiement resterait
    * malgré tout rattrapé au retour du client, mais une résiliation ou un impayé
    * ne remonteraient jamais : `validateConfig` le signale bruyamment.
+   *
+   * `STRIPE_PORTAL_CONFIG_ID` est facultatif, mais il ne l'est vraiment que sur
+   * un compte Stripe qui n'héberge QUE Racontine. Un compte qui porte plusieurs
+   * produits n'a qu'UNE configuration de portail par défaut : sans cet
+   * identifiant, une famille qui clique « Gérer mon abonnement » atterrit sur
+   * le portail d'un AUTRE produit, titre compris. Stripe ne signale rien — la
+   * session se crée très bien, elle est juste habillée par quelqu'un d'autre.
    */
   billing: {
     secretKey: process.env.STRIPE_SECRET_KEY?.trim() || undefined,
     priceId: process.env.STRIPE_PRICE_ID?.trim() || undefined,
     webhookSecret: process.env.STRIPE_WEBHOOK_SECRET?.trim() || undefined,
+    portalConfigId: process.env.STRIPE_PORTAL_CONFIG_ID?.trim() || undefined,
   },
   /**
    * E-mail (SMTP) pour les notifications aux proches abonnés. Optionnel : si
@@ -250,6 +258,10 @@ export function validateConfig(): void {
   if (billingEnabled() && !config.billing.webhookSecret)
     warn.push(
       "STRIPE_WEBHOOK_SECRET non défini : les webhooks Stripe seront refusés. Un paiement sera rattrapé au retour du client, mais une résiliation, un impayé ou un renouvellement ne remonteront jamais.",
+    );
+  if (billingEnabled() && !config.billing.portalConfigId)
+    warn.push(
+      "STRIPE_PORTAL_CONFIG_ID non défini : le portail client (carte, factures, RÉSILIATION) sera habillé par la configuration PAR DÉFAUT du compte Stripe. Sur un compte qui porte plusieurs produits, vos clients y verront le nom d'un autre produit.",
     );
   if (billingEnabled() && config.billing.secretKey?.startsWith("sk_test_") && isProd)
     warn.push(

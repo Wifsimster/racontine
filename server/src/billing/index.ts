@@ -276,6 +276,7 @@ export async function openPortal(userId: string): Promise<BillingLink> {
     const session = await api.createPortalSession({
       customerId: row.stripeCustomerId,
       returnUrl: `${config.webBaseUrl}/abonnement`,
+      configurationId: config.billing.portalConfigId,
     });
     return { ok: true, url: session.url };
   } catch (err) {

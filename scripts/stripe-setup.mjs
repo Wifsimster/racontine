@@ -179,11 +179,21 @@ async function main() {
   const stripe = makeStripe(key, args.apiBase);
   const write = !args.check && !args.dryRun;
 
-  const account = await stripe("GET", "/account");
-  say(
-    `${OK} compte Stripe : ${account.settings?.dashboard?.display_name ?? account.id}` +
-      ` (${account.livemode ? "PRODUCTION" : "mode test"})`,
-  );
+  // `/account` exige le scope `connected_account_read`, qu'une clé RESTREINTE
+  // (`rk_…`) n'a pas forcément. L'appel n'est qu'un affichage de courtoisie : on
+  // ne fait pas échouer un provisionnement pour une ligne de titre.
+  try {
+    const account = await stripe("GET", "/account");
+    say(
+      `${OK} compte Stripe : ${account.settings?.dashboard?.display_name ?? account.id}` +
+        ` (${account.livemode ? "PRODUCTION" : "mode test"})`,
+    );
+  } catch {
+    say(
+      `${OK} compte Stripe : clé restreinte, /account illisible` +
+        ` (${/^(sk|rk)_live_/.test(key) ? "PRODUCTION" : "mode test"})`,
+    );
+  }
 
   /* 1. Le produit --------------------------------------------------------- */
   const products = await stripe("GET", "/products?limit=100&active=true");
@@ -216,8 +226,22 @@ async function main() {
         p.unit_amount === args.amount &&
         p.currency === args.currency &&
         p.recurring?.interval === args.interval &&
-        (p.recurring?.interval_count ?? 1) === 1,
+        (p.recurring?.interval_count ?? 1) === 1 &&
+        // Le TTC fait partie de l'identité du prix, pas de sa décoration : un
+        // prix HT au bon montant n'est PAS le bon prix (voir plus bas).
+        p.tax_behavior === "inclusive",
     );
+    const horsTaxe = (prices.data ?? []).filter(
+      (p) => p !== price && p.tax_behavior !== "inclusive",
+    );
+    if (horsTaxe.length)
+      say(
+        `${WARN}${horsTaxe.length} prix actif(s) qui ne sont PAS en TTC : ` +
+          `${horsTaxe.map((p) => `${p.id} (${p.tax_behavior})`).join(", ")}.\n` +
+          `    L'app affiche le montant comme étant celui que paie le foyer ; un prix\n` +
+          `    hors taxe fait débiter PLUS que ce qui est écrit au-dessus du bouton.\n` +
+          `    \`tax_behavior\` est IMMUABLE : il faut créer un prix neuf et archiver l'ancien.`,
+      );
     const autres = (prices.data ?? []).filter((p) => p !== price);
     if (autres.length)
       say(
@@ -235,6 +259,10 @@ async function main() {
       unit_amount: args.amount,
       currency: args.currency,
       recurring: { interval: args.interval },
+      // TTC : le montant annoncé dans l'app est celui qui sera débité, taxe
+      // comprise. En `unspecified`/`exclusive`, Stripe ajouterait la taxe
+      // par-dessus au paiement. Champ IMMUABLE — à ne pas se rater ici.
+      tax_behavior: "inclusive",
       metadata: { [MARK]: MARK_VALUE },
     });
     say(`${ADD}prix créé : ${price.id} (${cible})`);
@@ -288,16 +316,56 @@ async function main() {
     );
   }
 
-  /* 4. Le portail client --------------------------------------------------- */
+  /* 4. Le portail client ----------------------------------------------------
+     C'est LUI qui porte la carte, les factures et la RÉSILIATION.
+
+     Le piège : un compte Stripe n'a qu'UNE configuration de portail par DÉFAUT,
+     pour tout le compte. Se contenter de vérifier « il existe une configuration
+     active » ne prouve donc RIEN — sur un compte qui porte plusieurs produits,
+     celle qui s'appliquera est celle d'un autre, titre compris, et le client
+     lit « Gérez votre abonnement <AutreProduit> » en cliquant depuis Racontine.
+     Rien n'échoue, rien n'est journalisé. On crée donc une configuration qui
+     nous est PROPRE, et le serveur la passe explicitement à chaque session
+     (STRIPE_PORTAL_CONFIG_ID). */
+  let portalId = null;
+  const HEADLINE = `Gérez votre abonnement ${args.name.replace(/ Famille$/, "")}`;
   try {
-    const confs = await stripe("GET", "/billing_portal/configurations?limit=10");
-    const active = (confs.data ?? []).find((c) => c.active);
-    if (active) say(`${OK} portail client actif (${active.id})`);
-    else
-      say(
-        `${WARN}aucune configuration de portail client active. C'est LUI qui porte la carte,\n` +
-          `    les factures et la RÉSILIATION : activez-le dans Stripe > Portail client.`,
-      );
+    const confs = await stripe("GET", "/billing_portal/configurations?limit=100");
+    const mien = (confs.data ?? []).find(
+      (c) => c.active && c.metadata?.[MARK] === MARK_VALUE,
+    );
+    const parDefaut = (confs.data ?? []).find((c) => c.is_default);
+
+    if (mien) {
+      portalId = mien.id;
+      say(`${OK} portail client dédié (${mien.id})`);
+    } else if (!write) {
+      say(`${ADD}portail client dédié — à créer`);
+      if (parDefaut)
+        say(
+          `    sinon vos clients verraient : « ${parDefaut.business_profile?.headline ?? "(sans titre)"} »`,
+        );
+    } else {
+      const conf = await stripe("POST", "/billing_portal/configurations", {
+        business_profile: { headline: HEADLINE },
+        features: {
+          customer_update: { enabled: true, allowed_updates: ["email", "tax_id"] },
+          invoice_history: { enabled: true },
+          payment_method_update: { enabled: true },
+          // Fin de période, sans prorata : une période déjà payée reste due.
+          subscription_cancel: {
+            enabled: true,
+            mode: "at_period_end",
+            proration_behavior: "none",
+          },
+          // Une seule offre : pas d'écran « changer de formule » sans destination.
+          subscription_update: { enabled: false },
+        },
+        metadata: { [MARK]: MARK_VALUE },
+      });
+      portalId = conf.id;
+      say(`${ADD}portail client créé : ${conf.id}`);
+    }
   } catch (err) {
     say(`${WARN}portail client non vérifié : ${err.message}`);
   }
@@ -308,12 +376,13 @@ async function main() {
       `\n(${args.check ? "--check" : "--dry-run"} : rien n'a été écrit dans votre compte Stripe.)`,
     );
 
-  if (price?.id || secret) {
+  if (price?.id || secret || portalId) {
     say("\n-- à coller dans .env ---------------------------------------------");
     say(`STRIPE_SECRET_KEY=${key.slice(0, 11)}...   # celle que vous venez d'utiliser`);
     if (price?.id) say(`STRIPE_PRICE_ID=${price.id}`);
     if (secret) say(`STRIPE_WEBHOOK_SECRET=${secret}`);
     else if (args.url) say(`STRIPE_WEBHOOK_SECRET=whsec_...   # à révéler dans le tableau de bord`);
+    if (portalId) say(`STRIPE_PORTAL_CONFIG_ID=${portalId}`);
     say("--------------------------------------------------------------------");
     say(
       "\nRappel : sans ces variables, l'instance n'a AUCUN péage — Racontine y reste\n" +
