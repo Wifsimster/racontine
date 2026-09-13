@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, Navigate, Outlet, useLocation } from "react-router-dom";
+import {
+  Link,
+  Navigate,
+  Outlet,
+  ScrollRestoration,
+  useLocation,
+} from "react-router-dom";
 import {
   BookOpenText,
   ChevronRight,
@@ -305,6 +311,18 @@ export default function App() {
       >
         <Outlet />
       </main>
+
+      {/* ON REVIENT OÙ L'ON ÉTAIT.
+          Mesuré : ouvrir une journée depuis le journal puis revenir remettait
+          le fil en haut — jusqu'à cent cinquante écrans de pouce effacés sur un
+          carnet d'un an, à chaque aller-retour. React Router restaure la
+          position d'un écran quitté PAR LE BOUTON RETOUR, et lui seul ; une
+          navigation neuve ouvre bien en haut.
+          La clé est le chemin, sans la query : le journal garde donc sa place
+          quel que soit le cadrage, et c'est `journal-view.ts` qui rend au fil sa
+          hauteur d'avant — sans quoi la position serait rendue à une page trop
+          courte, qui se recalerait aussitôt. */}
+      <ScrollRestoration getKey={(location) => location.pathname} />
     </div>
   );
 }

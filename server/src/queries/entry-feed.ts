@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, or } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, lte, or, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { children, entries, memberships } from "../db/schema.js";
 import { childRole } from "../access.js";
@@ -50,43 +50,99 @@ export type TimelinePage =
   | {
       kind: "page";
       entries: NonNullable<FeedEntry>[];
-      nextOffset: number | null;
+      /** L'ancre de la page suivante, ou null quand le carnet est au bout. */
+      nextCursor: string | null;
     };
+
+export type TimelineMonths =
+  | { kind: "denied" }
+  | { kind: "months"; months: { month: string; count: number }[] };
+
+/**
+ * Ce que l'utilisateur a le droit de LIRE dans le fil : le journal publié
+ * partout, plus les brouillons des enfants qu'il co-gère. Le prédicat est ici,
+ * en un seul endroit, parce que deux lectures s'en servent — la page de fil et
+ * l'index des mois — et qu'une visibilité qui diverge entre les deux ferait
+ * annoncer un mois de douze journées pour n'en montrer que trois.
+ */
+function visibleTo(scope: { childIds: string[]; draftableChildIds: string[] }) {
+  return and(
+    inArray(entries.childId, scope.childIds),
+    or(
+      eq(entries.status, "published"),
+      scope.draftableChildIds.length
+        ? inArray(entries.childId, scope.draftableChildIds)
+        : undefined,
+    ),
+  );
+}
+
+/** Le périmètre visible, ou la raison de n'en avoir aucun. */
+async function readingScope(userId: string, childId?: string) {
+  const mems = await db
+    .select({ childId: memberships.childId, role: memberships.role })
+    .from(memberships)
+    .where(eq(memberships.userId, userId));
+  return timelineScope(mems, childId);
+}
 
 /**
  * Page de timeline : les journées visibles par l'utilisateur, les plus récentes
  * d'abord. Un lecteur ne voit que le journal publié ; contributeur et admin
  * voient aussi les brouillons des enfants qu'ils co-gèrent.
+ *
+ * DEUX BORDS, ET AUCUN DÉCALAGE :
+ *
+ * · `from` — la date à partir de laquelle on regarde (« emmène-moi en mars ») ;
+ * · `cursor` — l'identifiant de la dernière journée déjà rendue : la suite
+ *   reprend STRICTEMENT après elle.
+ *
+ * La comparaison de curseur est faite PAR POSTGRES, sur le triplet de tri
+ * `(date, created_at, id)` relu depuis la table : l'ancre ne traverse le réseau
+ * que sous forme d'identifiant, donc aucun horodatage n'est sérialisé, et aucun
+ * fuseau ne peut décaler une page d'une heure. Si l'ancre a disparu entre deux
+ * pages (journée supprimée), la sous-requête ne rend rien : plutôt que de
+ * tronquer le carnet en silence, on repart du haut de la fenêtre — le front
+ * dédoublonne par id et s'arrête quand une page n'apporte plus rien.
  */
 export async function listTimeline(params: {
   userId: string;
   childId?: string;
   limit: number;
-  offset: number;
+  cursor?: string | null;
+  from?: string | null;
 }): Promise<TimelinePage> {
-  const mems = await db
-    .select({ childId: memberships.childId, role: memberships.role })
-    .from(memberships)
-    .where(eq(memberships.userId, params.userId));
-
-  const scope = timelineScope(mems, params.childId);
+  const scope = await readingScope(params.userId, params.childId);
   if (scope.kind === "denied") return { kind: "denied" };
   if (scope.kind === "empty")
-    return { kind: "page", entries: [], nextOffset: null };
+    return { kind: "page", entries: [], nextCursor: null };
+
+  const anchor = params.cursor
+    ? (
+        await db
+          .select({ id: entries.id })
+          .from(entries)
+          .where(eq(entries.id, params.cursor))
+          .limit(1)
+      )[0]?.id
+    : undefined;
 
   const rows = await db.query.entries.findMany({
     where: and(
-      inArray(entries.childId, scope.childIds),
-      or(
-        eq(entries.status, "published"),
-        scope.draftableChildIds.length
-          ? inArray(entries.childId, scope.draftableChildIds)
-          : undefined,
-      ),
+      visibleTo(scope),
+      params.from ? lte(entries.date, params.from) : undefined,
+      anchor
+        ? sql`(${entries.date}, ${entries.createdAt}, ${entries.id}) < (
+              SELECT ancre.date, ancre.created_at, ancre.id
+              FROM ${entries} AS ancre
+              WHERE ancre.id = ${anchor}
+            )`
+        : undefined,
     ),
-    orderBy: [desc(entries.date), desc(entries.createdAt)],
+    // `id` ferme le tri : deux journées créées dans la même milliseconde
+    // doivent s'ordonner de façon stable, sinon le curseur peut en sauter une.
+    orderBy: [desc(entries.date), desc(entries.createdAt), desc(entries.id)],
     limit: params.limit,
-    offset: params.offset,
     with: {
       child: true,
       items: { orderBy: (i, { asc }) => [asc(i.position)] },
@@ -97,8 +153,36 @@ export async function listTimeline(params: {
   return {
     kind: "page",
     entries: rows,
-    nextOffset: rows.length === params.limit ? params.offset + params.limit : null,
+    // Une page pleine PEUT avoir une suite ; une page incomplète est la fin.
+    nextCursor: rows.length === params.limit ? (rows[rows.length - 1]?.id ?? null) : null,
   };
+}
+
+/**
+ * L'INDEX DES MOIS — de quoi sauter dans le carnet sans le dérouler.
+ *
+ * Sans lui, atteindre la rentrée de l'an dernier se paie en pages : une douzaine
+ * d'appuis sur « voir les journées précédentes » et cent cinquante écrans de
+ * pouce. Le compte par mois tient en une agrégation, et il est calculé sur la
+ * MÊME visibilité que le fil.
+ */
+export async function listTimelineMonths(params: {
+  userId: string;
+  childId?: string;
+}): Promise<TimelineMonths> {
+  const scope = await readingScope(params.userId, params.childId);
+  if (scope.kind === "denied") return { kind: "denied" };
+  if (scope.kind === "empty") return { kind: "months", months: [] };
+
+  const month = sql<string>`to_char(${entries.date}, 'YYYY-MM')`;
+  const rows = await db
+    .select({ month, count: sql<number>`count(*)::int` })
+    .from(entries)
+    .where(visibleTo(scope))
+    .groupBy(month)
+    .orderBy(sql`1 desc`);
+
+  return { kind: "months", months: rows };
 }
 
 /**

@@ -5,20 +5,48 @@ import { api } from "@/lib/api";
 import { canWrite, roleMap } from "@/lib/access";
 import { useBilling } from "@/lib/billing";
 import { BillingCallout } from "@/features/billing/parts";
-import { type AttachmentRef, type Entry, type MemberRole } from "@/lib/types";
+import {
+  type AttachmentRef,
+  type Child,
+  type Entry,
+  type JournalMonth,
+  type MemberRole,
+} from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { EntryCard } from "@/features/journal/EntryCard";
+import { EntryRow } from "@/features/journal/EntryRow";
+import {
+  ChildFilter,
+  ModeToggle,
+  MonthJump,
+  MonthJumpVeil,
+} from "@/features/journal/browse";
 import { PageViewer } from "@/features/journal/pages";
 import {
   JournalEmpty,
   JournalError,
+  JournalFiltered,
   JournalSkeleton,
   Receipt,
   readFlash,
   type Flash,
 } from "@/features/journal/states";
-import { monthYear } from "@/lib/format";
+import { capitalize, lastDayOfMonth, monthYear } from "@/lib/format";
+import {
+  enfantMemorise,
+  filMemorise,
+  memoriserEnfant,
+  memoriserFil,
+  memoriserMode,
+  modeMemorise,
+  oublierFil,
+  type JournalMode,
+} from "@/lib/journal-view";
+import { useDefilementDescendant } from "@/lib/scroll";
+
+/** Journées par page. Vingt cartes = 12,6 écrans : c'est déjà beaucoup. */
+const PAGE = 20;
 
 /* ===========================================================================
    LE JOURNAL — l’écran qu’on ouvre chaque soir.
@@ -117,9 +145,29 @@ export default function Timeline() {
      s'affiche quand même. Le serveur refuse pour de bon s'il le faut — un
      écran ne ferme jamais un carnet à la place du serveur. */
   const { billing } = useBilling();
-  const [entries, setEntries] = useState<Entry[]>([]);
-  const [nextOffset, setNextOffset] = useState<number | null>(0);
-  const [phase, setPhase] = useState<"loading" | "ready" | "error">("loading");
+
+  /* ── LE CADRAGE : quel carnet, depuis quel mois ────────────────────────────
+     Les deux se mémorisent, mais pas de la même façon et c'est voulu : le
+     CARNET est une habitude de lecture (elle survit à la fermeture de l'app),
+     le MOIS est un geste de recherche (il meurt avec l'écran — personne ne veut
+     rouvrir son journal en mars 2026 le lendemain soir). */
+  const [childId, setChildId] = useState<string | null>(() => enfantMemorise());
+  const [from, setFrom] = useState<string | null>(null);
+  const [mode, setMode] = useState<JournalMode>(() => modeMemorise());
+  const [children, setChildren] = useState<Child[]>([]);
+  const [months, setMonths] = useState<JournalMonth[]>([]);
+  const [moisOuvert, setMoisOuvert] = useState<string | null>(null);
+
+  /* Le fil déjà chargé, repris à l'identique quand on revient d'une journée.
+     Lu UNE fois, au premier rendu : la page a sa hauteur d'avant dès la
+     première frame, ce sans quoi `<ScrollRestoration>` (App.tsx) rendrait la
+     position à une page trop courte, qui se recalerait aussitôt en haut. */
+  const [repris] = useState(() => filMemorise(enfantMemorise()));
+  const [entries, setEntries] = useState<Entry[]>(repris?.entries ?? []);
+  const [cursor, setCursor] = useState<string | null>(repris?.nextCursor ?? null);
+  const [phase, setPhase] = useState<"loading" | "ready" | "error">(
+    repris ? "ready" : "loading",
+  );
   const [error, setError] = useState<string>("");
   const [more, setMore] = useState(false);
   const [moreError, setMoreError] = useState("");
@@ -128,99 +176,167 @@ export default function Timeline() {
      `null` = « on ne sait pas encore » (ou `/api/children` a échoué), et ce
      troisième état est le point important : il ne se lit pas comme « lecteur »
      partout.
-       · pour la PORTE de correction d’une carte → on ne dessine rien. Un
+       · pour la PORTE de correction d'une carte → on ne dessine rien. Un
          contributeur retrouve sa journée 200 ms plus tard ; un lecteur, lui, ne
          doit jamais voir la porte, même une frame.
-       · pour l’APPEL à photographier → on le laisse. L’écran de capture porte
-         désormais le même garde-fou et sait, lui, l’expliquer ; le supprimer
+       · pour l'APPEL à photographier → on le laisse. L'écran de capture porte
+         désormais le même garde-fou et sait, lui, l'expliquer ; le supprimer
          par prudence retirerait le geste central du produit à un parent dont la
          seule requête ayant échoué est la liste des enfants. */
   const [roleByChild, setRoleByChild] = useState<Map<string, MemberRole> | null>(
     null,
   );
   const openerRef = useRef<HTMLElement | null>(null);
-  /* Le reçu laissé par l’écran d’où l’on vient (publication, adhésion). Lu UNE
-     fois, à l’initialisation : ensuite l’état d’historique est effacé, sinon un
+  /* Le reçu laissé par l'écran d'où l'on vient (publication, adhésion). Lu UNE
+     fois, à l'initialisation : ensuite l'état d'historique est effacé, sinon un
      rechargement rejouerait « Journée publiée » indéfiniment. */
-  const [flash, setFlash] = useState<Flash | null>(() =>
-    readFlash(location.state),
-  );
+  const [flash, setFlash] = useState<Flash | null>(() => {
+    const recu = readFlash(location.state);
+    // On revient d'une publication : le fil gardé en mémoire précède ce qu'on
+    // vient d'écrire, donc il ment. On le jette avant même le premier rendu.
+    if (recu) oublierFil();
+    return recu;
+  });
   useEffect(() => {
     if (!location.state) return;
-    // `usr` est la case où react-router range l’état utilisateur ; on la vide
-    // sans toucher à sa clé d’index, pour ne pas casser l’historique.
+    // `usr` est la case où react-router range l'état utilisateur ; on la vide
+    // sans toucher à sa clé d'index, pour ne pas casser l'historique.
     const h = window.history.state as Record<string, unknown> | null;
     window.history.replaceState({ ...(h ?? {}), usr: null }, "");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const load = useCallback(async (offset: number) => {
-    const res = await api.timeline({ offset, limit: 20 });
-    setEntries((prev) => {
-      if (offset === 0) return res.entries;
-      // Pagination par offset : si une entrée a été publiée entre deux
-      // chargements, la fenêtre glisse et peut renvoyer une entrée déjà
-      // affichée. On dédoublonne par id pour éviter cartes en double et clés
-      // React dupliquées.
-      const seen = new Set(prev.map((e) => e.id));
-      return [...prev, ...res.entries.filter((e) => !seen.has(e.id))];
-    });
-    setNextOffset(res.nextOffset);
+  /* Les enfants (et le rôle sur chacun) : une poignée de lignes, demandée une
+     seule fois. Le fil ne l'attend pas — cf. `roleByChild`. */
+  useEffect(() => {
+    void api.listChildren().then(
+      (list) => {
+        setChildren(list);
+        setRoleByChild(roleMap(list));
+      },
+      () => setRoleByChild(null),
+    );
   }, []);
 
-  const reload = useCallback(async () => {
-    setPhase((p) => (p === "error" ? "loading" : p));
-    try {
-      /* Les deux requêtes partent ENSEMBLE (pas l’une après l’autre : ce serait
-         deux allers-retours avant le premier pixel), et le fil n’attend pas les
-         rôles pour s’afficher — mais les rôles, eux, arrivent presque toujours
-         avant, la réponse étant une poignée de lignes. Un échec sur
-         `/api/children` ne casse PAS le journal : on garde `null`, cf. ci-dessus. */
-      void api.listChildren().then(
-        (list) => setRoleByChild(roleMap(list)),
-        () => setRoleByChild(null),
-      );
-      await load(0);
-      setPhase("ready");
-    } catch (e) {
-      // L’erreur est CONSERVÉE : elle est la cause qu’on affichera.
-      setError(e instanceof Error ? e.message : "Erreur inconnue");
-      setPhase("error");
-    }
-  }, [load]);
-
+  /* La table des matières. Elle suit le carnet choisi : les mois d'Anouk ne
+     sont pas ceux de Lou. Un échec est silencieux — sans index, le journal se
+     déroule comme avant, il ne tombe pas. */
   useEffect(() => {
-    void reload();
-  }, [reload]);
+    let ignore = false;
+    void api.timelineMonths(childId).then(
+      (res) => !ignore && setMonths(res.months),
+      () => !ignore && setMonths([]),
+    );
+    return () => {
+      ignore = true;
+    };
+  }, [childId]);
 
-  /* ── LE FIL SUIT LA LECTURE EN COURS ──────────────────────────────────────
-     L’écran d’attente de la relecture propose « Revenir au journal » — et c’est
-     la bonne offre : une lecture peut prendre trente secondes, personne ne doit
-     rester à regarder une barre. Sauf que le journal, lui, ne sondait rien : la
-     carte restait « Lecture en cours » pour toujours. Mesuré : la seule sortie
-     était de recharger la page (+1 tap, et un geste qui n’existe pas dans une
-     PWA installée en plein écran).
-     On sonde donc tant qu’une journée est en lecture, et seulement à ce
-     moment-là : pas de trafic quand il n’y a rien à attendre.
-       · 4 s : plus lent que les 2,5 s de la relecture (qui, elle, regarde UNE
-         journée), assez rapide pour qu’on ne se demande pas si c’est bloqué ;
-       · onglet caché → on ne demande rien, mais on repart au retour ;
-       · échec réseau → SILENCE : le fil affiché reste vrai, et faire surgir une
-         erreur pendant un sondage de fond punirait l’utilisateur d’avoir
-         attendu. La panne se dira au prochain geste explicite.
-     La fusion préserve la pagination : `load(0)` remplace la liste entière et
-     ferait disparaître les « journées précédentes » déjà chargées. */
-  const refreshWhileReading = useCallback(async () => {
-    const res = await api.timeline({ offset: 0, limit: 20 });
+  /** La première page d'un cadrage donné. */
+  const ouvrir = useCallback(
+    async (child: string | null, depuis: string | null) => {
+      const res = await api.timeline({
+        childId: child,
+        from: depuis,
+        limit: PAGE,
+      });
+      setEntries(res.entries);
+      setCursor(res.nextCursor);
+      setPhase("ready");
+    },
+    [],
+  );
+
+  /**
+   * Le fil, RAFRAÎCHI SANS SE PERDRE : la première page revient, les journées
+   * connues sont mises à jour sur place, les nouvelles se posent en tête, et
+   * tout ce qu'on avait déjà déroulé reste. C'est ce qui permet à la fois de
+   * suivre une lecture en cours et de reprendre où l'on était sans que la page
+   * ne rétrécisse sous le doigt.
+   */
+  const rafraichir = useCallback(async () => {
+    const res = await api.timeline({ childId, from, limit: PAGE });
     setEntries((prev) => {
+      if (!prev.length) {
+        setCursor(res.nextCursor);
+        return res.entries;
+      }
       const fresh = new Map(res.entries.map((e) => [e.id, e]));
       const merged = prev.map((e) => fresh.get(e.id) ?? e);
       const known = new Set(prev.map((e) => e.id));
       const added = res.entries.filter((e) => !known.has(e.id));
       return added.length ? [...added, ...merged] : merged;
     });
-  }, []);
+  }, [childId, from]);
 
+  /* ── CE QUI DÉCLENCHE UNE NOUVELLE PREMIÈRE PAGE ──────────────────────────
+     Changer de carnet ou sauter à un mois. Si l'on a déjà ce cadrage en
+     mémoire, on le REMONTRE tout de suite et on le rafraîchit derrière : au
+     retour d'une journée, l'écran ne clignote pas et ne perd pas sa place. */
+  useEffect(() => {
+    const cache = filMemorise(childId);
+
+    /* Ce cadrage est déjà en mémoire : on le REMONTRE tel quel — toutes les
+       pages déjà déroulées comprises — puis on le rafraîchit derrière. Cet
+       effet est volontairement IDEMPOTENT : rejoué (React en mode strict le
+       fait deux fois au montage), il retombe sur la même branche. Une version
+       antérieure gardait un drapeau « premier montage » et repassait donc par
+       le chargement neuf au second appel : le fil rendait ses vingt premières
+       journées et perdait les suivantes, exactement le bug qu'on corrige. */
+    if (cache && cache.from === from && cache.entries.length > 0) {
+      setEntries(cache.entries);
+      setCursor(cache.nextCursor);
+      setPhase("ready");
+      // Silencieux : une panne de réseau ne doit pas effacer un fil valide.
+      void rafraichir().catch(() => {});
+      return;
+    }
+
+    let ignore = false;
+    setEntries([]);
+    setCursor(null);
+    setPhase("loading");
+    setMoreError("");
+    ouvrir(childId, from).catch((e) => {
+      if (ignore) return;
+      setError(e instanceof Error ? e.message : "Erreur inconnue");
+      setPhase("error");
+    });
+    return () => {
+      ignore = true;
+    };
+  }, [childId, from, ouvrir, rafraichir]);
+
+  /* Ce qui est à l'écran est ce qu'on retrouvera en revenant. Écrit à chaque
+     changement du fil, jamais lu ailleurs qu'au montage. */
+  useEffect(() => {
+    if (phase !== "ready") return;
+    memoriserFil(childId, { entries, nextCursor: cursor, from });
+  }, [phase, childId, entries, cursor, from]);
+
+  const reload = useCallback(() => {
+    setError("");
+    setPhase("loading");
+    setEntries([]);
+    setCursor(null);
+    oublierFil();
+    ouvrir(childId, from).catch((e) => {
+      setError(e instanceof Error ? e.message : "Erreur inconnue");
+      setPhase("error");
+    });
+  }, [childId, from, ouvrir]);
+
+  /* ── LE FIL SUIT LA LECTURE EN COURS ──────────────────────────────────────
+     L'écran d'attente de la relecture propose « Revenir au journal » — et c'est
+     la bonne offre : une lecture peut prendre trente secondes, personne ne doit
+     rester à regarder une barre. Sauf que le journal, lui, ne sondait rien : la
+     carte restait « Lecture en cours » pour toujours.
+       · 4 s : plus lent que les 2,5 s de la relecture (qui, elle, regarde UNE
+         journée), assez rapide pour qu'on ne se demande pas si c'est bloqué ;
+       · onglet caché → on ne demande rien, mais on repart au retour ;
+       · échec réseau → SILENCE : le fil affiché reste vrai, et faire surgir une
+         erreur pendant un sondage de fond punirait l'utilisateur d'avoir
+         attendu. La panne se dira au prochain geste explicite. */
   const reading = entries.some((e) => e.status === "processing");
 
   useEffect(() => {
@@ -231,7 +347,7 @@ export default function Timeline() {
       if (!alive) return;
       if (!document.hidden) {
         try {
-          await refreshWhileReading();
+          await rafraichir();
         } catch {
           /* silencieux, cf. la note ci-dessus */
         }
@@ -248,26 +364,83 @@ export default function Timeline() {
       clearTimeout(timer);
       document.removeEventListener("visibilitychange", wake);
     };
-  }, [phase, reading, refreshWhileReading]);
+  }, [phase, reading, rafraichir]);
 
-  async function loadMore(offset: number) {
+  /**
+   * La suite du fil. Le curseur est l'ancre de la dernière journée rendue :
+   * publier pendant qu'on lit ne décale plus rien.
+   *
+   * Un garde-fou : si une page n'apporte AUCUNE journée nouvelle (l'ancre a
+   * disparu, le serveur a resservi le début), on arrête là plutôt que de
+   * tourner en rond sur la même page.
+   */
+  const loadMore = useCallback(async () => {
+    if (!cursor) return;
     setMore(true);
     setMoreError("");
     try {
-      await load(offset);
+      const res = await api.timeline({ childId, from, cursor, limit: PAGE });
+      let ajoutees = 0;
+      setEntries((prev) => {
+        const seen = new Set(prev.map((e) => e.id));
+        const nouvelles = res.entries.filter((e) => !seen.has(e.id));
+        ajoutees = nouvelles.length;
+        return nouvelles.length ? [...prev, ...nouvelles] : prev;
+      });
+      setCursor(ajoutees === 0 ? null : res.nextCursor);
     } catch (e) {
       setMoreError(
         e instanceof Error
           ? e.message
-          : "Les journées précédentes n’ont pas pu être chargées.",
+          : "Les journées précédentes n'ont pas pu être chargées.",
       );
     } finally {
       setMore(false);
     }
+  }, [childId, from, cursor]);
+
+  /* LA SUITE ARRIVE AVANT LE BAS. Le bouton reste — il est la sortie au
+     clavier, et le filet quand l'observation échoue — mais on ne devrait
+     presque jamais avoir à l'atteindre : 600 px avant la fin du fil, la page
+     suivante part toute seule. */
+  const sentinelle = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = sentinelle.current;
+    if (!el || !cursor || more || phase !== "ready") return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) void loadMore();
+      },
+      { rootMargin: "600px 0px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [cursor, more, phase, loadMore]);
+
+  /** Changer de carnet : on repart du présent, en haut. */
+  function choisirEnfant(id: string | null) {
+    if (id === childId) return;
+    memoriserEnfant(id);
+    setChildId(id);
+    setFrom(null);
+    setMoisOuvert(null);
+    window.scrollTo({ top: 0 });
   }
 
-  function openPages(entry: Entry, index: number, from: HTMLElement) {
-    openerRef.current = from;
+  function choisirMode(m: JournalMode) {
+    memoriserMode(m);
+    setMode(m);
+  }
+
+  /** Sauter à un mois (ou revenir au présent avec `null`). */
+  function sauterAuMois(month: string | null) {
+    setMoisOuvert(null);
+    setFrom(month ? lastDayOfMonth(month) : null);
+    window.scrollTo({ top: 0 });
+  }
+
+  function openPages(entry: Entry, index: number, depuis: HTMLElement) {
+    openerRef.current = depuis;
     setViewer({ pages: entry.attachments, index, date: entry.date });
   }
 
@@ -278,7 +451,7 @@ export default function Timeline() {
   }
 
   /** Les journées regroupées par mois : la colonne vertébrale des dates. */
-  const months = useMemo(() => {
+  const groupes = useMemo(() => {
     const groups: { key: string; label: string; entries: Entry[] }[] = [];
     for (const e of entries) {
       const key = e.date.slice(0, 7);
@@ -295,6 +468,34 @@ export default function Timeline() {
   }, [entries]);
 
   const hasJournal = phase === "ready" && entries.length > 0;
+
+  /** Le mois d'où l'on est reparti, s'il y a eu un saut. */
+  const moisActif = from ? from.slice(0, 7) : null;
+
+  /**
+   * Le cadrage en toutes lettres, ou null quand on regarde tout le carnet.
+   * Il sert à deux choses et à rien d'autre : nommer le vide, et dire ce que
+   * « revoir tout le carnet » va défaire.
+   */
+  const cadre = (() => {
+    const enfant = childId
+      ? (children.find((c) => c.id === childId)?.name ?? null)
+      : null;
+    const mois = moisActif ? capitalize(monthYear(`${moisActif}-01`)) : null;
+    if (enfant && mois) return `${enfant}, ${mois.toLowerCase()}`;
+    if (enfant) return `le carnet de ${enfant}`;
+    if (mois) return mois.toLowerCase();
+    return null;
+  })();
+
+  function toutRevoir() {
+    choisirEnfant(null);
+    setFrom(null);
+  }
+
+  /* Le bouton flottant s'efface au défilement descendant : voir `lib/scroll.ts`
+     et le commentaire de son rendu, plus bas. */
+  const descend = useDefilementDescendant();
 
   /** Tient-on au moins un carnet ? Rôle inconnu → oui, cf. `roleByChild`. */
   const canCapture =
@@ -352,6 +553,26 @@ export default function Timeline() {
           lire — `canCapture` est ce qui distingue les deux. */}
       {billing && sellable && <BillingCallout billing={billing} />}
 
+      {/* LES COMMANDES DU FIL — une seule ligne, et seulement ce qui sert.
+          Le choix du carnet n'apparaît qu'à partir de deux enfants (un foyer
+          d'un enfant n'a rien à filtrer) ; « parcourir » n'apparaît que s'il y
+          a quelque chose à parcourir. Le saut de mois, lui, est porté par le
+          bandeau de mois plus bas : c'est là qu'on se demande où l'on est. */}
+      {phase === "ready" && (children.length > 1 || hasJournal) && (
+        <div className="flex items-center justify-between gap-3">
+          <ChildFilter
+            children={children}
+            value={childId}
+            onChange={choisirEnfant}
+          />
+          {hasJournal && (
+            <div className="shrink-0">
+              <ModeToggle value={mode} onChange={choisirMode} />
+            </div>
+          )}
+        </div>
+      )}
+
       {phase === "loading" && <JournalSkeleton />}
 
       {phase === "error" && (
@@ -366,39 +587,75 @@ export default function Timeline() {
           seulement quand elle est encore possible — sinon il propose ce qui la
           rend possible. La carte d'appel au-dessus dit déjà ce qui s'arrête et
           ce qui continue. */}
-      {phase === "ready" && entries.length === 0 && (
+      {phase === "ready" && entries.length === 0 && !cadre && (
         <JournalEmpty canCapture={canCapture} carnetOuvert={carnetOuvert} />
+      )}
+
+      {/* Un cadrage sans réponse n'est pas un carnet vide : on ne revend pas la
+          première photo à quelqu'un qui vient de filtrer sur mars. */}
+      {phase === "ready" && entries.length === 0 && cadre && (
+        <JournalFiltered label={cadre} onReset={toutRevoir} />
       )}
 
       {/* Les mois ne s’affichent QUE dans l’état prêt : une nouvelle tentative
           qui échoue ne doit pas laisser un journal périmé sous le message
           d’erreur. */}
       {phase === "ready" &&
-        months.map((m) => (
-          <section key={m.key} aria-labelledby={`mois-${m.key}`}>
+        groupes.map((m) => (
+          <section key={m.key} aria-label={m.label}>
             {/* Le bandeau de mois reste collé sous l’en-tête : où qu’on soit dans
-              le défilement, on sait quel mois on lit. */}
-            <div className="sticky top-header z-10 -mx-4 bg-surface-bar px-4 backdrop-blur-md">
-              <div className="flex h-11 items-end justify-between gap-3 border-b pb-2">
-                <h2
+                le défilement, on sait quel mois on lit — ET on peut en changer.
+                Il était jusqu’ici un panneau indicateur : atteindre la rentrée
+                de l’an dernier se payait en une douzaine d’appuis sur « voir les
+                journées précédentes ». C’est devenu une porte.
+
+                Le rang du bandeau MONTE quand son panneau est ouvert : posé en
+                `z-10`, il crée son propre plan, et la liste des mois passait
+                alors sous le bouton flottant (`z-20`). */}
+            <div
+              className={cn(
+                "sticky top-header -mx-4 bg-surface-bar px-4 backdrop-blur-md",
+                moisOuvert === m.key ? "z-40" : "z-10",
+              )}
+            >
+              <div className="relative flex h-11 items-stretch justify-between gap-3 border-b">
+                <MonthJump
                   id={`mois-${m.key}`}
-                  className="surtitre text-muted-foreground"
+                  months={months}
+                  current={m.key}
+                  active={moisActif}
+                  open={moisOuvert === m.key}
+                  onOpen={() => setMoisOuvert(m.key)}
+                  onClose={() => setMoisOuvert(null)}
+                  onJump={sauterAuMois}
+                />
+                <p
+                  className="surtitre self-end pb-2 text-muted-foreground"
+                  data-tabular
                 >
-                  {m.label}
-                </h2>
-                <p className="surtitre text-muted-foreground" data-tabular>
                   {m.entries.length} journée{m.entries.length > 1 ? "s" : ""}
                 </p>
               </div>
             </div>
-            <ol className="mt-4 flex flex-col gap-4">
+            {/* Deux densités, un seul fil : la carte pour lire hier, la ligne
+                pour retrouver un jour de juillet. */}
+            <ol
+              className={cn(
+                "mt-4 flex flex-col",
+                mode === "lire" ? "gap-4" : "gap-1.5",
+              )}
+            >
               {m.entries.map((e) => (
                 <li key={e.id}>
-                  <EntryCard
-                    entry={e}
-                    canEdit={canWrite(roleByChild?.get(e.childId))}
-                    onOpenPages={openPages}
-                  />
+                  {mode === "lire" ? (
+                    <EntryCard
+                      entry={e}
+                      canEdit={canWrite(roleByChild?.get(e.childId))}
+                      onOpenPages={openPages}
+                    />
+                  ) : (
+                    <EntryRow entry={e} />
+                  )}
                 </li>
               ))}
             </ol>
@@ -411,14 +668,16 @@ export default function Timeline() {
         </p>
       )}
 
-      {hasJournal && nextOffset !== null && (
-        <Button
-          variant="outline"
-          loading={more}
-          onClick={() => loadMore(nextOffset)}
-        >
-          Voir les journées précédentes
-        </Button>
+      {hasJournal && cursor !== null && (
+        <>
+          {/* La sentinelle : invisible, elle demande la suite 600 px avant que
+              l’on n’atteigne le bas. Le bouton reste pour le clavier et pour le
+              jour où l’observation ne se déclenche pas. */}
+          <div ref={sentinelle} aria-hidden="true" className="h-px" />
+          <Button variant="outline" loading={more} onClick={() => void loadMore()}>
+            Voir les journées précédentes
+          </Button>
+        </>
       )}
 
       {/* Le carnet ne s’arrête pas net : il s’efface. */}
@@ -445,7 +704,20 @@ export default function Timeline() {
           un bouton groseille qui mène à un refus est une promesse rompue, et
           l'appel ci-dessus porte déjà la seule action possible. */}
       {hasJournal && canCapture && carnetOuvert && (
-        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 flex justify-center bg-gradient-to-t from-background via-surface-bar to-transparent px-4 pt-8 pb-safe-6">
+        /* IL S’EFFACE QUAND ON DESCEND. Mesuré : ce bouton occupe en
+           permanence les 104 derniers pixels de l’écran — 12 % d’un téléphone,
+           posés sur la journée suivante. Il glisse donc hors champ dès qu’on
+           déroule le carnet (on lit, on ne photographie pas) et revient au
+           premier pouce vers le haut, qui est justement le geste de qui cherche
+           une action. Il revient aussi au FOCUS clavier (`focus-within`) :
+           sorti de l’écran, il reste atteignable à la tabulation. */
+        <div
+          className={cn(
+            "pointer-events-none fixed inset-x-0 bottom-0 z-20 flex justify-center bg-gradient-to-t from-background via-surface-bar to-transparent px-4 pt-8 pb-safe-6",
+            "transition-transform dur-slow ease-page focus-within:translate-y-0",
+            descend && "translate-y-[130%]",
+          )}
+        >
           <Button
             asChild
             size="lg"
@@ -458,6 +730,8 @@ export default function Timeline() {
           </Button>
         </div>
       )}
+
+      {moisOuvert && <MonthJumpVeil onClose={() => setMoisOuvert(null)} />}
 
       {viewer && (
         <PageViewer

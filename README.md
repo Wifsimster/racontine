@@ -49,6 +49,32 @@ Premier lancement : ouvrir `http://localhost:5173`, créer le compte parent
 > et ce premier compte est justement celui du propriétaire. Pour ouvrir
 > l'inscription au co-parent, l'écran Réglages la rouvre à chaud.
 
+## Parcourir le journal
+
+Un carnet d'un an, c'est ~250 journées. Mesuré sur mobile (390 × 844) : une
+carte de journée fait **488 px**, soit 1,7 par écran — une page de 20 journées
+représente **12,6 écrans** de défilement. Quatre commandes rendent le fil
+navigable sans le raccourcir :
+
+| Commande | Où | Ce que ça change |
+|---|---|---|
+| **Le carnet** | pastilles sous le titre (à partir de 2 enfants) | Le fil ne mêle plus deux enfants ; le choix est mémorisé |
+| **Parcourir** | bascule à droite | Une journée = une ligne de **74 px** : **11,4 par écran** au lieu de 1,7 |
+| **Le mois** | le bandeau de mois, devenu bouton | La table des matières du carnet (`GET /api/entries/months`) : un tap pour sauter à mars |
+| **La suite** | automatique | La page suivante arrive 600 px avant le bas ; le bouton reste comme filet |
+
+Deux comportements complètent l'ensemble : on **revient où l'on était** en
+sortant d'une journée (fil déjà chargé conservé en mémoire + `ScrollRestoration`),
+et le bouton **« Photographier le carnet » s'efface au défilement descendant**
+— il occupait en permanence 12 % de l'écran, posés sur la journée suivante.
+
+Côté serveur, le fil se pagine **par curseur** et non plus par décalage :
+`GET /api/entries?cursor=<id de la dernière journée reçue>`, avec `from=AAAA-MM-JJ`
+pour le saut de mois et `childId` pour le filtre. Publier une journée pendant
+qu'un proche lit ne décale donc plus sa page — c'est Postgres qui compare le
+triplet de tri `(date, created_at, id)`, aucun horodatage ne transitant par le
+réseau (voir `server/src/domain/feed-window.ts`).
+
 ## Administration (administrateur d'un carnet)
 
 L'écran **Administration** (visible de qui administre au moins un enfant)
