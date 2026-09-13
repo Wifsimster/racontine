@@ -2,6 +2,13 @@
 
 Toutes les versions notables de Racontine. Format issu des messages de commit conventionnels (`feat`, `fix`, …).
 
+# [1.20.0](https://github.com/Wifsimster/racontine/compare/v1.19.0...v1.20.0) (2026-09-13)
+
+
+### Features
+
+* **abonnement:** une seule offre à 4,99 €/mois, et un carnet qu'on ne referme jamais ([#53](https://github.com/Wifsimster/racontine/issues/53)) ([cf0d392](https://github.com/Wifsimster/racontine/commit/cf0d392f5c33b7f00cc47dfba69b0e2bc91087f7))
+
 # [1.19.0](https://github.com/Wifsimster/racontine/compare/v1.18.0...v1.19.0) (2026-09-13)
 
 
