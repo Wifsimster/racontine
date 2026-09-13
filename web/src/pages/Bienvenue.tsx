@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { ArrowRight, BookOpenText, Hourglass, ShieldCheck } from "lucide-react";
 import { api } from "@/lib/api";
+import { mesure } from "@/lib/mesure";
 import { formatAmount, formatInterval, formatPrice } from "@/lib/billing";
 import type { BillingOffer } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -68,6 +69,18 @@ export default function Bienvenue() {
       alive = false;
     };
   }, []);
+
+  /* L'OFFRE A ÉTÉ VUE : le dénominateur de l'entonnoir. Posé ici et pas au
+     montage, parce qu'un écran qui redirige aussitôt (instance auto-hébergée,
+     offre illisible) n'a rien montré du tout — le compter fausserait les trois
+     autres chiffres. Le repère `vue` empêche le double comptage du double
+     rendu de développement. */
+  const vue = useRef(false);
+  useEffect(() => {
+    if (vue.current || !offer?.enabled) return;
+    vue.current = true;
+    mesure("accueil_offre_vue");
+  }, [offer]);
 
   /* Pas de caisse ici (auto-hébergé), ou l'offre n'a pas pu être lue : la porte
      reste la connexion. `replace` — cet écran n'a pas à encombrer l'historique
@@ -203,7 +216,10 @@ function Offre({
           {signupEnabled ? (
             <>
               <Button asChild size="lg" className="action-width">
-                <Link to="/login?porte=inscription">
+                <Link
+                  to="/login?porte=inscription"
+                  onClick={() => mesure("accueil_commencer")}
+                >
                   <BookOpenText aria-hidden="true" />
                   Commencer — c'est gratuit {trialDays} jours
                 </Link>
@@ -221,7 +237,7 @@ function Offre({
                porte close. On dit ce qui est, et on montre la seule entrée. */
             <>
               <Button asChild size="lg" className="action-width">
-                <Link to="/login">
+                <Link to="/login" onClick={() => mesure("accueil_commencer")}>
                   <BookOpenText aria-hidden="true" />
                   Ouvrir mon carnet
                 </Link>
@@ -245,7 +261,7 @@ function Offre({
                fonce le soulignement, il n'allume pas un fond. */
             className="justify-start px-0 font-normal underline decoration-input decoration-1 underline-offset-4 hover:bg-transparent hover:decoration-foreground"
           >
-            <Link to="/login">
+            <Link to="/login" onClick={() => mesure("accueil_connexion")}>
               J'ai déjà un carnet — me connecter
               <ArrowRight aria-hidden="true" />
             </Link>
