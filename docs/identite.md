@@ -117,8 +117,9 @@ Une mamie lectrice ne verra peut-être jamais l'app : elle reçoit un e-mail le
 soir et clique. Il porte le carnet — papier, feuille bordée de son trait de
 marge, encre bleu-nuit, bouton groseille, signature en pied — et surtout la
 **bande de feutres de la journée** (« 2 repas · sieste 2 h 05 · joyeuse »), avec
-les mêmes mots et les mêmes teintes que le journal. Un proche qui lit ça dans sa
-boîte a déjà reçu quelque chose, même s'il ne clique pas ce soir-là.
+les mêmes mots et les mêmes teintes que le journal — l'humeur y reste neutre,
+comme à l'écran, parce qu'elle n'est pas un type de moment. Un proche qui lit ça
+dans sa boîte a déjà reçu quelque chose, même s'il ne clique pas ce soir-là.
 
 Trois contraintes propres à l'e-mail expliquent l'écriture du gabarit :
 

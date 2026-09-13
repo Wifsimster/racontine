@@ -197,11 +197,19 @@ const INK = {
   marginOnTile: "#D990A0",
 };
 
-/** Les cinq feutres, en paires (encre, fond) — les mêmes qu'à l'écran. */
+/**
+ * Les teintes de la bande, en paires (encre, fond) — les mêmes qu'à l'écran.
+ *
+ * DEUX FEUTRES, ET UN NEUTRE, et ce n'est pas un oubli : l'humeur n'est pas un
+ * type de moment. Le journal le dit explicitement (« l'humeur reste à
+ * l'encre ; cette absence de feutre est une information ») et la règle du
+ * système l'impose — le prune veut dire « anecdote », il ne peut pas vouloir
+ * dire « joyeuse » deux centimètres plus bas.
+ */
 const FEUTRE = {
-  meal: { ink: "#7D4A1E", bg: "#FDE9D4" },
-  nap: { ink: "#3F4E97", bg: "#E7ECFF" },
-  mood: { ink: "#7C3B8B", bg: "#F8E8FB" },
+  meal: { ink: "#7D4A1E", bg: "#FDE9D4" }, // --meal / --meal-bg
+  nap: { ink: "#3F4E97", bg: "#E7ECFF" }, // --nap / --nap-bg
+  mood: { ink: "#242846", bg: "#EBECF2" }, // --foreground / --muted
 } as const;
 
 /** Espace insécable : « 2 h 05 » — typographie française. */

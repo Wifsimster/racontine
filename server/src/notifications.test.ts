@@ -42,16 +42,27 @@ test("l'e-mail porte les couleurs du carnet, et aucune autre", () => {
   assert.match(html, /#242846/);
   assert.match(html, /#B8284D/);
 
-  // Les feutres de la bande : repas (or brûlé), sieste (indigo), humeur (prune).
+  // Les feutres de la bande : repas (or brûlé), sieste (indigo).
   assert.match(html, /#7D4A1E/);
   assert.match(html, /#3F4E97/);
-  assert.match(html, /#7C3B8B/);
 
   // L'indigo par défaut de la bibliothèque d'origine, et les gris qui allaient
   // avec : plus jamais.
   assert.doesNotMatch(html, /#4f46e5/i);
   assert.doesNotMatch(html, /#1f2937/i);
   assert.doesNotMatch(html, /#6b7280/i);
+});
+
+test("l'humeur n'emprunte le feutre d'aucun type de moment", () => {
+  const { html } = renderEntryEmail(JOURNEE);
+  // L'humeur n'est pas un moment : à l'écran elle reste à l'encre, et cette
+  // absence de feutre EST une information. Le prune veut dire « anecdote » ;
+  // s'il colorait « joyeuse » ici, une teinte dirait deux choses.
+  assert.doesNotMatch(html, /#7C3B8B|#F8E8FB/); // anecdote
+  assert.doesNotMatch(html, /#0E653F|#D9F5E3/); // activité
+  assert.doesNotMatch(html, /#A52B1E|#FFE7E0/); // santé
+  // Elle porte le neutre du produit : --muted, sur l'encre.
+  assert.match(html, /#EBECF2/);
 });
 
 test("le titre tombe sur le repli sérif déclaré du produit, pas sur une webfont", () => {
