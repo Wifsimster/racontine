@@ -1,12 +1,16 @@
 import { and, eq, ne } from "drizzle-orm";
 import { db } from "../db/index.js";
 import {
+  entries,
+  entryItems,
   memberships,
   notifications,
   subscriptions,
   user,
 } from "../db/schema.js";
+import { dayChips, type DayChip } from "../domain/day-glance.js";
 import type {
+  DayGlance,
   NotificationLog,
   PublicationEvent,
   Recipient,
@@ -80,5 +84,23 @@ export class DrizzleNotificationLog implements NotificationLog {
       .update(notifications)
       .set({ emailedAt: at })
       .where(eq(notifications.id, notificationId));
+  }
+}
+
+/** La bande de feutres d'une journée, lue en base puis calculée par le domaine. */
+export class DrizzleDayGlance implements DayGlance {
+  async chipsFor(entryId: string): Promise<DayChip[]> {
+    const [items, [entry]] = await Promise.all([
+      db
+        .select({ type: entryItems.type, data: entryItems.data })
+        .from(entryItems)
+        .where(eq(entryItems.entryId, entryId)),
+      db
+        .select({ mood: entries.mood })
+        .from(entries)
+        .where(eq(entries.id, entryId))
+        .limit(1),
+    ]);
+    return dayChips({ items, mood: entry?.mood ?? null });
   }
 }

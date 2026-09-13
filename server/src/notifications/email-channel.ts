@@ -1,20 +1,12 @@
 import { mailEnabled, sendMail } from "../mailer.js";
 import { getSettings } from "../settings.js";
+import { renderEntryEmail } from "./email-template.js";
 import type {
+  DayGlance,
   NotificationChannel,
   PublicationEvent,
   Recipient,
 } from "./types.js";
-
-/** Échappe le texte destiné à être interpolé dans du HTML d'e-mail. */
-export function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
 
 /**
  * L'e-mail de publication.
@@ -26,6 +18,8 @@ export function escapeHtml(s: string): string {
  */
 export class EmailChannel implements NotificationChannel {
   readonly name = "email";
+
+  constructor(private readonly glance: DayGlance) {}
 
   async isEnabled(): Promise<boolean> {
     if (!mailEnabled()) return false;
@@ -39,18 +33,17 @@ export class EmailChannel implements NotificationChannel {
   ): Promise<Date | null> {
     if (!recipient.emailEnabled || !recipient.email) return null;
 
-    const greeting = recipient.name ? `Bonjour ${recipient.name},` : "Bonjour,";
-    const text = `${greeting}\n\n${event.body}\n\nVoir la journée : ${event.link}\n\n— Racontine`;
-    // Le nom de l'enfant (donc le corps) et le nom du destinataire sont saisis
-    // par des utilisateurs : on les échappe avant interpolation HTML pour éviter
-    // toute injection de balises (liens de phishing, images traçantes…). Le lien
-    // est construit côté serveur.
-    const html = `<div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#1f2937;line-height:1.5">
-  <p>${escapeHtml(greeting)}</p>
-  <p>${escapeHtml(event.body)}</p>
-  <p><a href="${encodeURI(event.link)}" style="display:inline-block;padding:10px 18px;background:#4f46e5;color:#fff;border-radius:8px;text-decoration:none">Voir la journée</a></p>
-  <p style="color:#6b7280;font-size:13px">— Racontine, le journal de l'enfance</p>
-</div>`;
+    // Le gabarit est pur (voir `email-template.ts`) : ce canal ne décide que du
+    // destinataire et de l'envoi, ce qui rend l'e-mail lui-même vérifiable sans
+    // SMTP — et c'est ce que fait `email-template.test.ts`.
+    const { text, html } = renderEntryEmail({
+      greeting: recipient.name ? `Bonjour ${recipient.name},` : "Bonjour,",
+      body: event.body,
+      link: event.link,
+      childName: event.childName,
+      dateLabel: event.dateLabel,
+      chips: await this.glance.chipsFor(event.entryId),
+    });
 
     const ok = await sendMail({
       to: recipient.email,

@@ -2,6 +2,13 @@
 
 Toutes les versions notables de Racontine. Format issu des messages de commit conventionnels (`feat`, `fix`, …).
 
+# [1.19.0](https://github.com/Wifsimster/racontine/compare/v1.18.0...v1.19.0) (2026-09-13)
+
+
+### Features
+
+* **identite:** une seule marque, et des surfaces qui la portent hors de l'app ([#51](https://github.com/Wifsimster/racontine/issues/51)) ([956ac2e](https://github.com/Wifsimster/racontine/commit/956ac2e4c2a588c792badc6f67952d08c3663c85)), closes [#1f2937](https://github.com/Wifsimster/racontine/issues/1f2937) [#4f46e5](https://github.com/Wifsimster/racontine/issues/4f46e5) [#4f46e5](https://github.com/Wifsimster/racontine/issues/4f46e5)
+
 # [1.18.0](https://github.com/Wifsimster/racontine/compare/v1.17.0...v1.18.0) (2026-08-22)
 
 

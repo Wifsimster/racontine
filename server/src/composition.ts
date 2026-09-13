@@ -24,6 +24,7 @@ import { randomBytes } from "node:crypto";
 import { config } from "./config.js";
 import { getSettings } from "./settings.js";
 import {
+  DrizzleDayGlance,
   DrizzleNotificationLog,
   DrizzleSubscriberDirectory,
 } from "./notifications/drizzle-stores.js";
@@ -67,7 +68,7 @@ const children = new DrizzleChildDirectory();
 export const subscriberNotifier = new SubscriberNotifier({
   subscribers: new DrizzleSubscriberDirectory(),
   log: new DrizzleNotificationLog(),
-  channels: [new WebPushChannel(), new EmailChannel()],
+  channels: [new WebPushChannel(), new EmailChannel(new DrizzleDayGlance())],
   webBaseUrl: config.webBaseUrl,
   logger,
 });

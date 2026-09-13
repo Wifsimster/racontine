@@ -12,6 +12,8 @@ import {
 import { api } from "@/lib/api";
 import type { Child, Subscriber, SubscriptionStatus } from "@/lib/types";
 import { Button } from "@/components/ui/button";
+import { ChildMark } from "@/components/ChildMark";
+import { ageLabel } from "@/lib/child";
 import { Toggle } from "@/components/ui/toggle";
 import {
   getPushState,
@@ -167,13 +169,25 @@ function ChildCard({ child }: { child: Child }) {
   }
 
   const subscribed = state?.status.subscribed ?? false;
+  const age = ageLabel(child.birthdate);
 
   return (
     <li className="flex flex-col gap-4 rounded-2xl border bg-card p-5 shadow-card">
       <div className="flex items-center justify-between gap-3">
-        <h3 className="min-w-0 truncate font-serif text-title font-semibold">
-          {child.name}
-        </h3>
+        {/* LE CARNET A UN VISAGE. La pastille d'initiale et l'âge en clair :
+            `birthdate` était dans le modèle depuis le début et n'était lu nulle
+            part, alors que c'est exactement la donnée qu'un journal d'enfance
+            doit porter — dans six ans, on relira « 2 ans et 4 mois » plus
+            souvent qu'une date. */}
+        <div className="flex min-w-0 items-center gap-3">
+          <ChildMark name={child.name} size="md" />
+          <div className="flex min-w-0 flex-col">
+            <h3 className="truncate font-serif text-title font-semibold">
+              {child.name}
+            </h3>
+            {age && <p className="text-meta text-muted-foreground">{age}</p>}
+          </div>
+        </div>
         <Button
           variant={subscribed ? "default" : "outline"}
           size="sm"

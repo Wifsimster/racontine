@@ -4,7 +4,7 @@
 
 Photographiez le carnet papier de la nounou / MAM / crèche → un LLM vision lit, structure et tague la journée (repas, siestes, humeur, activités, anecdotes) → un journal privé, hébergé chez vous, partagé avec les proches que vous choisissez.
 
-📄 Voir [PLAN-PRODUIT.md](./PLAN-PRODUIT.md) pour le plan produit et le phasage complet.
+📄 Voir [PLAN-PRODUIT.md](./PLAN-PRODUIT.md) pour le plan produit et le phasage complet, et [docs/identite.md](./docs/identite.md) pour la marque, les couleurs et les surfaces qui sortent de l'app (e-mail, carte de lien, notifications).
 🧱 Voir [docs/SOLID.md](./docs/SOLID.md) pour l'architecture du serveur (domaine,
 ports, adaptateurs) et la note SOLID du dépôt, barème compris.
 
@@ -32,6 +32,11 @@ pnpm --filter server db:migrate   # crée les tables (idempotent)
 # 4. Run
 pnpm dev               # server sur :3010, web sur :5173
 ```
+
+> Les icônes, la favicon, la pastille de notification et la carte de lien ne
+> s'éditent jamais à la main : elles se regénèrent depuis la marque vectorielle
+> avec `pnpm brand`. Voir
+> [docs/identite.md](./docs/identite.md).
 
 Premier lancement : ouvrir `http://localhost:5173`, créer le compte parent
 (puis le co-parent), et fermer les inscriptions.

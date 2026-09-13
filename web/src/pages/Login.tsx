@@ -24,6 +24,7 @@ import {
   SheetTitle,
   WaitBar,
 } from "@/features/login/parts";
+import { MarqueSignature } from "@/components/Marque";
 
 /* ===========================================================================
    L'ouverture du carnet.
@@ -639,6 +640,11 @@ export default function Login() {
             {"Instance privée : tout reste sur votre serveur."}
           </span>
         </p>
+
+        {/* LA SIGNATURE. Le bandeau au-dessus porte `appName` — le nom que le
+            foyer a donné à son carnet. Cette ligne-ci ne le lit pas : c'est le
+            seul endroit de l'app où la marque est inconditionnelle. */}
+        <MarqueSignature className="mt-6" />
       </div>
     </div>
   );

@@ -84,13 +84,15 @@ export class SubscriberNotifier implements PublicationNotifier {
     childName: string;
     date: string;
   }): PublicationEvent {
+    const dateLabel = formatDateFr(params.date);
     return {
       entryId: params.entryId,
       childId: params.childId,
       childName: params.childName,
       date: params.date,
+      dateLabel,
       title: `Nouvelle journée de ${params.childName}`,
-      body: `La journée du ${formatDateFr(params.date)} vient d'être publiée dans le journal de ${params.childName}.`,
+      body: `La journée du ${dateLabel} vient d'être publiée dans le journal de ${params.childName}.`,
       link: `${this.deps.webBaseUrl}/entries/${params.entryId}`,
     };
   }

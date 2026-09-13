@@ -1,3 +1,5 @@
+import type { DayChip } from "../domain/day-glance.js";
+
 /* ===========================================================================
    PRÉVENIR LES PROCHES — un canal, une classe.
 
@@ -20,6 +22,8 @@ export type PublicationEvent = {
   childName: string;
   /** AAAA-MM-JJ. */
   date: string;
+  /** La même date en français (« mardi 25 novembre »), pour les surfaces. */
+  dateLabel: string;
   title: string;
   body: string;
   /** Lien profond vers la journée. */
@@ -65,6 +69,15 @@ export interface NotificationLog {
   record(event: PublicationEvent, recipient: Recipient): Promise<string>;
   /** Horodate la remise externe (e-mail) d'une notification déjà écrite. */
   markDelivered(notificationId: string, at: Date): Promise<void>;
+}
+
+/**
+ * La bande de feutres d'une journée (« 2 repas · sieste 2 h 05 · joyeuse »),
+ * telle que l'e-mail la reprend. Un port : le canal ne sait pas d'où elle sort,
+ * et le calcul lui-même est pur (voir `domain/day-glance.ts`).
+ */
+export interface DayGlance {
+  chipsFor(entryId: string): Promise<DayChip[]>;
 }
 
 /** Qui suit la timeline d'un enfant, et peut donc être prévenu. */
