@@ -6,6 +6,7 @@ import type {
   BatchEntrySummary,
   Child,
   Entry,
+  JournalMonth,
   Member,
   MemberRole,
   PendingInvitation,
@@ -13,6 +14,7 @@ import type {
   Notification,
   Subscriber,
   SubscriptionStatus,
+  TimelinePage,
   Me,
   AppSettings,
   SettingsResponse,
@@ -90,16 +92,34 @@ export const api = {
     });
   },
 
-  timeline: (opts: { childId?: string; offset?: number; limit?: number } = {}) => {
+  /**
+   * Une page du fil. Trois cadrages, qui se combinent :
+   *   · `childId` — un seul carnet (le serveur l'acceptait déjà) ;
+   *   · `from`    — la date d'où l'on regarde (le saut de mois) ;
+   *   · `cursor`  — la suite, après la dernière journée reçue.
+   */
+  timeline: (
+    opts: {
+      childId?: string | null;
+      cursor?: string | null;
+      from?: string | null;
+      limit?: number;
+    } = {},
+  ) => {
     const p = new URLSearchParams();
     if (opts.childId) p.set("childId", opts.childId);
-    if (opts.offset) p.set("offset", String(opts.offset));
+    if (opts.cursor) p.set("cursor", opts.cursor);
+    if (opts.from) p.set("from", opts.from);
     if (opts.limit) p.set("limit", String(opts.limit));
     const qs = p.toString();
-    return req<{ entries: Entry[]; nextOffset: number | null }>(
-      `/api/entries${qs ? `?${qs}` : ""}`,
-    );
+    return req<TimelinePage>(`/api/entries${qs ? `?${qs}` : ""}`);
   },
+
+  /** Les mois du carnet et leur nombre de journées — la table des matières. */
+  timelineMonths: (childId?: string | null) =>
+    req<{ months: JournalMonth[] }>(
+      `/api/entries/months${childId ? `?childId=${encodeURIComponent(childId)}` : ""}`,
+    ),
 
   getEntry: (id: string) => req<Entry>(`/api/entries/${id}`),
 

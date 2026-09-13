@@ -13,7 +13,9 @@ import {
   listAccessibleChildren,
   listBatch,
   listTimeline,
+  listTimelineMonths,
 } from "../queries/entry-feed.js";
+import { parseCursor, parseFrom, parseLimit } from "../domain/feed-window.js";
 import { tidyUncertainties } from "../uncertainties.js";
 import { attachmentUrls } from "./attachment-urls.js";
 
@@ -121,28 +123,50 @@ export async function entriesRoutes(app: FastifyInstance) {
 
   /* --------------------------------- Timeline --------------------------- */
 
-  app.get<{ Querystring: { childId?: string; limit?: string; offset?: string } }>(
-    "/api/entries",
+  app.get<{
+    Querystring: {
+      childId?: string;
+      limit?: string;
+      /** Ancre : l'identifiant de la dernière journée déjà reçue. */
+      cursor?: string;
+      /** Bord haut de la fenêtre (AAAA-MM-JJ) : le saut dans le carnet. */
+      from?: string;
+    };
+  }>("/api/entries", async (req, reply) => {
+    const page = await listTimeline({
+      userId: req.user!.id,
+      childId: req.query.childId,
+      limit: parseLimit(req.query.limit),
+      cursor: parseCursor(req.query.cursor),
+      from: parseFrom(req.query.from),
+    });
+    if (page.kind === "denied")
+      return reply.code(403).send({ error: "accès refusé à cet enfant" });
+
+    return {
+      entries: page.entries.map((e) => ({
+        ...e,
+        attachments: e.attachments.map((a) => ({
+          id: a.id,
+          ...attachmentUrls(a),
+        })),
+      })),
+      nextCursor: page.nextCursor,
+    };
+  });
+
+  /* L'index des mois : de quoi sauter dans le carnet sans le dérouler. Route
+     STATIQUE avant `/api/entries/:id` — « months » n'est pas un identifiant. */
+  app.get<{ Querystring: { childId?: string } }>(
+    "/api/entries/months",
     async (req, reply) => {
-      const page = await listTimeline({
+      const res = await listTimelineMonths({
         userId: req.user!.id,
         childId: req.query.childId,
-        limit: Math.min(Number(req.query.limit ?? 20) || 20, 50),
-        offset: Math.max(Number(req.query.offset ?? 0) || 0, 0),
       });
-      if (page.kind === "denied")
+      if (res.kind === "denied")
         return reply.code(403).send({ error: "accès refusé à cet enfant" });
-
-      return {
-        entries: page.entries.map((e) => ({
-          ...e,
-          attachments: e.attachments.map((a) => ({
-            id: a.id,
-            ...attachmentUrls(a),
-          })),
-        })),
-        nextOffset: page.nextOffset,
-      };
+      return { months: res.months };
     },
   );
 

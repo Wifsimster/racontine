@@ -76,6 +76,21 @@ export function dayMonth(iso: string): string {
   return fmtDayMonth.format(d);
 }
 
+/**
+ * « 11 mars » en court — « 11 mars » devient « 11 mars », « 11 septembre »
+ * devient « 11 sept ». La colonne de date du mode « parcourir » fait 64 px :
+ * un mois écrit en toutes lettres y passe à la ligne et fait grandir la
+ * rangée d'un tiers. Le point d'abréviation est retiré comme dans le stepper
+ * de relecture — l'app abrège déjà les mois de cette façon.
+ */
+export function dayMonthShort(iso: string): string {
+  const d = dayOf(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d
+    .toLocaleDateString("fr-FR", { day: "numeric", month: "short" })
+    .replace(/\.$/, "");
+}
+
 /** « mercredi 11 mars » — le repère long d'une journée. */
 export function longDate(iso: string): string {
   const d = dayOf(iso);
@@ -122,6 +137,18 @@ export function formatDuration(min: number): string {
   if (h === 0) return `${m}${NBSP}min`;
   if (m === 0) return `${h}${NBSP}h`;
   return `${h}${NBSP}h${NBSP}${String(m).padStart(2, "0")}`;
+}
+
+/**
+ * Le dernier jour d'un mois « AAAA-MM » — ce que vaut « emmène-moi en mars »
+ * une fois traduit en bord de fenêtre pour le fil (`api.timeline({ from })`).
+ * Même calcul que `domain/feed-window.ts` côté serveur, en UTC pour qu'un
+ * parent à Nouméa et un autre à Brest demandent exactement la même page.
+ */
+export function lastDayOfMonth(month: string): string {
+  const [year, m] = month.split("-").map(Number);
+  if (!year || !m) return month;
+  return new Date(Date.UTC(year, m, 0)).toISOString().slice(0, 10);
 }
 
 /** « mercredi 11 mars » -> « Mercredi 11 mars » (et pas « Mercredi 11 Mars »). */

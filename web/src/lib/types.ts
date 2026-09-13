@@ -114,6 +114,23 @@ export type Entry = {
   batchId: string | null;
 };
 
+/**
+ * Une page du fil. `nextCursor` est l'ancre de la suivante : l'identifiant de
+ * la dernière journée rendue, et non un décalage — une journée publiée pendant
+ * qu'on lit ne décale donc plus rien (cf. `domain/feed-window.ts` côté serveur).
+ */
+export type TimelinePage = {
+  entries: Entry[];
+  nextCursor: string | null;
+};
+
+/** Un mois du carnet et son nombre de journées, pour le saut de mois. */
+export type JournalMonth = {
+  /** AAAA-MM. */
+  month: string;
+  count: number;
+};
+
 /** Résumé léger d'une journée sœur dans un même lot (stepper de relecture). */
 export type BatchEntrySummary = {
   id: string;

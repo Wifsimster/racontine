@@ -45,7 +45,7 @@ reste ouvert, quelles que soient les notes par axe — c'est le cas du parcours 
 
 ## Ce qui reste ouvert
 
-- Le CTA fixe « Photographier le carnet » occulte encore le bas de la carte du journal (~120 px).
+- ~~Le CTA fixe « Photographier le carnet » occulte encore le bas de la carte du journal (~120 px).~~ **Corrigé** : il glisse hors champ au défilement descendant et revient au premier pouce vers le haut (voir « Parcourir le journal » dans le README).
 - Contraste : les modificateurs d'opacité sur du **texte** (`text-warning/70`, `/80`) tombent à 3,12:1 et 3,76:1.
 - Cibles tactiles : 9 éléments sous 44 px (interrupteur des réglages 44×24, champ d'incertitude 192×28,
   « retirer » d'une page 22×22).

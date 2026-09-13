@@ -37,6 +37,7 @@ import {
   DrizzleUserDirectory,
 } from "../src/adapters/drizzle-sharing.js";
 import { DrizzleAdminRepository } from "../src/adapters/drizzle-admin.js";
+import { listTimeline, listTimelineMonths } from "../src/queries/entry-feed.js";
 import { DuplicateEntryError } from "../src/domain/errors.js";
 
 const ok = (label: string) => console.log("  ok —", label);
@@ -207,6 +208,41 @@ assert.equal(
 await memberships.remove(child.id, invitee);
 assert.equal(await memberships.isMember(child.id, invitee), false);
 ok("retirer un membre retire son adhésion");
+
+/* Le fil, page par page : le curseur doit avancer sans jamais rendre deux fois
+   la même journée — c'est tout l'intérêt d'avoir quitté le décalage. */
+const p1 = await listTimeline({ userId: owner, limit: 1 });
+assert.equal(p1.kind, "page");
+if (p1.kind === "page") {
+  assert.equal(p1.entries.length, 1);
+  assert.ok(p1.nextCursor);
+  const p2 = await listTimeline({ userId: owner, limit: 1, cursor: p1.nextCursor });
+  assert.equal(p2.kind, "page");
+  if (p2.kind === "page") {
+    assert.equal(p2.entries.length, 1);
+    assert.notEqual(p2.entries[0].id, p1.entries[0].id);
+    // Les journées sont bien rendues de la plus récente à la plus ancienne.
+    assert.ok(p2.entries[0].date <= p1.entries[0].date);
+    // Page incomplète = fin du carnet (deux journées en base).
+    const p3 = await listTimeline({ userId: owner, limit: 5, cursor: p2.nextCursor });
+    if (p3.kind === "page") assert.equal(p3.nextCursor, null);
+  }
+}
+ok("le curseur avance d'une journée à l'autre, sans doublon ni trou");
+
+// La fenêtre : « emmène-moi avant le 1er février » ne rend que ce qui précède.
+const windowed = await listTimeline({ userId: owner, limit: 10, from: "2026-02-01" });
+if (windowed.kind === "page")
+  assert.ok(windowed.entries.every((e) => e.date <= "2026-02-01"));
+ok("le bord de fenêtre coupe le fil à la date demandée");
+
+const months = await listTimelineMonths({ userId: owner });
+assert.equal(months.kind, "months");
+if (months.kind === "months") {
+  const feb = months.months.find((m) => m.month === "2026-02");
+  assert.equal(feb?.count, 2);
+}
+ok("l'index des mois compte les journées visibles, mois par mois");
 
 const admin = new DrizzleAdminRepository();
 const administered = await admin.administeredChildren(owner);

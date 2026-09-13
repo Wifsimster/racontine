@@ -4,6 +4,7 @@ import {
   ArrowRight,
   BookOpenText,
   Camera,
+  CalendarSearch,
   ChevronDown,
   CreditCard,
   CloudOff,
@@ -237,6 +238,48 @@ export function JournalEmpty({
           </Link>
         </Button>
       </div>
+    </section>
+  );
+}
+
+/**
+ * LE VIDE D'UN CADRAGE — pas le vide du carnet.
+ *
+ * Filtrer sur un enfant ou sauter à un mois peut ne rien donner, et ce vide-là
+ * n'a rien à voir avec un carnet neuf : il ne faut ni vendre la première photo
+ * ni laisser croire que le journal est perdu. Il dit ce qui cadre, et il rend
+ * la sortie — c'est le seul écran de l'app dont on ressort en DÉFAISANT ce
+ * qu'on vient de faire.
+ */
+export function JournalFiltered({
+  onReset,
+  label,
+}: {
+  onReset: () => void;
+  /** Ce qui a été demandé, en clair : « le carnet de Lou », « mars 2026 ». */
+  label: string;
+}) {
+  return (
+    <section className="rise-enter flex flex-col items-center gap-5 py-10 text-center">
+      <span
+        aria-hidden="true"
+        className="grid size-16 place-items-center rounded-3xl bg-muted text-muted-foreground"
+      >
+        <CalendarSearch className="size-7" />
+      </span>
+      <div className="flex flex-col items-center gap-2">
+        <h2 className="font-serif text-title font-semibold text-balance">
+          Rien à lire pour {label}
+        </h2>
+        <p className="max-w-[34ch] text-ui text-pretty text-muted-foreground">
+          Le reste du carnet est intact : seul ce cadrage ne rend aucune
+          journée.
+        </p>
+      </div>
+      <Button variant="outline" onClick={onReset}>
+        <RotateCcw aria-hidden="true" />
+        Revoir tout le carnet
+      </Button>
     </section>
   );
 }
