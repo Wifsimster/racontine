@@ -2,6 +2,13 @@
 
 Toutes les versions notables de Racontine. Format issu des messages de commit conventionnels (`feat`, `fix`, …).
 
+# [1.24.0](https://github.com/Wifsimster/racontine/compare/v1.23.1...v1.24.0) (2026-09-13)
+
+
+### Features
+
+* **mesure:** quatre repères pour savoir si l'accueil public convertit ([#60](https://github.com/Wifsimster/racontine/issues/60)) ([2dae454](https://github.com/Wifsimster/racontine/commit/2dae45499c5419eadb57f138066d2010bdf3cd88))
+
 ## [1.23.1](https://github.com/Wifsimster/racontine/compare/v1.23.0...v1.23.1) (2026-09-13)
 
 
