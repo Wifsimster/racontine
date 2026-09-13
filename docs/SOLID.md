@@ -190,8 +190,8 @@ qui connaisse Drizzle, sharp, Anthropic, nodemailer et web-push à la fois.
 
 | | Avant | Après |
 |---|---:|---:|
-| Tests serveur | 75 | **146** |
-| Tests exécutant du métier sans Postgres | 0 | **71** |
+| Tests serveur | 75 | **149** |
+| Tests exécutant du métier sans Postgres | 0 | **74** |
 
 Ce qui se teste maintenant en millisecondes, sans base, sans disque et sans
 appel facturé : un carnet couvrant trois jours découpé en trois journées reliées
@@ -240,5 +240,5 @@ qu'une règle vivait au mauvais endroit :
 | DIP | 1,5 | 5,0 |
 | **Moyenne** | **2,3** | **4,7** |
 
-Vérifiable par `pnpm typecheck && pnpm test && pnpm build` : 146 tests, zéro
+Vérifiable par `pnpm typecheck && pnpm test && pnpm build` : 149 tests, zéro
 échec.

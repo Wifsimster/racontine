@@ -1,5 +1,10 @@
 import type { FastifyInstance } from "fastify";
-import { entryEditing, ingestService, carnetReading } from "../composition.js";
+import {
+  carnetReading,
+  childrenService,
+  entryEditing,
+  ingestService,
+} from "../composition.js";
 import { isIsoDate } from "../domain/dates.js";
 import { isSource } from "../domain/entry-metadata.js";
 import { requireUser } from "../plugins/auth.js";
@@ -9,7 +14,6 @@ import {
   listBatch,
   listTimeline,
 } from "../queries/entry-feed.js";
-import { createChild } from "../services/children-service.js";
 import { tidyUncertainties } from "../uncertainties.js";
 import { attachmentUrls } from "./attachment-urls.js";
 
@@ -55,7 +59,7 @@ export async function entriesRoutes(app: FastifyInstance) {
   app.post<{ Body: { name?: string; birthdate?: string } }>(
     "/api/children",
     async (req, reply) => {
-      const created = await createChild({
+      const created = await childrenService.create({
         userId: req.user!.id,
         name: req.body?.name,
         birthdate: req.body?.birthdate,

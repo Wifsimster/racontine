@@ -35,6 +35,7 @@ import { DbStagedUploads } from "./mcp/uploads.js";
 import { CarnetReadingService } from "./services/carnet-reading-service.js";
 import { EntryEditingService } from "./services/entry-editing-service.js";
 import { IngestService } from "./services/ingest-service.js";
+import { ChildrenService } from "./services/children-service.js";
 import { PageService } from "./services/page-service.js";
 import { SharingService } from "./services/sharing-service.js";
 import { TranscribedNoteService } from "./services/transcribed-note-service.js";
@@ -95,7 +96,7 @@ export const ingestService = new IngestService({
 });
 
 /** Création d'un enfant et de son cercle. */
-export const childRepository = new DrizzleChildRepository();
+export const childrenService = new ChildrenService(new DrizzleChildRepository());
 
 /** Relecture humaine : champs, moments, publication, lectures tranchées. */
 export const entryEditing = new EntryEditingService({
