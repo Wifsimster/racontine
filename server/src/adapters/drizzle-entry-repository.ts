@@ -269,16 +269,33 @@ export class DrizzleAttachmentRepository implements AttachmentRepository {
 }
 
 /**
+ * Le code SQLSTATE d'une erreur, où qu'il se trouve dans la chaîne des causes.
+ *
+ * Drizzle n'expose PAS l'erreur du pilote telle quelle : il l'enveloppe dans un
+ * `DrizzleQueryError` dont le SQLSTATE vit sur `cause`. Le code appelant, lui,
+ * regardait `err.code` — qui vaut `undefined` sur l'enveloppe. Conséquence
+ * mesurée sur une vraie base : deux journées en collision (même enfant, même
+ * date, même lieu) rendaient **500** au lieu de 409, et une date impossible
+ * (2026-13-40) **500** au lieu de 400. On descend donc la chaîne.
+ */
+export function sqlStateOf(err: unknown): string {
+  let current: unknown = err;
+  for (let depth = 0; current && depth < 5; depth++) {
+    const code = (current as { code?: unknown }).code;
+    if (typeof code === "string") return code;
+    current = (current as { cause?: unknown }).cause;
+  }
+  return "";
+}
+
+/**
  * Traduit une erreur Postgres en erreur de DOMAINE. Sans cette traduction, la
  * règle « deux journées ne peuvent pas partager enfant + date + lieu » n'existait
  * que sous la forme d'un `code === "23505"` comparé dans un gestionnaire HTTP :
  * la couche métier lisait des codes SQL.
  */
 function translatePgError(err: unknown): never {
-  const code =
-    typeof err === "object" && err && "code" in err
-      ? String((err as { code: unknown }).code)
-      : "";
+  const code = sqlStateOf(err);
   if (code === "23505")
     throw new DuplicateEntryError(
       "Une journée existe déjà pour cet enfant à cette date et cette source.",

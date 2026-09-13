@@ -190,8 +190,13 @@ qui connaisse Drizzle, sharp, Anthropic, nodemailer et web-push à la fois.
 
 | | Avant | Après |
 |---|---:|---:|
-| Tests serveur | 75 | **149** |
-| Tests exécutant du métier sans Postgres | 0 | **74** |
+| Tests serveur | 75 | **152** |
+| Tests exécutant du métier sans Postgres | 0 | **77** |
+
+Et comme les doublures ne prouvent que les SERVICES, les dépôts Drizzle ont leur
+propre vérification contre un vrai Postgres — `pnpm --filter server
+test:integration`, hors intégration continue puisqu'elle exige une base. C'est
+elle qui a montré le défaut décrit plus bas.
 
 Ce qui se teste maintenant en millisecondes, sans base, sans disque et sans
 appel facturé : un carnet couvrant trois jours découpé en trois journées reliées
@@ -214,6 +219,11 @@ qu'une règle vivait au mauvais endroit :
    L'ordre est rétabli : on vérifie, puis on écrit.
 3. **Une course perdue à la création d'une journée déréférençait une ligne
    absente** (500). Elle rend 409.
+4. **Deux journées en collision rendaient 500 au lieu de 409**, et une date
+   impossible (2026-13-40) 500 au lieu de 400. Le code SQLSTATE était lu sur
+   `err.code` — or Drizzle enveloppe l'erreur du pilote et le code vit sur sa
+   cause. Trouvé en exerçant les dépôts contre une vraie base ; corrigé dans
+   `sqlStateOf`, qui descend la chaîne des causes.
 
 ---
 
@@ -240,5 +250,5 @@ qu'une règle vivait au mauvais endroit :
 | DIP | 1,5 | 5,0 |
 | **Moyenne** | **2,3** | **4,7** |
 
-Vérifiable par `pnpm typecheck && pnpm test && pnpm build` : 149 tests, zéro
-échec.
+Vérifiable par `pnpm typecheck && pnpm test && pnpm build` : 152 tests, zéro
+échec. Avec une base : `pnpm --filter server test:integration`.
