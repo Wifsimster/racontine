@@ -268,6 +268,7 @@ export class StripeClient {
   async createPortalSession(params: {
     customerId: string;
     returnUrl: string;
+    configurationId?: string;
   }): Promise<{ url: string }> {
     const session = await call(
       this.apiKey,
@@ -278,6 +279,14 @@ export class StripeClient {
           customer: params.customerId,
           return_url: params.returnUrl,
           locale: "fr",
+          // Sans `configuration`, Stripe habille la session avec la config PAR
+          // DÉFAUT DU COMPTE — celle d'un autre produit quand le compte en
+          // porte plusieurs, titre compris. On la passe donc explicitement dès
+          // qu'on en a une, plutôt que de dépendre d'un réglage de tableau de
+          // bord qu'un autre produit peut déplacer sans nous prévenir.
+          ...(params.configurationId
+            ? { configuration: params.configurationId }
+            : {}),
         },
       },
       this.fetchImpl,
