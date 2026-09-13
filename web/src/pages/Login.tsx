@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 import { ArrowLeft, KeyRound, Mail, NotebookPen, RotateCcwKey, ShieldCheck } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { api } from "@/lib/api";
+import { mesure } from "@/lib/mesure";
 import { Button } from "@/components/ui/button";
 import { LoginBackground } from "@/components/LoginBackground";
 import {
@@ -310,7 +311,13 @@ export default function Login() {
                 name,
               });
         if (res.error) fail(problemFor(res.error.message ?? undefined, door));
-        else window.location.href = next;
+        else {
+          /* Le bout de l'entonnoir ouvert par l'accueil public. On ne mesure
+             QUE la création d'un carnet : une connexion, elle, est un geste
+             quotidien et n'apprend rien sur la page qui l'a précédée. */
+          if (door === "signup") mesure("inscription_creee");
+          window.location.href = next;
+        }
       }
     } catch {
       fail(NETWORK);
