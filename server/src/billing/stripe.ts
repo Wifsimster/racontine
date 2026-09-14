@@ -268,6 +268,8 @@ export class StripeClient {
   async createPortalSession(params: {
     customerId: string;
     returnUrl: string;
+    /** Configuration de portail à appliquer. Absente : celle du compte. */
+    configurationId?: string | null;
   }): Promise<{ url: string }> {
     const session = await call(
       this.apiKey,
@@ -277,6 +279,10 @@ export class StripeClient {
         body: {
           customer: params.customerId,
           return_url: params.returnUrl,
+          /* `formEncode` OMET un champ absent plutôt que de l'envoyer vide :
+             sans configuration épinglée, Stripe reçoit donc la requête telle
+             qu'avant et applique le défaut du compte. */
+          configuration: params.configurationId ?? undefined,
           locale: "fr",
         },
       },

@@ -195,6 +195,16 @@ export const config = {
     secretKey: process.env.STRIPE_SECRET_KEY?.trim() || undefined,
     priceId: process.env.STRIPE_PRICE_ID?.trim() || undefined,
     webhookSecret: process.env.STRIPE_WEBHOOK_SECRET?.trim() || undefined,
+    /* QUEL PORTAIL CLIENT OUVRIR. Sans cette variable, Stripe applique la
+       configuration PAR DÉFAUT du compte — ce qui va très bien tant qu'un
+       compte ne sert qu'un produit, et devient faux dès qu'il en sert deux :
+       la famille qui clique « Carte, factures, résiliation » atterrit alors
+       sur une page intitulée du nom d'une autre application. L'épingler ici
+       coupe cette dépendance à un réglage global que Racontine ne contrôle
+       pas. Vide sur une instance dédiée : le défaut du compte est alors le
+       bon. */
+    portalConfigurationId:
+      process.env.STRIPE_PORTAL_CONFIGURATION_ID?.trim() || undefined,
   },
   /**
    * E-mail (SMTP) pour les notifications aux proches abonnés. Optionnel : si

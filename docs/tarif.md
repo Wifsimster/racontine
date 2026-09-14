@@ -120,6 +120,12 @@ doublon qui se découvre sur un relevé bancaire. Il crée :
    s'il n'est pas activé : Racontine n'en réécrit aucun écran, donc sans lui il
    n'y a pas de bouton « résilier ».
 
+> **Un compte Stripe qui sert plusieurs produits** doit en outre renseigner
+> `STRIPE_PORTAL_CONFIGURATION_ID` (`bpc_…`). Sans elle, Stripe ouvre la
+> configuration **par défaut du compte** : la famille qui vient gérer son
+> carnet lit le titre d'une autre application, et hérite de ses réglages de
+> résiliation. Sur un compte dédié à Racontine, laissez-la vide.
+
 Le secret de signature n'est affiché **qu'à la création** de l'endpoint : si le
 vôtre existe déjà, révélez-le dans le tableau de bord. Une clé `sk_live_` est
 refusée sans `--live` : on déroule d'abord le parcours complet en `sk_test_`.

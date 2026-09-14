@@ -87,6 +87,46 @@ test("un client Stripe déjà connu remplace l'e-mail (Stripe refuse les deux)",
   assert.doesNotMatch(calls[0].body!, /customer_email/);
 });
 
+test("le portail s'ouvre sur la configuration épinglée quand il y en a une", async () => {
+  /* UN COMPTE STRIPE PEUT SERVIR PLUSIEURS PRODUITS. Sans `configuration`,
+     Stripe applique celle par DÉFAUT du compte : la famille qui vient gérer
+     son carnet lirait alors le titre d'une autre application. */
+  const { impl, calls } = fakeFetch(() => ({ body: { url: "https://billing.stripe.com/p/session/x" } }));
+  const stripe = new StripeClient({ apiKey: "sk_test_x", fetchImpl: impl });
+
+  const session = await stripe.createPortalSession({
+    customerId: "cus_42",
+    returnUrl: "https://carnet.fr/abonnement",
+    configurationId: "bpc_racontine",
+  });
+
+  assert.equal(session.url, "https://billing.stripe.com/p/session/x");
+  assert.equal(calls[0].url, "https://api.stripe.com/v1/billing_portal/sessions");
+  assert.match(calls[0].body!, /configuration=bpc_racontine/);
+  assert.match(calls[0].body!, /customer=cus_42/);
+  assert.match(calls[0].body!, /locale=fr/);
+});
+
+test("sans configuration épinglée, le champ est OMIS et non envoyé vide", async () => {
+  /* Une instance dédiée n'a rien à épingler : le défaut du compte est le bon.
+     Mais `configuration=` (vide) vaudrait une 400 chez Stripe — ce n'est pas
+     « pas de configuration », c'est une configuration nommée par le vide. */
+  const { impl, calls } = fakeFetch(() => ({ body: { url: "https://x" } }));
+  const stripe = new StripeClient({ apiKey: "sk_test_x", fetchImpl: impl });
+
+  await stripe.createPortalSession({
+    customerId: "cus_42",
+    returnUrl: "https://carnet.fr/abonnement",
+  });
+  await stripe.createPortalSession({
+    customerId: "cus_42",
+    returnUrl: "https://carnet.fr/abonnement",
+    configurationId: null,
+  });
+
+  for (const call of calls) assert.doesNotMatch(call.body!, /configuration/);
+});
+
 test("une erreur Stripe remonte SA phrase, pas un statut nu", async () => {
   const { impl } = fakeFetch(() => ({
     status: 400,
