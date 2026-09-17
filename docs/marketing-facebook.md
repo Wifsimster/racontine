@@ -7,9 +7,9 @@ variantes selon l'audience, une version publicité, et ce qu'on ne dit jamais.
 Le produit, le prix et la promesse viennent de [tarif.md](./tarif.md) et du
 [plan produit](../PLAN-PRODUIT.md) — si l'un change, ce fichier est à corriger.
 
-**`{{LIEN}}`** désigne l'URL publique de l'instance de démonstration ou
-d'inscription. Elle n'est pas encore figée dans le dépôt : la remplacer avant
-publication, pas au moment du copier-coller.
+Le lien public est **https://racontine.battistella.ovh/** — l'instance hébergée
+par le studio, celle qui montre l'offre et ouvre l'essai. C'est le seul lien à
+coller dans un post ou une publicité.
 
 ---
 
@@ -49,15 +49,24 @@ publication, pas au moment du copier-coller.
 > 14 jours d'essai, sans carte bancaire. Ensuite 4,99 €/mois pour tout le foyer —
 > les proches ne paient jamais rien.
 >
-> 👉 {{LIEN}}
+> 👉 https://racontine.battistella.ovh/
 
 **Visuel :** la page manuscrite d'un carnet à gauche, la journée structurée de
 l'app à droite. C'est la démonstration entière en une image ; aucun texte
 promotionnel par-dessus (Meta pénalise, et surtout ça abîme la démonstration).
 
+**L'aperçu du lien** est déjà dessiné : Facebook lit `public/og.png`, la carte
+de lien regénérée par `pnpm brand` (voir [identite.md](./identite.md) §3). Quand
+le post porte son propre visuel — c'est le cas ici — le lien descend **dans le
+premier commentaire**, avec la FAQ ci-dessous : deux images candidates dans un
+même post, et Meta choisit laquelle montrer, rarement la bonne. La dernière
+ligne du post devient alors « Le lien est en commentaire 👇 ».
+
 **Premier commentaire, à épingler :**
 
-> Deux questions qu'on nous pose toujours 👇
+> 👉 https://racontine.battistella.ovh/
+>
+> Et les deux questions qu'on nous pose toujours 👇
 > • *Faut-il que la nounou s'inscrive ?* Non. Elle garde son carnet papier, elle
 > ne saura même pas que Racontine existe.
 > • *Et si j'arrête de payer ?* Le journal déjà écrit reste lisible et partagé.
@@ -73,7 +82,7 @@ promotionnel par-dessus (Meta pénalise, et surtout ça abîme la démonstration
 > Le carnet de liaison de la nounou, photographié le soir → une journée de journal
 > classée (repas, siestes, humeur, anecdotes), partagée avec le co-parent et les
 > grands-parents. La nounou, elle, ne change rien à ses habitudes.
-> 14 jours d'essai sans carte. 👉 {{LIEN}}
+> 14 jours d'essai sans carte. 👉 https://racontine.battistella.ovh/
 
 ### b. Version « les grands-parents » (audience 55+, ciblage large)
 
@@ -87,7 +96,7 @@ promotionnel par-dessus (Meta pénalise, et surtout ça abîme la démonstration
 > Rien à installer, rien à créer : ce sont les parents qui invitent, et le lien
 > s'ouvre d'un clic.
 >
-> 👉 {{LIEN}}
+> 👉 https://racontine.battistella.ovh/
 
 ### c. Version « données personnelles » (groupes self-hosting, tech, r/France-style)
 
@@ -101,7 +110,7 @@ promotionnel par-dessus (Meta pénalise, et surtout ça abîme la démonstration
 > Les proches n'ont pas de mot de passe : ils reçoivent un lien magique et lisent
 > ce que vous avez décidé de partager, carnet par carnet.
 >
-> 👉 {{LIEN}}
+> 👉 https://racontine.battistella.ovh/
 
 ### d. Version « recherche » (rappel, 3-4 semaines après le lancement)
 
@@ -111,7 +120,7 @@ promotionnel par-dessus (Meta pénalise, et surtout ça abîme la démonstration
 > c'est une recherche : les journées sont taguées à la lecture (repas, siestes,
 > activités, anecdotes, santé), mois par mois, année après année.
 >
-> Le carnet de la nounou, mais consultable dix ans plus tard. 👉 {{LIEN}}
+> Le carnet de la nounou, mais consultable dix ans plus tard. 👉 https://racontine.battistella.ovh/
 
 ---
 
