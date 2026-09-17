@@ -79,3 +79,71 @@ export function redactUrl(url: string): string {
     return MASK;
   }
 }
+
+/**
+ * CE QU'UNE PANNE A LE DROIT DE DIRE — décidé ici, appliqué dans `app.ts`.
+ *
+ * Fastify renvoie au client le MESSAGE de l'erreur, tel quel. Sur une erreur de
+ * base, ce message EST la requête : `Failed query: select "memberships"…`
+ * partait donc au client à chaque 500 — noms de tables, de colonnes, forme des
+ * jointures —, déclenchable depuis n'importe quelle URL portant un identifiant
+ * mal formé (mesuré sur `/api/children/pas-un-uuid/members`).
+ *
+ * Trois cas, et une seule règle : l'exploitant garde le détail, le client
+ * reçoit ce qu'il peut en faire.
+ *
+ *  · `22P02` (« invalid input syntax ») — un identifiant qui n'a pas la forme
+ *    d'un UUID n'est pas une panne du serveur, c'est une demande mal formée.
+ *    400, sans renvoyer en écho la chaîne fautive.
+ *  · 5xx — une phrase générique. Le diagnostic vit dans le journal.
+ *  · le reste — les refus que Fastify fabrique lui-même (limite de débit, corps
+ *    trop gros, JSON invalide) portent déjà un statut et une phrase écrite pour
+ *    être lue : on ne les touche pas.
+ *
+ * Fonction PURE, pour que la règle se vérifie sans serveur ni base.
+ */
+export function describeFailure(err: unknown): {
+  status: number;
+  body: { error: string };
+  /** Le journal doit-il porter la trace complète (5xx) ou une simple alerte ? */
+  severity: "error" | "warn";
+} {
+  if (sqlStateOf(err) === "22P02")
+    return {
+      status: 400,
+      body: { error: "identifiant invalide" },
+      severity: "warn",
+    };
+
+  const status = (err as { statusCode?: unknown })?.statusCode;
+  const code = typeof status === "number" ? status : 500;
+
+  if (code >= 500)
+    return { status: code, body: { error: "erreur interne" }, severity: "error" };
+
+  const message = (err as { message?: unknown })?.message;
+  return {
+    status: code,
+    body: {
+      error:
+        typeof message === "string" && message ? message : "requête refusée",
+    },
+    severity: "warn",
+  };
+}
+
+/**
+ * Le code SQLSTATE d'une erreur, où qu'il se trouve dans la chaîne des causes :
+ * Drizzle enveloppe l'erreur du pilote, et le code vit sur `cause`.
+ * Recopié de l'adaptateur des journées à dessein — `log.ts` ne doit dépendre ni
+ * de Drizzle, ni d'un dépôt, pour rester chargeable partout.
+ */
+function sqlStateOf(err: unknown): string {
+  let current: unknown = err;
+  for (let depth = 0; current && depth < 5; depth++) {
+    const code = (current as { code?: unknown }).code;
+    if (typeof code === "string") return code;
+    current = (current as { cause?: unknown }).cause;
+  }
+  return "";
+}

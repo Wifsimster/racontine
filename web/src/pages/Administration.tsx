@@ -20,7 +20,18 @@ import {
 } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { ChildMark } from "@/components/ChildMark";
 import { ageLabel } from "@/lib/child";
 import {
@@ -77,10 +88,41 @@ function Stat({ value, label }: { value: number; label: string }) {
  * Un carnet administré : qui le suit, où en sont ses journées, quand remonte
  * la dernière publication. Les états qui APPELLENT UN GESTE (brouillons à
  * relire, lectures en échec) portent une pastille ; le reste est du texte.
+ *
+ * C'est aussi le SEUL endroit d'où l'on peut effacer un carnet. Ce geste
+ * n'est pas un réglage : il emporte des mois de journées, leurs photos, et le
+ * fil que des proches suivent. Il vit donc ici, dans la console, derrière le
+ * prénom de l'enfant recopié — pas dans un menu contextuel à côté de
+ * « renommer ».
  */
-function ChildCard({ child }: { child: AdminConsole["children"][number] }) {
+function ChildCard({
+  child,
+  onDeleted,
+}: {
+  child: AdminConsole["children"][number];
+  onDeleted: () => void;
+}) {
   const age = ageLabel(child.birthdate);
   const last = fmtDay(child.lastPublishedAt);
+  const [open, setOpen] = useState(false);
+  const [typed, setTyped] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function erase() {
+    setBusy(true);
+    setError(null);
+    try {
+      await api.deleteChild(child.id, typed);
+      setOpen(false);
+      onDeleted();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Échec de l'effacement");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <li className="flex flex-col gap-3 rounded-2xl border bg-card p-4 shadow-card">
       <div className="flex items-center gap-3">
@@ -117,8 +159,86 @@ function ChildCard({ child }: { child: AdminConsole["children"][number] }) {
       <p className="text-meta text-muted-foreground">
         {last ? `Dernière journée publiée le ${last}.` : "Aucune journée publiée pour l'instant."}
       </p>
+
+      <div className="flex justify-end border-t pt-3">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-destructive hover:bg-destructive-soft hover:text-destructive"
+          onClick={() => {
+            setTyped("");
+            setError(null);
+            setOpen(true);
+          }}
+        >
+          <Trash2 aria-hidden="true" />
+          Effacer ce carnet
+        </Button>
+      </div>
+
+      <AlertDialog open={open} onOpenChange={setOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Effacer le carnet de {child.name} ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {child.entries.total > 0
+                ? `Ses ${child.entries.total} journée${child.entries.total > 1 ? "s" : ""} et toutes les photos du carnet disparaissent, pour ${child.members > 1 ? "tout le cercle" : "vous"}. Sans corbeille, et sans retour.`
+                : "Le carnet et son cercle disparaissent. Sans corbeille, et sans retour."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor={`effacer-${child.id}`}>
+              Recopiez « {child.name} » pour confirmer
+            </Label>
+            <Input
+              id={`effacer-${child.id}`}
+              value={typed}
+              autoComplete="off"
+              placeholder={child.name}
+              onChange={(e) => setTyped(e.target.value)}
+            />
+          </div>
+
+          {error && (
+            <InlineError>
+              <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+              {error}
+            </InlineError>
+          )}
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <Button
+              variant="destructive"
+              onClick={erase}
+              loading={busy}
+              disabled={!sameName(typed, child.name)}
+            >
+              Effacer définitivement
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </li>
   );
+}
+
+/**
+ * Le prénom recopié, côté écran : il allume le bouton, il n'autorise rien. La
+ * comparaison qui fait foi est celle du serveur (`confirms`, dans
+ * `domain/erasure.ts`) ; on en reprend ici la tolérance — espaces, casse,
+ * accents — pour ne pas garder le bouton éteint devant une saisie qu'il
+ * accepterait.
+ */
+function sameName(typed: string, expected: string): boolean {
+  const fold = (v: string) =>
+    v
+      .trim()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLocaleLowerCase("fr");
+  return fold(expected).length > 0 && fold(typed) === fold(expected);
 }
 
 /**
@@ -345,7 +465,17 @@ export default function Administration() {
         </SectionLabel>
         <ul className="flex flex-col gap-2">
           {data.children.map((c) => (
-            <ChildCard key={c.id} child={c} />
+            <ChildCard
+              key={c.id}
+              child={c}
+              /* Le carnet effacé emporte aussi des rôles et des invitations :
+                 on relit la console entière plutôt que de retirer une carte
+                 de la liste et laisser le reste de l'écran parler d'un carnet
+                 qui n'existe plus. */
+              onDeleted={() => {
+                void refresh().catch(() => {});
+              }}
+            />
           ))}
         </ul>
       </section>

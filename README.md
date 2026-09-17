@@ -81,7 +81,8 @@ L'écran **Administration** (visible de qui administre au moins un enfant)
 rassemble ce que « Partager » ne montre qu'un carnet à la fois :
 
 - **les carnets administrés** — proches, journées publiées, brouillons à
-  relire, lectures en échec, date de la dernière publication ;
+  relire, lectures en échec, date de la dernière publication, et le seul
+  endroit d'où **effacer un carnet** (voir « Vos données », plus bas) ;
 - **les proches, une carte par personne** — tous leurs rôles, carnet par
   carnet, changeables sur place ;
 - **les invitations en attente**, tous carnets confondus, révocables.
@@ -90,9 +91,11 @@ Le périmètre est TOUJOURS celui de l'appelant : `GET /api/admin/console` ne
 renvoie que les enfants dont il est `admin`, et rien de l'instance. Sur une
 instance qui abrite deux foyers, l'un n'y apprend rien de l'autre. Les gestes
 (changer un rôle, retirer un proche, révoquer une invitation) passent par les
-routes du partage, déjà gardées enfant par enfant : la console n'ouvre aucun
-chemin d'écriture nouveau, et le refus de retirer le **dernier administrateur**
-d'un carnet y est signalé avant le clic plutôt qu'après.
+routes du partage, déjà gardées enfant par enfant, et le refus de retirer le
+**dernier administrateur** d'un carnet y est signalé avant le clic plutôt
+qu'après. Seul l'**effacement d'un carnet** ouvre un chemin d'écriture propre à
+cet écran : il est gardé par le rôle `admin` **sur ce carnet-là**, et confirmé
+en recopiant le prénom de l'enfant.
 
 > À ne pas confondre avec les **Réglages**, réservés au *propriétaire* de
 > l'instance (ci-dessous) : un co-parent nommé administrateur gère les cercles
@@ -207,6 +210,53 @@ e-mail.
 > de réinitialisation, eux, n'ont pas d'autre chemin. En développement, le lien s'affiche dans la console. Le proche ouvre le lien, se connecte **sans mot de passe** (magic
 link) et rejoint le cercle — même quand `SIGNUP_ENABLED=false`. La visibilité et
 les droits sont vérifiés côté serveur, par enfant, sur chaque route.
+
+## Vos données : les emporter, les effacer
+
+Racontine garde le quotidien d'un enfant, des photos de son carnet et le nom de
+ses proches. Trois gestes, accessibles depuis l'application, permettent de tout
+reprendre ou de tout faire disparaître.
+
+**Emporter** — « Mon compte » → *Télécharger mes données*. Un fichier JSON
+(`racontine-export-AAAA-MM-JJ.json`) portant vos carnets, **toutes les journées
+que vous pouvez lire**, leurs moments, vos corrections, vos abonnements et vos
+notifications, plus l'adresse de chaque photo (`/api/attachments/…`, à ouvrir
+avec la même session). Deux règles le composent :
+
+- il ne montre **jamais plus que l'écran** — un lecteur y retrouve le journal
+  publié, pas les brouillons que l'application lui cache ;
+- il ne contient **aucun secret** : ni mot de passe, ni jeton de session, ni
+  hash de jeton MCP, ni clé API. Ce sont des clés, pas des souvenirs — un export
+  qui les rendrait ouvrirait le compte à quiconque trouve le fichier.
+
+**Effacer un carnet** — console d'**Administration**, sur la carte de l'enfant.
+Réservé aux administrateurs de ce carnet, et confirmé en recopiant le prénom de
+l'enfant. Journées, moments, photos (fichiers compris), cercle, invitations et
+glossaire disparaissent. Sans corbeille.
+
+**Effacer son compte** — « Mon compte » → *Effacer mon compte*. L'écran montre
+**d'abord** ce que cela emporterait : les carnets dont vous êtes le seul membre
+partent avec vous, ceux que d'autres suivent leur restent. La confirmation est
+**votre adresse e-mail**, recopiée.
+
+Trois situations retiennent un compte, et chacune dit quoi faire (HTTP 409) :
+
+| Ce qui bloque | Pourquoi | La sortie |
+|---|---|---|
+| Un abonnement Stripe encaisse encore | La carte continuerait d'être débitée pour une instance vidée | Résilier depuis le portail client |
+| Vous êtes propriétaire **et** d'autres comptes existent | Le propriétaire est le **compte le plus ancien** : votre départ transmettrait l'instance — réglages, inscriptions, caisse — au suivant, en silence | Retirer les autres comptes d'abord |
+| Vous êtes le **seul administrateur** d'un carnet que d'autres suivent | Un carnet sans administrateur ne peut plus être partagé, ni révoqué, ni effacé | Nommer un autre administrateur, ou effacer le carnet |
+
+> **Les fichiers partent avant les lignes**, et c'est délibéré. Une panne entre
+> les deux laisse des journées dont les photos manquent — visible, et qu'un
+> second clic achève. Dans l'autre sens, elle laisserait sur le disque les
+> photos du carnet d'un enfant sans plus aucune ligne pour les désigner :
+> introuvables depuis l'application, et pourtant bien là.
+
+Les règles vivent dans `server/src/domain/erasure.ts` (fonctions pures,
+vérifiées sans base) ; les cascades du schéma font le reste, et sont exercées
+contre un vrai Postgres par `pnpm --filter server test:privacy` et
+`pnpm --filter server test:privacy:http`.
 
 ## Se connecter, et récupérer un mot de passe
 

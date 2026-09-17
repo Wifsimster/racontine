@@ -363,3 +363,25 @@ export type AdminConsole = {
     pendingInvitations: number;
   };
 };
+
+/* ----------------------- Emporter ses données, partir -------------------- */
+
+/** Un carnet nommé, tel que l'aperçu d'effacement le désigne. */
+export type CarnetRef = { id: string; name: string };
+
+/**
+ * CE QUE L'EFFACEMENT DU COMPTE FERAIT, demandé avant d'appuyer.
+ *
+ * `deletes` part avec le compte (personne d'autre ne tient ces carnets),
+ * `leaves` reste à ceux qui les partagent. L'écran doit nommer les deux : un
+ * bouton « effacer mon compte » qui emporte silencieusement le journal d'un
+ * enfant n'est pas un consentement éclairé.
+ */
+export type ErasurePreview = { deletes: CarnetRef[]; leaves: CarnetRef[] };
+
+/** Ce qui retient encore un compte sur l'instance (HTTP 409). */
+export type ErasureBlock = {
+  error: string;
+  code?: "subscription_active" | "instance_owner" | "sole_admin";
+  carnets: CarnetRef[];
+};

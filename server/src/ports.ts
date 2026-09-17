@@ -3,6 +3,7 @@ import type { CarnetDay } from "./domain/carnet.js";
 import type { ItemRow } from "./domain/entry-items.js";
 import type { Source } from "./domain/entry-metadata.js";
 import type { MemberRole } from "./db/schema.js";
+import type { CarnetStanding, ErasureSnapshot } from "./domain/erasure.js";
 
 /* ===========================================================================
    LES PORTS — ce dont les services ONT BESOIN, et rien de plus.
@@ -316,4 +317,132 @@ export interface PageRepository {
 /** Nom d'un enfant (pour les messages de notification). */
 export interface ChildDirectory {
   nameOf(childId: string): Promise<string | null>;
+}
+
+/* ------------------------- Emporter ses données, partir ------------------- */
+
+/**
+ * Fichier rangé sur le support de stockage, tel qu'on le retrouve pour
+ * l'effacer. `thumbPath` est nullable en base : une page importée avant les
+ * miniatures n'en a pas.
+ */
+export type StoredFile = { originalPath: string; thumbPath: string | null };
+
+/** Une page photographiée, dans l'export (les octets se retirent par `url`). */
+export type ExportedPage = {
+  id: string;
+  mime: string;
+  width: number | null;
+  height: number | null;
+  /** Adresse de la photo dans cette instance, à ouvrir avec la même session. */
+  url: string;
+};
+
+/** Une journée, telle qu'elle part dans l'export. */
+export type ExportedEntry = {
+  id: string;
+  date: string;
+  source: string;
+  status: string;
+  mood: string | null;
+  title: string | null;
+  story: string | null;
+  highlight: string | null;
+  transcription: string | null;
+  uncertainties: Uncertainty[];
+  createdAt: string;
+  publishedAt: string | null;
+  items: { type: string; data: unknown; position: number }[];
+  pages: ExportedPage[];
+};
+
+/** Un carnet suivi par le compte, avec ce qu'il a le droit d'y lire. */
+export type ExportedCarnet = {
+  id: string;
+  name: string;
+  birthdate: string | null;
+  role: MemberRole;
+  since: string;
+  /** L'abonnement aux notifications de ce carnet, s'il en a un. */
+  subscription: { emailEnabled: boolean } | null;
+  entries: ExportedEntry[];
+  /** Les lectures que CE compte a tranchées, versées au glossaire de l'enfant. */
+  corrections: {
+    original: string;
+    corrected: string;
+    field: string | null;
+    at: string;
+  }[];
+};
+
+/**
+ * TOUT CE QUE L'INSTANCE SAIT D'UN COMPTE — et rien de plus.
+ *
+ * Deux règles de composition, toutes deux volontaires :
+ *
+ *  · CE QUE LE COMPTE PEUT DÉJÀ LIRE. L'export n'ouvre aucune porte que l'écran
+ *    n'ouvrait pas : un lecteur y retrouve le journal publié qu'il consulte, pas
+ *    les brouillons que l'app lui cache. Un export plus généreux que l'app
+ *    serait une fuite déguisée en droit d'accès — et le droit d'accès porte sur
+ *    SES données, pas sur celles du foyer qui l'a invité.
+ *  · AUCUN SECRET. Mot de passe, jetons de session, hash des jetons MCP, clé API
+ *    chiffrée, jetons d'invitation : rien de tout cela ne sort. Ce sont des
+ *    CAPACITÉS, pas des informations — les rendre à leur porteur, c'est fabriquer
+ *    un fichier qui ouvre le compte à quiconque le trouvera dans un dossier de
+ *    téléchargements. On rend donc ce qui décrit (« une clé est configurée, elle
+ *    finit par 4f2a »), jamais ce qui ouvre.
+ */
+export type ExportArchive = {
+  /** Étiquette de format : un export relu dans deux ans doit se reconnaître. */
+  format: "racontine.export.v1";
+  exportedAt: string;
+  account: {
+    id: string;
+    name: string;
+    email: string;
+    createdAt: string;
+    isOwner: boolean;
+  };
+  carnets: ExportedCarnet[];
+  notifications: {
+    type: string;
+    title: string;
+    body: string | null;
+    createdAt: string;
+    readAt: string | null;
+  }[];
+  /** Les jetons MCP par leur libellé et leur préfixe — jamais leur valeur. */
+  mcpTokens: {
+    name: string;
+    prefix: string;
+    lastUsedAt: string | null;
+    createdAt: string;
+  }[];
+  /** La clé d'extraction : qu'elle existe et comment elle finit, pas sa valeur. */
+  llmKey: { configured: boolean; hint: string | null };
+  /** Le nombre d'appareils abonnés au push (un endpoint identifie un appareil). */
+  pushDevices: number;
+};
+
+/**
+ * Ce qu'il faut pour emporter ses données et pour s'en aller. Les lectures et
+ * les effacements sont dans le MÊME port : ce sont les deux moitiés d'un même
+ * droit, et les séparer donnerait deux endroits où se souvenir de la liste des
+ * tables qui portent une trace d'un compte.
+ */
+export interface PrivacyRepository {
+  /** L'archive du compte, dans les limites de ce qu'il peut déjà lire. */
+  exportFor(userId: string): Promise<ExportArchive | null>;
+  /** L'état du compte face à l'effacement (rôles, cercles, abonnement). */
+  erasureSnapshot(userId: string): Promise<ErasureSnapshot | null>;
+  /** Nom d'un enfant et poids du compte dans son cercle ; null hors du cercle. */
+  standingOn(userId: string, childId: string): Promise<CarnetStanding | null>;
+  /** Les fichiers de toutes les pages de ces carnets. */
+  filesOfChildren(childIds: string[]): Promise<StoredFile[]>;
+  /** Les fichiers mis en attente par ce compte et jamais rattachés (MCP). */
+  stagedFilesOf(userId: string): Promise<StoredFile[]>;
+  /** Efface les carnets (et, par cascade, journées, moments, pages, cercles). */
+  deleteChildren(childIds: string[]): Promise<void>;
+  /** Efface le compte (et, par cascade, sessions, adhésions, jetons, réglages). */
+  deleteAccount(userId: string): Promise<void>;
 }
