@@ -2,6 +2,13 @@
 
 Toutes les versions notables de Racontine. Format issu des messages de commit conventionnels (`feat`, `fix`, …).
 
+# [1.28.0](https://github.com/Wifsimster/racontine/compare/v1.27.1...v1.28.0) (2026-09-17)
+
+
+### Features
+
+* **exploitation:** sauvegarder, restaurer, et durcir les conteneurs ([#69](https://github.com/Wifsimster/racontine/issues/69)) ([5c09cea](https://github.com/Wifsimster/racontine/commit/5c09cea966298fea0168e2719e74382982e764db))
+
 ## [1.27.1](https://github.com/Wifsimster/racontine/compare/v1.27.0...v1.27.1) (2026-09-17)
 
 
