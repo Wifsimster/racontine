@@ -56,7 +56,7 @@ jobs:
       # ne doit pas avoir besoin d'un droit d'écriture sur les paquets.
       - name: Login to GHCR
         if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
