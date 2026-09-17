@@ -30,13 +30,30 @@
          de Slack et de Google. Elle dit le produit, jamais la famille.
          `og.png` se regénère avec `pnpm brand`.
 
-         `og:image` est RELATIF, et ne peut pas être autre chose : le produit
-         est auto-hébergé, son domaine n'est pas connu au build. Les robots
-         d'aperçu actuels (WhatsApp, Slack, Signal, Facebook, X) résolvent une
-         URL relative contre celle de la page ; un robot ancien ou strict qui
-         exigerait une URL absolue n'affichera pas la vignette — il affichera
-         quand même le titre et la description, ce qui reste très au-dessus de
-         l'URL nue d'avant. -->
+         `og:image` et `og:url` sont écrits RELATIFS dans ce fichier, et nginx
+         les réécrit en ABSOLU à la volée (`sub_filter`, voir nginx.conf).
+
+         C'est le seul montage qui tienne pour un produit auto-hébergé. Le
+         domaine n'est pas connu au BUILD — il n'y en a pas UN, il y en a un par
+         instance — mais il est connu à la REQUÊTE, où nginx le lit dans
+         l'en-tête `Host`. Personne n'a donc rien à configurer en hébergeant :
+         l'URL d'aperçu se déduit de la requête du robot lui-même.
+
+         Pourquoi ce détour, plutôt que de laisser le relatif : les robots de
+         Facebook et de X NE RÉSOLVENT PAS une URL relative. Ils ne chargent pas
+         la page dans un contexte de navigation, ils lisent les balises hors
+         sol ; `/og.png` ne veut rien dire pour eux. C'est la première cause
+         d'aperçu sans vignette sur ces deux plateformes.
+
+         Le relatif reste la valeur de REPLI : servi sans nginx — le serveur de
+         développement de Vite, ou tout autre serveur statique — le fichier
+         reste valide, et les robots qui résolvent le relatif (WhatsApp, Slack,
+         Signal) affichent la vignette comme avant.
+
+         `og:url` pointe la RACINE, pas l'URL partagée : l'app est une SPA, la
+         même coquille répond sur toutes les routes, et une URL de carnet porte
+         un identifiant d'enfant qui n'a rien à faire dans le graphe de
+         Facebook. La carte dit le produit, jamais la famille — ici aussi. -->
     <meta
       name="description"
       content="Photographiez le carnet de la nounou : la journée devient un journal privé, hébergé chez vous, partagé avec les proches que vous choisissez."
@@ -51,12 +68,14 @@
     <link rel="author" href="https://pro.battistella.ovh/" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Racontine" />
+    <meta property="og:url" content="/" />
     <meta property="og:title" content="Racontine" />
     <meta
       property="og:description"
       content="Votre carnet de liaison, dématérialisé sans rien demander à la nounou."
     />
     <meta property="og:image" content="/og.png" />
+    <meta property="og:image:type" content="image/png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta
@@ -65,6 +84,11 @@
     />
     <meta property="og:locale" content="fr_FR" />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="/og.png" />
+    <meta
+      name="twitter:image:alt"
+      content="Racontine — votre carnet de liaison, dématérialisé sans rien demander à la nounou."
+    />
 
     <!-- Umami — mesure d'audience auto-hébergée, sans cookie.
          `data-exclude-search`/`data-exclude-hash` : une URL de carnet peut
