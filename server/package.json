@@ -10,6 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test \"src/**/*.test.ts\"",
     "test:integration": "node --import tsx integration/adapters.ts",
+    "test:privacy": "node --import tsx integration/privacy.ts",
+    "test:privacy:http": "node --import tsx integration/privacy-http.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
     "db:studio": "drizzle-kit studio"

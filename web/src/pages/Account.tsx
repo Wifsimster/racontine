@@ -4,6 +4,7 @@ import { api } from "@/lib/api";
 import type { Me } from "@/lib/types";
 import LlmKey from "@/components/LlmKey";
 import McpTokens from "@/components/McpTokens";
+import MesDonnees from "@/components/MesDonnees";
 import { PageShell, PageHeader } from "@/components/PageState";
 
 /**
@@ -65,6 +66,11 @@ export default function Account() {
 
       {/* Jetons MCP personnels (portent les droits de cet utilisateur). */}
       <McpTokens />
+
+      {/* Emporter ses données, ou s'en aller. En dernier, et c'est voulu : on
+          ne met pas un bouton d'effacement définitif au-dessus des réglages
+          qu'on vient consulter tous les jours. */}
+      <MesDonnees email={me?.email} />
     </PageShell>
   );
 }

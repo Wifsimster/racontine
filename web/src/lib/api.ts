@@ -22,6 +22,7 @@ import type {
   McpToken,
   CreatedMcpToken,
   UserLlm,
+  ErasurePreview,
 } from "./types";
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
@@ -353,4 +354,55 @@ export const api = {
 
   revokeMcpToken: (id: string) =>
     req<void>(`/api/mcp/tokens/${id}`, { method: "DELETE" }),
+
+  /* ------------------ Emporter ses données, partir -------------------- */
+
+  /**
+   * L'archive du compte, TÉLÉCHARGÉE et non lue en mémoire.
+   *
+   * Elle passe par `fetch` comme le reste — la session est un cookie, un
+   * `<a download>` nu fonctionnerait aussi — mais on la fait descendre en blob
+   * pour pouvoir dire « échec » avec la phrase du serveur plutôt que d'ouvrir
+   * un onglet sur une page d'erreur JSON. Le nom du fichier vient de
+   * `Content-Disposition` ; on garde un repli daté si l'en-tête manque.
+   */
+  exportMyData: async (): Promise<{ blob: Blob; filename: string }> => {
+    const res = await fetch("/api/me/export", { credentials: "include" });
+    if (!res.ok) {
+      let message = `Erreur ${res.status}`;
+      try {
+        const body = await res.json();
+        if (typeof body?.message === "string" && body.message) message = body.message;
+        else if (typeof body?.error === "string" && body.error) message = body.error;
+      } catch {
+        /* pas de corps JSON */
+      }
+      throw new Error(message);
+    }
+    const disposition = res.headers.get("Content-Disposition") ?? "";
+    const match = /filename="([^"]+)"/.exec(disposition);
+    return {
+      blob: await res.blob(),
+      filename:
+        match?.[1] ??
+        `racontine-export-${new Date().toISOString().slice(0, 10)}.json`,
+    };
+  },
+
+  /** Ce que l'effacement du compte emporterait — sans rien effacer. */
+  erasurePreview: () => req<ErasurePreview>("/api/me/erasure"),
+
+  /** Efface le compte. `confirmation` est l'adresse e-mail, recopiée. */
+  deleteMyAccount: (confirmation: string) =>
+    req<{ deleted: true; carnets: { id: string; name: string }[] }>("/api/me", {
+      method: "DELETE",
+      body: JSON.stringify({ confirmation }),
+    }),
+
+  /** Efface le carnet d'un enfant. `confirmation` est son prénom, recopié. */
+  deleteChild: (childId: string, confirmation: string) =>
+    req<{ deleted: true; name: string }>(`/api/children/${childId}`, {
+      method: "DELETE",
+      body: JSON.stringify({ confirmation }),
+    }),
 };

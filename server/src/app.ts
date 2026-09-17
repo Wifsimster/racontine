@@ -4,7 +4,7 @@ import multipart from "@fastify/multipart";
 import rateLimit from "@fastify/rate-limit";
 import { dbHealthy } from "./db/index.js";
 import { config, validateConfig } from "./config.js";
-import { redactUrl } from "./log.js";
+import { describeFailure, redactUrl } from "./log.js";
 import { authPlugin } from "./plugins/auth.js";
 import { adminRoutes } from "./routes/admin.js";
 import { entriesRoutes } from "./routes/entries.js";
@@ -15,6 +15,7 @@ import { pushRoutes } from "./routes/push.js";
 import { billingPublicRoutes, billingRoutes, billingWebhookRoutes } from "./routes/billing.js";
 import { settingsRoutes } from "./routes/settings.js";
 import { mcpRoutes } from "./routes/mcp.js";
+import { privacyRoutes } from "./routes/privacy.js";
 
 /**
  * Routes qui coûtent cher à servir ou qui se devinent jeton par jeton, et qui
@@ -31,6 +32,11 @@ const COSTLY_ROUTES = [
   /^\/api\/mcp\/uploads\b/,
   /^\/api\/invitations\/token\//,
   /^\/api\/mcp(\?|$)/,
+  /* L'export rassemble TOUT le journal d'un compte — des milliers de lignes et
+     autant de jointures — en une réponse. C'est la requête la plus chère que
+     l'API sache servir, et personne n'a besoin de la lancer deux fois par
+     seconde. */
+  /^\/api\/me\/export\b/,
 ];
 
 export async function buildApp() {
@@ -123,6 +129,17 @@ export async function buildApp() {
     (_req, body, done) => done(null, body),
   );
 
+  /* Ce qu'une panne a le droit de dire : la règle est dans `log.ts`
+     (`describeFailure`, vérifiée sans serveur). Ici, on l'applique — et on
+     garde le détail pour le journal, qui est le seul endroit où il sert. */
+  app.setErrorHandler((err: unknown, req, reply) => {
+    const { status, body, severity } = describeFailure(err);
+    // Le journal garde TOUT — c'est là, et seulement là, qu'on diagnostique.
+    if (severity === "error") req.log.error({ err }, "Erreur non rattrapée");
+    else req.log.warn({ err, status }, "Requête refusée");
+    return reply.code(status).send(body);
+  });
+
   app.get("/api/health", async () => ({
     status: "ok",
     db: (await dbHealthy()) ? "up" : "down",
@@ -139,6 +156,8 @@ export async function buildApp() {
   await app.register(subscriptionsRoutes);
   await app.register(pushRoutes);
   await app.register(settingsRoutes);
+  // Emporter ses données, effacer un carnet, effacer son compte.
+  await app.register(privacyRoutes);
   // L'offre publique (tarif, essai) : lisible sans session, c'est l'écran
   // d'accueil de qui n'a pas encore de compte.
   await app.register(billingPublicRoutes);

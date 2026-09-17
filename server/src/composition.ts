@@ -19,6 +19,7 @@ import {
 } from "./adapters/drizzle-sharing.js";
 import { DrizzleAdminRepository } from "./adapters/drizzle-admin.js";
 import { DrizzlePageRepository } from "./adapters/drizzle-page-repository.js";
+import { DrizzlePrivacyRepository } from "./adapters/drizzle-privacy.js";
 import { FileSystemImageStore } from "./adapters/fs-image-store.js";
 import { ConsoleLogger, FireAndForgetRunner } from "./adapters/runtime.js";
 import { randomBytes } from "node:crypto";
@@ -41,6 +42,7 @@ import { EntryEditingService } from "./services/entry-editing-service.js";
 import { IngestService } from "./services/ingest-service.js";
 import { ChildrenService } from "./services/children-service.js";
 import { PageService } from "./services/page-service.js";
+import { PrivacyService } from "./services/privacy-service.js";
 import { SharingService } from "./services/sharing-service.js";
 import { TranscribedNoteService } from "./services/transcribed-note-service.js";
 
@@ -125,6 +127,18 @@ export const pages = new PageService({
   pages: new DrizzlePageRepository(),
   images,
   access,
+  logger,
+});
+
+/**
+ * Emporter ses données, effacer un carnet, s'en aller. Branché sur le MÊME
+ * stockage d'images que l'ingestion : ce qui a été écrit par `images.store`
+ * doit pouvoir être effacé par `images.delete`, et deux stockages différents
+ * aux deux bouts, c'est la garantie qu'un jour l'effacement ne trouvera rien.
+ */
+export const privacy = new PrivacyService({
+  privacy: new DrizzlePrivacyRepository(),
+  images,
   logger,
 });
 
