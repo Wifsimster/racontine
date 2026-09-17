@@ -17,7 +17,9 @@ services:
       retries: 10
 
   server:
-    build: ./server
+    build:
+      context: .
+      dockerfile: server/Dockerfile
     restart: unless-stopped
     env_file: .env
     environment:
@@ -31,9 +33,16 @@ services:
         condition: service_healthy
 
   web:
-    build: ./web
+    build:
+      # Contexte à la RACINE : les Dockerfile lisent le lockfile du monorepo
+      # (voir leur en-tête). Un contexte limité au paquet ne le voyait pas.
+      context: .
+      dockerfile: web/Dockerfile
     restart: unless-stopped
     ports:
       - "8080:80"
+    # nginx refuse de démarrer si `server` ne répond pas encore (il résout son
+    # upstream au lancement) : on attend qu'il soit SAIN, pas seulement créé.
     depends_on:
-      - server
+      server:
+        condition: service_healthy

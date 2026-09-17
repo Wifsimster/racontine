@@ -369,7 +369,20 @@ docker compose -f docker-compose.prod.yml up -d
 
 Les migrations s'appliquent automatiquement au démarrage du serveur. Le front
 est servi sur `:8080` (nginx proxie `/api/` vers le serveur) — à placer
-derrière votre reverse proxy en HTTPS. nginx pose les en-têtes de sécurité
+derrière votre reverse proxy en HTTPS.
+
+**Ce que les images garantissent.** Elles se construisent depuis la racine du
+dépôt et installent avec `--frozen-lockfile` : l'image publiée porte donc
+exactement les versions que `pnpm test` a vues (avec un contexte par paquet, le
+lockfile du monorepo était hors de portée et chaque build refaisait sa propre
+résolution). Chacune porte un `HEALTHCHECK`, si bien que `docker compose ps`
+dit si le service **répond**, et plus seulement s'il tourne. Et le processus
+Node tourne **sans privilèges** (utilisateur `node`) : c'est lui qui décode des
+photos fournies par des tiers invités (sharp/libheif), et ce qu'une faille de
+décodeur permet d'atteindre n'est pas la même chose selon qu'on est root ou
+non. Le conteneur démarre root juste le temps de reprendre `uploads/` — une
+seule fois, automatiquement, sans geste de votre part sur une instance
+existante. nginx pose les en-têtes de sécurité
 (CSP, HSTS, `nosniff`, `frame-ancestors 'none'`) et le cache : un an sur les
 fichiers versionnés par empreinte, jamais sur `index.html` ni `sw.js`.
 
@@ -382,6 +395,60 @@ par un inconnu bloquent la connexion de toute la famille pendant dix secondes.
 Si vous exposez l'API directement, resserrez la liste — un client peut sinon
 se fabriquer l'adresse de son choix. Mise à jour : `docker compose -f
 docker-compose.prod.yml pull && … up -d`.
+
+## Sauvegarde et restauration
+
+Le carnet d'un enfant tient dans **deux** endroits, et il faut les deux : la
+**base** (journées, récits, cercle) et les **photos** (`uploads/`). Sauvegarder
+l'une sans l'autre, c'est ne rien sauvegarder — la base seule décrit des
+journées dont les pages ont disparu, les photos seules sont un dossier de JPEG
+sans date et sans nom.
+
+```bash
+./scripts/backup.sh                       # → ./backups/AAAA-MM-JJ-HHMMSS/
+./scripts/backup.sh -o /mnt/nas/racontine # ailleurs que sur le disque sauvegardé
+./scripts/backup.sh -k 30                 # garder 30 jours (défaut : 14)
+```
+
+Chaque sauvegarde contient `base.dump` (format `custom`, restaurable table par
+table), `uploads.tar.gz` et un `manifeste.txt` qui dit **de quelle version elle
+vient** — utile le jour où l'on restaure.
+
+> **Une sauvegarde non vérifiée n'est pas une sauvegarde.** Le script relit
+> toujours ce qu'il vient d'écrire (`pg_restore --list`, `tar -t`) et **efface
+> l'archive** plutôt que de laisser croire qu'elle existe. Le moment de
+> découvrir qu'un dump est illisible, c'est maintenant.
+
+**En cron, sur le homelab** — tous les jours à 3h15 :
+
+```
+15 3 * * * cd /opt/docker/racontine && ./scripts/backup.sh -o /mnt/nas/racontine >> /var/log/racontine-backup.log 2>&1
+```
+
+Le `-o` vers un montage distant n'est pas cosmétique : une sauvegarde qui dort
+sur le disque qu'elle sauvegarde ne survit pas à ce disque.
+
+**Restaurer :**
+
+```bash
+./scripts/restore.sh ./backups/2026-09-17-031500
+docker compose -f docker-compose.prod.yml up -d server   # réapplique les migrations
+```
+
+La restauration **détruit** ce qu'elle remplace : elle demande de taper
+« restaurer », et met les photos existantes de côté (`uploads.avant-
+restauration-…`) avant de dérouler l'archive. Une sauvegarde plus ANCIENNE que
+le code se remet à niveau toute seule au redémarrage (les migrations
+s'appliquent au démarrage) ; une sauvegarde plus RÉCENTE que l'image déployée
+demande de remettre d'abord la version notée dans le manifeste.
+
+> **Pourquoi ça presse.** Les migrations s'appliquent **au démarrage du
+> serveur**, donc à chaque déploiement, donc à chaque merge sur `main`. Une
+> migration qui se passe mal sur une base non sauvegardée, c'est le journal de
+> l'enfance de quelqu'un, perdu — il n'y a pas de corbeille.
+
+Essayez la restauration **une fois**, sur une base jetable, avant d'en avoir
+besoin pour de vrai. C'est la seule façon de savoir que la sauvegarde marche.
 
 ## Éditeur
 

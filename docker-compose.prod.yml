@@ -18,6 +18,11 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   server:
     image: ghcr.io/wifsimster/racontine-server:latest
@@ -31,6 +36,14 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    # `docker logs` grossit sans fin par défaut : sur un homelab, c'est le
+    # disque du carnet qui se remplit de ses propres traces. Trois fichiers de
+    # 10 Mo suffisent à diagnostiquer un incident récent.
+    logging: &logs
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   web:
     image: ghcr.io/wifsimster/racontine-web:latest
@@ -38,8 +51,24 @@ services:
     ports:
       # À placer derrière le reverse proxy (Traefik/NPM/Caddy) en HTTPS.
       - "8080:80"
+    # `service_healthy`, et non le simple `depends_on` d'avant : nginx RÉSOUT
+    # `server` au démarrage et REFUSE de démarrer si le nom ne répond pas
+    # (« host not found in upstream »). Avec une simple dépendance d'ordre, le
+    # front pouvait donc mourir au lancement de la pile et n'être rattrapé que
+    # par `restart:` — le temps que le serveur finisse ses migrations.
     depends_on:
-      - server
+      server:
+        condition: service_healthy
+    logging: *logs
 
 # Le reverse proxy route le domaine public vers web:80 ; nginx (dans l'image web)
 # proxie /api/ vers server:3010. Seul `web` a besoin d'être exposé.
+#
+# Les deux images portent leur propre HEALTHCHECK (voir leurs Dockerfile) :
+# `docker compose ps` dit donc si le service RÉPOND, et pas seulement s'il
+# tourne — un serveur vivant mais incapable de joindre la base se voyait
+# jusqu'ici comme « Up ».
+#
+# SAUVEGARDE : `./scripts/backup.sh` prend la base ET les photos. Les migrations
+# s'appliquent au démarrage du serveur, donc à chaque déploiement : une
+# sauvegarde quotidienne hors de cette machine n'est pas un luxe.
