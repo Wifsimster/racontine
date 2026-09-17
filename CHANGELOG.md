@@ -2,6 +2,13 @@
 
 Toutes les versions notables de Racontine. Format issu des messages de commit conventionnels (`feat`, `fix`, …).
 
+## [1.27.1](https://github.com/Wifsimster/racontine/compare/v1.27.0...v1.27.1) (2026-09-17)
+
+
+### Bug Fixes
+
+* **aperçu:** des URL absolues pour que la vignette s'affiche sur Facebook et X ([#68](https://github.com/Wifsimster/racontine/issues/68)) ([4767dc8](https://github.com/Wifsimster/racontine/commit/4767dc826476d968fad0711b2629dd4b1681fe99))
+
 # [1.27.0](https://github.com/Wifsimster/racontine/compare/v1.26.1...v1.27.0) (2026-09-17)
 
 
