@@ -1,9 +1,12 @@
-# Racontine sur Facebook
+# Racontine sur les réseaux
 
-> Les messages prêts à publier, et les trois règles qui les tiennent.
+> Les messages prêts à publier — Facebook et X — et les trois règles qui les
+> tiennent.
 
-Ce document sert à publier sans réécrire à chaque fois : un post principal, des
-variantes selon l'audience, une version publicité, et ce qu'on ne dit jamais.
+Ce document sert à publier sans réécrire à chaque fois : un post principal par
+réseau, des variantes selon l'audience, une version publicité, et ce qu'on ne
+dit jamais. Les règles, la FAQ et les interdits sont communs ; seules les
+formes changent, parce qu'un post de 280 signes n'est pas un post de 900.
 Le produit, le prix et la promesse viennent de [tarif.md](./tarif.md) et du
 [plan produit](../PLAN-PRODUIT.md) — si l'un change, ce fichier est à corriger.
 
@@ -27,7 +30,7 @@ coller dans un post ou une publicité.
 
 ---
 
-## 2. Le post principal (lancement)
+## 2. Facebook — le post principal (lancement)
 
 > 📖 Le carnet de la nounou, il n'y en a qu'un. Et il est toujours dans l'autre sac.
 >
@@ -75,7 +78,7 @@ ligne du post devient alors « Le lien est en commentaire 👇 ».
 
 ---
 
-## 3. Les variantes
+## 3. Facebook — les variantes
 
 ### a. Version courte (story, partage dans un groupe de parents)
 
@@ -124,7 +127,7 @@ ligne du post devient alors « Le lien est en commentaire 👇 ».
 
 ---
 
-## 4. La publicité (Meta Ads)
+## 4. Facebook — la publicité (Meta Ads)
 
 | Champ | Texte |
 |---|---|
@@ -145,7 +148,105 @@ leur vend rien.
 
 ---
 
-## 5. Réponses aux commentaires fréquents
+## 5. X — le fil de lancement
+
+Cinq posts, publiés d'un coup. Chacun tient sous 280 signes (une URL en compte
+23, quelle qu'en soit la longueur ; une image n'en coûte aucun). Le lien n'arrive
+qu'au dernier : sur X, un lien posé en tête fait chuter la portée du fil entier,
+et surtout personne ne clique avant d'avoir compris.
+
+**1/**
+
+> Le carnet de liaison de la nounou, il n'y en a qu'un — et il est toujours dans l'autre sac.
+>
+> L'autre parent ne le lit jamais. Les grands-parents, pas une fois.
+>
+> On a construit Racontine pour ça. 🧵
+
+**2/**
+
+> Le principe tient en un geste : vous photographiez la page du carnet.
+>
+> Un modèle de vision lit le manuscrit et en fait une journée structurée — repas, siestes, humeur, activités, anecdotes — taguée et cherchable.
+>
+> Rien n'est publié sans vous : chaque journée arrive en brouillon.
+
+**3/**
+
+> Le vrai choix de conception : la nounou n'installe rien, ne crée aucun compte, ne sait même pas que Racontine existe.
+>
+> Toutes les apps du secteur demandent au pro de changer d'outil. Il aime son carnet papier. Alors on part du papier.
+
+**4/**
+
+> Les proches n'ont pas de mot de passe : ils reçoivent le soir un e-mail avec la journée, et un lien qui s'ouvre d'un clic.
+>
+> Les données sont en France, chez un studio indépendant — ou chez vous : le code est ouvert, l'instance s'auto-héberge (Docker + Postgres).
+
+**5/**
+
+> Ce qui est payant, c'est AJOUTER une journée. Pas la lire.
+>
+> Un abonnement qui s'arrête met le carnet en pause ; il ne le referme pas. On ne prend pas les souvenirs en otage.
+>
+> 4,99 €/mois pour le foyer, les proches ne paient rien. 14 j d'essai sans carte.
+>
+> https://racontine.battistella.ovh/
+
+**Le visuel va sur le post 2**, pas sur le 1 : c'est celui qui décrit le geste,
+et l'image (page manuscrite à gauche, journée structurée à droite) le prouve au
+lieu de l'illustrer. Même image que sur Facebook, même règle — aucun texte
+promotionnel par-dessus.
+
+---
+
+## 6. X — les posts isolés
+
+À publier hors fil, une à deux fois par semaine. Chacun se suffit : sur X, un
+post est lu sans ce qui l'entoure.
+
+**a. Sans lien** (meilleure portée ; le lien va en réponse)
+
+> Le carnet de liaison de la nounou, il n'y en a qu'un — et il est toujours dans l'autre sac.
+>
+> Vous photographiez la page, Racontine la lit : une journée classée (repas, siestes, humeur, anecdotes), dans un journal privé partagé avec vos proches.
+>
+> La nounou, elle, ne change rien.
+
+**b. Avec lien** (quand le post part seul, sans suivi)
+
+> Le carnet de la nounou, il n'y en a qu'un — et il est toujours dans l'autre sac.
+>
+> Photographiez la page : Racontine la lit et en fait une journée classée, dans un journal privé partagé avec vos proches. La nounou ne change rien.
+>
+> 14 j d'essai, sans carte 👉 https://racontine.battistella.ovh/
+
+**c. La recherche** (rappel, une fois le carnet garni)
+
+> « À quel âge a-t-elle commencé la diversification ? »
+>
+> Sur un carnet papier, la réponse est dans un carton au grenier.
+>
+> Dans Racontine, c'est une recherche : les journées sont taguées à la lecture, mois par mois, année après année.
+>
+> https://racontine.battistella.ovh/
+
+**d. Pour la timeline tech / self-hosting**
+
+> Un journal d'enfance qui ne finit pas dans le cloud de quelqu'un d'autre.
+>
+> Photo d'un carnet de liaison papier → VLM → journal structuré, cherchable, partagé par liens magiques.
+>
+> Self-hostable : Docker + Postgres + votre clé API.
+>
+> https://racontine.battistella.ovh/
+
+Deux réflexes propres à X : **un seul hashtag maximum** (aucun, le plus souvent
+— ils ne portent plus rien et signalent la publicité), et **la carte de lien
+qu'affiche X est `public/og.png`**, la même que Facebook. Ne pas joindre en plus
+une image au post qui porte le lien : la carte disparaîtrait.
+
+## 7. Réponses aux commentaires fréquents
 
 | Ce qu'on lit | Ce qu'on répond |
 |---|---|
@@ -158,7 +259,7 @@ leur vend rien.
 
 ---
 
-## 6. Ce qu'on ne publie jamais
+## 8. Ce qu'on ne publie jamais
 
 - **Aucune photo d'un enfant réel**, ni d'une page de carnet portant un vrai nom.
   Les captures de démonstration utilisent un carnet fictif — un produit qui vend
@@ -173,9 +274,16 @@ leur vend rien.
 
 ---
 
-## 7. Rythme
+## 9. Rythme
 
-Trois publications suffisent pour un lancement : **le post principal**, puis la
-variante *grands-parents* à J+5, puis la variante *recherche* à J+21 — quand les
-premiers carnets ont assez de journées pour que l'argument soit vrai. Publier
-entre 20 h 30 et 22 h : c'est l'heure où le carnet est sur la table.
+**Sur Facebook**, trois publications suffisent pour un lancement : **le post
+principal**, puis la variante *grands-parents* à J+5, puis la variante
+*recherche* à J+21 — quand les premiers carnets ont assez de journées pour que
+l'argument soit vrai. Publier entre 20 h 30 et 22 h : c'est l'heure où le carnet
+est sur la table.
+
+**Sur X**, le fil de lancement une fois, puis un post isolé une à deux fois par
+semaine, en alternant les angles (le geste, les proches, la recherche, le
+self-hosting). Le matin y vaut mieux que le soir — ce n'est pas la même audience
+ni le même moment de lecture. Republier le même post à quinze jours d'écart n'a
+rien d'une faute : sur X, presque personne n'a vu le premier.
