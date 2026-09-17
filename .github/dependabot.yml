@@ -1,0 +1,72 @@
+# ===========================================================================
+#  LES MISES À JOUR, PROPOSÉES PLUTÔT QU'OUBLIÉES.
+#
+#  L'audit de production a compté 11 avis « high » et 17 « moderate » sur les
+#  dépendances de production, sans aucun mécanisme pour les voir venir. Trois
+#  d'entre eux portent sur des chemins que ce produit emprunte vraiment :
+#  `fastify` (usurpation de X-Forwarded-* sous trustProxy, exactement ce sur
+#  quoi repose la limitation de débit), `ip-address` (via @fastify/rate-limit),
+#  et `sharp`/libheif, qui décode des photos fournies par des tiers invités.
+#
+#  Rien ici ne met à jour tout seul : Dependabot ouvre des PR, l'intégration
+#  continue les passe au typecheck, aux tests et au build, et un humain décide.
+#  C'est la différence entre « on saura » et « on a su trop tard ».
+# ===========================================================================
+version: 2
+updates:
+  # ── Les dépendances applicatives (monorepo pnpm) ──────────────────────────
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Paris
+    # Le carnet est tenu par une personne : cinq PR par semaine, pas trente.
+    open-pull-requests-limit: 5
+    commit-message:
+      # Convention du dépôt : semantic-release lit ces préfixes pour calculer
+      # la version. `chore(deps)` ne déclenche pas de release, `fix(deps)` si.
+      prefix: chore
+      prefix-development: chore
+      include: scope
+    groups:
+      # Un lot par famille plutôt qu'une PR par paquet : les paquets d'une même
+      # famille montent ensemble ou pas du tout (React et react-dom, les
+      # plugins Fastify et leur cœur), et les tester séparément ne prouve rien.
+      fastify:
+        patterns: ["fastify", "@fastify/*"]
+      react:
+        patterns: ["react", "react-dom", "@types/react", "@types/react-dom", "react-router-dom"]
+      outils-de-build:
+        patterns: ["vite", "@vitejs/*", "typescript", "tsx", "tailwindcss", "@tailwindcss/*"]
+        dependency-type: development
+    ignore:
+      # Node lui-même est fixé par `engines` et par les images Docker : c'est un
+      # choix d'exploitation, pas une dépendance à faire monter toute seule.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+
+  # ── Les actions GitHub ────────────────────────────────────────────────────
+  # Épinglées par tag majeur (`actions/checkout@v4`) : elles ne bougent donc
+  # que sur une majeure, et c'est précisément ce qu'on veut voir passer.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: ci
+      include: scope
+
+  # ── Les images de base ────────────────────────────────────────────────────
+  # `node:24-alpine`, `nginx:alpine`, `postgres:17-alpine` : les CVE d'une image
+  # de base ne se voient dans aucun `pnpm audit`.
+  - package-ecosystem: docker
+    directories:
+      - /server
+      - /web
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: chore
+      include: scope

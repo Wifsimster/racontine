@@ -1,0 +1,46 @@
+# ===========================================================================
+#  CE QUI NE PART PAS AU DAEMON DOCKER.
+#
+#  Les deux images se construisent désormais depuis la RACINE (le lockfile du
+#  monorepo y vit). Sans ce fichier, chaque build enverrait tout le dépôt —
+#  340 Mo de node_modules, l'historique git, et surtout `uploads/` et
+#  `data/postgres/`, c'est-à-dire les photos des carnets et la base elle-même.
+#  Ce n'est pas qu'une question de lenteur : ces octets finiraient dans le
+#  cache de build, et une couche mal placée les publierait dans une image.
+#
+#  Les `node_modules` sont exclus À DESSEIN : l'image les réinstalle depuis le
+#  lockfile (`--frozen-lockfile`), ce qui est tout l'intérêt. Copier ceux de la
+#  machine de build, ce serait recommencer à publier ce que personne n'a testé.
+# ===========================================================================
+
+# Dépendances et sorties de build — réinstallées / reconstruites dans l'image.
+node_modules
+**/node_modules
+dist
+**/dist
+
+# Données vivantes : les photos des carnets et la base. Jamais dans une image.
+uploads
+data
+backups
+
+# Historique et outillage de dépôt.
+.git
+.github
+.gitignore
+
+# Secrets et configuration locale.
+.env
+.env.*
+!.env.example
+
+# Documentation et fichiers d'édition : rien de tout cela n'entre dans l'image.
+*.md
+docs
+.idea
+.vscode
+.DS_Store
+*.log
+
+# Le compose décrit comment LANCER les images ; il n'a rien à faire DEDANS.
+docker-compose*.yml

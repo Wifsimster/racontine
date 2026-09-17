@@ -38,9 +38,9 @@ jobs:
       matrix:
         include:
           - name: server
-            context: ./server
+            dockerfile: ./server/Dockerfile
           - name: web
-            context: ./web
+            dockerfile: ./web/Dockerfile
     steps:
       - uses: actions/checkout@v4
 
@@ -65,7 +65,12 @@ jobs:
       - name: Build & push
         uses: docker/build-push-action@v6
         with:
-          context: ${{ matrix.context }}
+          # Contexte à la RACINE, et Dockerfile désigné par paquet : le lockfile
+          # du monorepo y vit, et c'est lui qui rend le build reproductible
+          # (`--frozen-lockfile`). Avec un contexte par paquet, le lockfile
+          # était hors de portée et chaque build reprenait sa propre résolution.
+          context: .
+          file: ${{ matrix.dockerfile }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
