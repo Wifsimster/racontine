@@ -2,6 +2,13 @@
 
 Toutes les versions notables de Racontine. Format issu des messages de commit conventionnels (`feat`, `fix`, …).
 
+# [1.27.0](https://github.com/Wifsimster/racontine/compare/v1.26.1...v1.27.0) (2026-09-17)
+
+
+### Features
+
+* **données:** emporter ses données, effacer un carnet, effacer son compte ([#67](https://github.com/Wifsimster/racontine/issues/67)) ([ceeb72b](https://github.com/Wifsimster/racontine/commit/ceeb72b85d63a9763466917f55d1870d38d64004))
+
 ## [1.26.1](https://github.com/Wifsimster/racontine/compare/v1.26.0...v1.26.1) (2026-09-13)
 
 
