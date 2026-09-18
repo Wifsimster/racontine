@@ -2,6 +2,13 @@
 
 Toutes les versions notables de Racontine. Format issu des messages de commit conventionnels (`feat`, `fix`, …).
 
+## [1.29.1](https://github.com/Wifsimster/racontine/compare/v1.29.0...v1.29.1) (2026-09-18)
+
+
+### Bug Fixes
+
+* **web:** raccourcir le libellé du bouton « Commencer » sur l'accueil ([#84](https://github.com/Wifsimster/racontine/issues/84)) ([f3743b5](https://github.com/Wifsimster/racontine/commit/f3743b5d1dbc9f2ab64dc73cc26fd6568452c75a))
+
 # [1.29.0](https://github.com/Wifsimster/racontine/compare/v1.28.2...v1.29.0) (2026-09-18)
 
 
