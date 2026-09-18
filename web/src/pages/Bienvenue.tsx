@@ -221,7 +221,7 @@ function Offre({
                   onClick={() => mesure("accueil_commencer")}
                 >
                   <BookOpenText aria-hidden="true" />
-                  Commencer — c'est gratuit {trialDays} jours
+                  Commencer l'essai gratuit
                 </Link>
               </Button>
               {price && (
