@@ -125,6 +125,10 @@ Anthropic** est en revanche propre à chaque utilisateur (Réglages > Clé API
 d'extraction) : elle est chiffrée en base (AES-256-GCM via `BETTER_AUTH_SECRET`)
 et jamais réaffichée. Sans clé enregistrée, l'import de carnets est refusé.
 
+> Ces mêmes réglages se pilotent depuis une session Claude, par l'outil MCP
+> `update_instance_settings` (voir « Connexion MCP », plus bas) : la validation
+> est la même des deux côtés — une seule règle, deux protocoles.
+
 ## Abonnement (offre hébergée)
 
 > **Une seule offre : Racontine Famille — 4,99 €/mois**, pour tout le foyer,
@@ -291,7 +295,9 @@ Depuis l'écran **Réglages** (⚙️), section **Connexion MCP**, créez un **j
 
 Le jeton porte les droits de l'utilisateur qui l'a créé (mêmes rôles par
 enfant). Seul le hash SHA-256 est stocké ; un jeton peut être révoqué à tout
-moment. Outils exposés :
+moment. Outils exposés, en deux familles.
+
+**Le carnet** — remplir le journal, c'est-à-dire le geste du soir :
 
 | Outil | Rôle |
 |---|---|
@@ -300,6 +306,26 @@ moment. Outils exposés :
 | `create_daily_note` | Crée une journée à partir d'un contenu **déjà transcrit** (texte + listes structurées), sans photo ni VLM — aucune clé API requise. Brouillon par défaut, ou `publish: true` pour publier directement |
 | `list_daily_notes` | Liste les journées récentes d'un enfant (récupère leur `id`) — un lecteur ne voit que le publié |
 | `get_daily_note` | Détail complet d'une journée : récit, temps fort, repas, siestes, activités, anecdotes, santé, transcription |
+
+**L'exploitation** — tenir l'instance en production depuis un agent :
+
+| Outil | Rôle |
+|---|---|
+| `instance_status` | La photo à demander en premier : version du serveur, réglages et état de l'infrastructure (e-mail, push, webhook) pour le propriétaire, carnets administrés et leurs compteurs, et ce qui demande une intervention — lectures en échec, lectures bloquées, brouillons à publier, invitations expirées. Rend un verdict (`healthy`) et une phrase française (`summary`) |
+| `admin_console` | La console d'administration : chaque proche avec **tous** ses rôles carnet par carnet, les carnets dont il est seul administrateur, les invitations en attente. Réservé à qui administre au moins un carnet |
+| `publish_daily_note` | Publie un brouillon relu — les proches abonnés sont notifiés |
+| `retry_daily_note` | Relance la lecture VLM d'une journée en échec **sur ses pages déjà téléversées** : rien à rephotographier quand la lecture est morte avec le processus |
+| `update_instance_settings` | Modifie à chaud les réglages de l'instance (nom, inscriptions, validité des invitations, modèle VLM, e-mails). Réservé au propriétaire |
+
+> Un agent d'exploitation n'ouvre **aucune porte** que l'application n'ouvrirait
+> pas au même compte : `instance_status` masque réglages et infrastructure à qui
+> n'est pas propriétaire, `admin_console` se ferme sur le rôle `admin`, et les
+> lectures en échec listées sont celles des seuls carnets où le porteur du jeton
+> est contributeur. Créez-lui un jeton **à son nom**, pas une copie du vôtre :
+> il se révoque alors sans couper le vôtre.
+
+Boucle d'astreinte typique : `instance_status` → `retry_daily_note` sur chaque
+lecture en échec → `get_daily_note` pour relire → `publish_daily_note`.
 
 Comme via l'app, plusieurs pages d'une même journée (même enfant / date / lieu)
 sont fusionnées, et la lecture VLM tourne en arrière-plan : la journée apparaît

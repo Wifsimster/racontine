@@ -1,7 +1,12 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { InstanceOps } from "../instance-ops.js";
 import type { McpTokenUser } from "../mcp-tokens.js";
+import type { AdminService } from "../services/admin-service.js";
+import type { CarnetReadingService } from "../services/carnet-reading-service.js";
+import type { EntryEditingService } from "../services/entry-editing-service.js";
 import type { IngestService } from "../services/ingest-service.js";
 import type { TranscribedNoteService } from "../services/transcribed-note-service.js";
+import type { OpsQueries } from "./ops-queries.js";
 import type { EntryQueries } from "./queries.js";
 import type { StagedUploads } from "./uploads.js";
 
@@ -45,6 +50,17 @@ export type McpToolContext = {
   notes: TranscribedNoteService;
   queries: EntryQueries;
   uploads: StagedUploads;
+  /* --- Exploitation : les mêmes services que les écrans d'administration --- */
+  /** La console d'administration (lecture seule, gardée par le rôle `admin`). */
+  admin: AdminService;
+  /** La relecture humaine — c'est elle qui publie un brouillon. */
+  editing: EntryEditingService;
+  /** La lecture VLM — c'est elle qui relance une lecture en échec. */
+  reading: CarnetReadingService;
+  /** Les réglages de l'instance et l'état de son infrastructure. */
+  instance: InstanceOps;
+  /** Ce qui coince : lectures en échec, lectures mortes. */
+  ops: OpsQueries;
 };
 
 /**
