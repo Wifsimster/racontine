@@ -109,3 +109,45 @@ export async function entryChildId(entryId: string): Promise<string | null> {
     .limit(1);
   return row?.childId ?? null;
 }
+
+/* ===========================================================================
+   LA GARDE DES GESTES DU CERCLE — admin de CET enfant, et de lui seul.
+
+   Inviter un proche, changer son rôle, le retirer, révoquer une invitation :
+   quatre gestes, une seule porte. Elle vivait dans `routes/sharing.ts`, écrite
+   en termes de `reply.code()` — donc impossible à réutiliser pour les outils
+   MCP, qui font les mêmes gestes sans requête HTTP. Elle rend maintenant un
+   verdict que chaque protocole traduit à sa façon, et le message français n'a
+   qu'une seule version.
+   =========================================================================== */
+
+/** Verdict d'une garde : passe, ou refus déjà porteur de son code HTTP. */
+export type AccessVerdict =
+  | { ok: true }
+  | { ok: false; httpCode: number; error: string };
+
+/**
+ * L'appelant administre-t-il cet enfant ? Distingue l'enfant absent (404) de
+ * l'enfant qu'on n'administre pas (403) : les identifiants sont des UUID, donc
+ * inendevinables, et un administrateur qui se trompe de carnet mérite de savoir
+ * lequel des deux problèmes il a.
+ */
+export async function requireChildAdminAccess(
+  userId: string,
+  childId: string,
+): Promise<AccessVerdict> {
+  if (!(await childExists(childId)))
+    return { ok: false, httpCode: 404, error: "enfant introuvable" };
+  if (!(await hasChildRole(userId, childId, "admin")))
+    return {
+      ok: false,
+      httpCode: 403,
+      error: "réservé à l'administrateur de l'enfant",
+    };
+  return { ok: true };
+}
+
+/** La même garde, vue comme un port : ce dont un outil MCP a besoin. */
+export interface ChildAdminAccess {
+  requireAdmin(userId: string, childId: string): Promise<AccessVerdict>;
+}

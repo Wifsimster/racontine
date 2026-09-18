@@ -34,6 +34,7 @@ import {
 import { EmailChannel } from "./notifications/email-channel.js";
 import { WebPushChannel } from "./notifications/push-channel.js";
 import { SubscriberNotifier } from "./notifications/subscriber-notifier.js";
+import { requireChildAdminAccess } from "./access.js";
 import { LiveInstanceOps } from "./instance-ops.js";
 import { DrizzleOpsQueries } from "./mcp/ops-queries.js";
 import { DrizzleEntryQueries } from "./mcp/queries.js";
@@ -178,11 +179,12 @@ export const sharing = new SharingService({
  * services que les routes web (une seule règle métier, deux protocoles) et les
  * lectures dont ses outils ont besoin.
  *
- * Les cinq derniers champs sont ceux de l'EXPLOITATION — ce qui permet à un
- * agent de tenir l'instance en production : la console d'administration, la
- * publication d'un brouillon, la relance d'une lecture morte, les réglages à
- * chaud, et l'inventaire de ce qui coince. Aucun n'est un service neuf : ce
- * sont, littéralement, ceux des écrans Administration et Réglages.
+ * Les champs suivants sont ceux de l'EXPLOITATION — ce qui permet à un agent de
+ * tenir l'instance en production : la console d'administration, la publication
+ * d'un brouillon, la relance d'une lecture morte, les réglages à chaud,
+ * l'inventaire de ce qui coince — et ceux du CERCLE : inviter un proche,
+ * changer son rôle, le retirer. Aucun n'est un service neuf : ce sont,
+ * littéralement, ceux des écrans Administration, Réglages et Partager.
  */
 export const mcpTooling = {
   ingest: ingestService,
@@ -194,4 +196,6 @@ export const mcpTooling = {
   reading: carnetReading,
   instance: new LiveInstanceOps(),
   ops: new DrizzleOpsQueries(),
+  sharing,
+  circleAccess: { requireAdmin: requireChildAdminAccess },
 };

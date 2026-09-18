@@ -41,7 +41,7 @@ test("aucun nom d'outil n'est servi deux fois", () => {
   assert.equal(new Set(names).size, names.length);
 });
 
-test("le catalogue expose le carnet ET l'exploitation", () => {
+test("le catalogue expose le carnet, l'exploitation ET le cercle", () => {
   const names = new Set(MCP_TOOLS.map((t) => t.name));
   for (const expected of [
     // Le carnet : ce qui remplit le journal.
@@ -56,6 +56,12 @@ test("le catalogue expose le carnet ET l'exploitation", () => {
     "publish_daily_note",
     "retry_daily_note",
     "update_instance_settings",
+    // Le cercle : qui voit le journal d'un enfant.
+    "list_circle",
+    "invite_relative",
+    "set_member_role",
+    "remove_member",
+    "revoke_invitation",
   ])
     assert.ok(names.has(expected), `outil manquant : ${expected}`);
 });

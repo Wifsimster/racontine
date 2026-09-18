@@ -1,10 +1,12 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { ChildAdminAccess } from "../access.js";
 import type { InstanceOps } from "../instance-ops.js";
 import type { McpTokenUser } from "../mcp-tokens.js";
 import type { AdminService } from "../services/admin-service.js";
 import type { CarnetReadingService } from "../services/carnet-reading-service.js";
 import type { EntryEditingService } from "../services/entry-editing-service.js";
 import type { IngestService } from "../services/ingest-service.js";
+import type { SharingService } from "../services/sharing-service.js";
 import type { TranscribedNoteService } from "../services/transcribed-note-service.js";
 import type { OpsQueries } from "./ops-queries.js";
 import type { EntryQueries } from "./queries.js";
@@ -61,6 +63,11 @@ export type McpToolContext = {
   instance: InstanceOps;
   /** Ce qui coince : lectures en échec, lectures mortes. */
   ops: OpsQueries;
+  /* ------------------------------- Le cercle ---------------------------- */
+  /** Qui voit le journal d'un enfant : invitations, rôles, retraits. */
+  sharing: SharingService;
+  /** La garde des gestes du cercle : admin de CE carnet (et pas d'un autre). */
+  circleAccess: ChildAdminAccess;
 };
 
 /**

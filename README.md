@@ -317,15 +317,33 @@ moment. Outils exposés, en deux familles.
 | `retry_daily_note` | Relance la lecture VLM d'une journée en échec **sur ses pages déjà téléversées** : rien à rephotographier quand la lecture est morte avec le processus |
 | `update_instance_settings` | Modifie à chaud les réglages de l'instance (nom, inscriptions, validité des invitations, modèle VLM, e-mails). Réservé au propriétaire |
 
-> Un agent d'exploitation n'ouvre **aucune porte** que l'application n'ouvrirait
-> pas au même compte : `instance_status` masque réglages et infrastructure à qui
-> n'est pas propriétaire, `admin_console` se ferme sur le rôle `admin`, et les
-> lectures en échec listées sont celles des seuls carnets où le porteur du jeton
-> est contributeur. Créez-lui un jeton **à son nom**, pas une copie du vôtre :
-> il se révoque alors sans couper le vôtre.
+**Le cercle** — décider qui voit le journal d'un enfant, carnet par carnet :
+
+| Outil | Rôle |
+|---|---|
+| `list_circle` | Le cercle d'un carnet : chaque membre (avec son `userId`) et chaque invitation en attente, **lien compris** — celui qu'on recopie à la main quand l'instance n'a pas de SMTP |
+| `invite_relative` | Invite un proche (invitation nominative) et renvoie son lien. Refusé si la personne suit déjà le carnet |
+| `set_member_role` | Change le rôle d'un membre (`reader` / `contributor` / `admin`) |
+| `remove_member` | Retire un proche : accès **et** notifications s'arrêtent |
+| `revoke_invitation` | Révoque une invitation en attente — idempotent |
+
+Les cinq sont réservés à l'**administrateur du carnet visé** et refusent de
+laisser un carnet sans aucun administrateur. Accepter une invitation reste
+l'affaire du proche, dans l'application : aucun outil ne crée d'adhésion sans
+que la personne ait cliqué son lien.
+
+> Un agent n'ouvre **aucune porte** que l'application n'ouvrirait pas au même
+> compte : `instance_status` masque réglages et infrastructure à qui n'est pas
+> propriétaire, `admin_console` se ferme sur le rôle `admin`, les lectures en
+> échec listées sont celles des seuls carnets où le porteur du jeton est
+> contributeur, et les gestes du cercle sont gardés carnet par carnet — sur une
+> instance qui abrite deux foyers, l'un n'apprend rien de l'autre. Créez à
+> l'agent un jeton **à son nom**, pas une copie du vôtre : il se révoque alors
+> sans couper le vôtre.
 
 Boucle d'astreinte typique : `instance_status` → `retry_daily_note` sur chaque
-lecture en échec → `get_daily_note` pour relire → `publish_daily_note`.
+lecture en échec → `get_daily_note` pour relire → `publish_daily_note`, puis
+`revoke_invitation` sur les invitations périmées que le rapport signale.
 
 Comme via l'app, plusieurs pages d'une même journée (même enfant / date / lieu)
 sont fusionnées, et la lecture VLM tourne en arrière-plan : la journée apparaît
