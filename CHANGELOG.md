@@ -2,6 +2,13 @@
 
 Toutes les versions notables de Racontine. Format issu des messages de commit conventionnels (`feat`, `fix`, …).
 
+## [1.28.2](https://github.com/Wifsimster/racontine/compare/v1.28.1...v1.28.2) (2026-09-18)
+
+
+### Bug Fixes
+
+* **web:** retirer `baseUrl`, supprimé par TypeScript 7 ([#82](https://github.com/Wifsimster/racontine/issues/82)) ([3726b87](https://github.com/Wifsimster/racontine/commit/3726b87b4cdbd60e52f096fbed2188ed08cbc402)), closes [#78](https://github.com/Wifsimster/racontine/issues/78) [#78](https://github.com/Wifsimster/racontine/issues/78) [#78](https://github.com/Wifsimster/racontine/issues/78)
+
 ## [1.28.1](https://github.com/Wifsimster/racontine/compare/v1.28.0...v1.28.1) (2026-09-18)
 
 
