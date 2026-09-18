@@ -11,7 +11,19 @@
 # ===========================================================================
 FROM node:24-alpine AS build
 WORKDIR /app
-RUN corepack enable && corepack prepare pnpm@11.5.0 --activate
+# pnpm est installé PAR NPM, et non par corepack.
+#
+# corepack était livré avec Node… jusqu'à ce qu'il ne le soit plus : il a été
+# retiré des images à partir de Node 26, et `corepack enable` y meurt sur un
+# « /bin/sh: corepack: not found » (code 127). L'ironie est que rien d'autre ne
+# bronchait — typecheck, tests et build passaient très bien —, seule la
+# construction de l'image cassait. C'est exactement ce que la construction des
+# images sur les PR a intercepté, avant la fusion plutôt qu'après.
+#
+# La version reste épinglée, et elle DOIT rester alignée sur le champ
+# `packageManager` de la racine : deux versions de pnpm, ce sont deux
+# résolutions possibles du même lockfile.
+RUN npm install -g pnpm@11.5.0
 
 # Les manifestes d'abord : tant qu'ils ne changent pas, Docker garde le cache
 # des dépendances et ne réinstalle rien.
