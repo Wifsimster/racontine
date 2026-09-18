@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { requireUser } from "../plugins/auth.js";
-import { childExists, hasChildRole } from "../access.js";
+import { requireChildAdminAccess } from "../access.js";
 import { sharing } from "../composition.js";
 
 /* ===========================================================================
@@ -13,18 +13,19 @@ import { sharing } from "../composition.js";
    que garder la porte et traduire le résultat.
    =========================================================================== */
 
-/** Garde : l'appelant doit être admin de l'enfant, sinon 403 (404 si absent). */
+/**
+ * Garde : l'appelant doit être admin de l'enfant, sinon 403 (404 si absent).
+ * La RÈGLE est dans `access.ts`, partagée avec les outils MCP du cercle ; ici
+ * on ne fait que la traduire en réponse HTTP.
+ */
 async function requireChildAdmin(
   req: FastifyRequest,
   reply: FastifyReply,
   childId: string,
 ): Promise<boolean> {
-  if (!(await childExists(childId))) {
-    reply.code(404).send({ error: "enfant introuvable" });
-    return false;
-  }
-  if (!(await hasChildRole(req.user!.id, childId, "admin"))) {
-    reply.code(403).send({ error: "réservé à l'administrateur de l'enfant" });
+  const verdict = await requireChildAdminAccess(req.user!.id, childId);
+  if (!verdict.ok) {
+    reply.code(verdict.httpCode).send({ error: verdict.error });
     return false;
   }
   return true;

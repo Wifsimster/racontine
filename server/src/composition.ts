@@ -34,6 +34,9 @@ import {
 import { EmailChannel } from "./notifications/email-channel.js";
 import { WebPushChannel } from "./notifications/push-channel.js";
 import { SubscriberNotifier } from "./notifications/subscriber-notifier.js";
+import { requireChildAdminAccess } from "./access.js";
+import { LiveInstanceOps } from "./instance-ops.js";
+import { DrizzleOpsQueries } from "./mcp/ops-queries.js";
 import { DrizzleEntryQueries } from "./mcp/queries.js";
 import { DbStagedUploads } from "./mcp/uploads.js";
 import { AdminService } from "./services/admin-service.js";
@@ -153,18 +156,6 @@ export const transcribedNotes = new TranscribedNoteService({
 });
 
 /**
- * Ce qu'un outil MCP reçoit, en plus de l'utilisateur de son jeton : les mêmes
- * services que les routes web (une seule règle métier, deux protocoles) et les
- * lectures dont ses outils ont besoin.
- */
-export const mcpTooling = {
-  ingest: ingestService,
-  notes: transcribedNotes,
-  queries: new DrizzleEntryQueries(),
-  uploads: new DbStagedUploads(),
-};
-
-/**
  * La console d'administration : les carnets qu'on administre, les gens qui y
  * tiennent un rôle, les invitations en attente. Lecture seule — les gestes
  * restent ceux du partage, ci-dessous.
@@ -182,3 +173,29 @@ export const sharing = new SharingService({
   newToken: () => randomBytes(24).toString("base64url"),
   now: () => new Date(),
 });
+
+/**
+ * Ce qu'un outil MCP reçoit, en plus de l'utilisateur de son jeton : les mêmes
+ * services que les routes web (une seule règle métier, deux protocoles) et les
+ * lectures dont ses outils ont besoin.
+ *
+ * Les champs suivants sont ceux de l'EXPLOITATION — ce qui permet à un agent de
+ * tenir l'instance en production : la console d'administration, la publication
+ * d'un brouillon, la relance d'une lecture morte, les réglages à chaud,
+ * l'inventaire de ce qui coince — et ceux du CERCLE : inviter un proche,
+ * changer son rôle, le retirer. Aucun n'est un service neuf : ce sont,
+ * littéralement, ceux des écrans Administration, Réglages et Partager.
+ */
+export const mcpTooling = {
+  ingest: ingestService,
+  notes: transcribedNotes,
+  queries: new DrizzleEntryQueries(),
+  uploads: new DbStagedUploads(),
+  admin: adminConsole,
+  editing: entryEditing,
+  reading: carnetReading,
+  instance: new LiveInstanceOps(),
+  ops: new DrizzleOpsQueries(),
+  sharing,
+  circleAccess: { requireAdmin: requireChildAdminAccess },
+};

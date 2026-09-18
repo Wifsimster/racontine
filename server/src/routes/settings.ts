@@ -1,15 +1,9 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { requireUser } from "../plugins/auth.js";
 import { isChildAdminSomewhere, isOwner } from "../access.js";
-import {
-  getSettings,
-  updateSettings,
-  KNOWN_VLM_MODELS,
-  type SettingsPatch,
-} from "../settings.js";
-import { config } from "../config.js";
-import { mailEnabled } from "../mailer.js";
-import { webPushEnabled } from "../push.js";
+import { getSettings, updateSettings } from "../settings.js";
+import { parseSettingsPatch } from "../domain/settings-patch.js";
+import { infraMeta } from "../instance-ops.js";
 import {
   getUserLlmMeta,
   setUserAnthropicKey,
@@ -27,21 +21,6 @@ async function requireOwner(
     return false;
   }
   return true;
-}
-
-/**
- * Métadonnées d'infrastructure : réglages pilotés par l'environnement (secrets)
- * que le propriétaire ne peut pas changer depuis l'UI, mais dont l'état est utile
- * à afficher (« l'e-mail est-il configuré ? »).
- */
-function infraMeta() {
-  return {
-    mailConfigured: mailEnabled(),
-    webPushConfigured: webPushEnabled(),
-    notifyWebhookConfigured: !!config.notifyWebhookUrl,
-    webBaseUrl: config.webBaseUrl,
-    knownVlmModels: KNOWN_VLM_MODELS,
-  };
 }
 
 export async function settingsRoutes(app: FastifyInstance) {
@@ -123,56 +102,11 @@ export async function settingsRoutes(app: FastifyInstance) {
     };
   }>("/api/settings", { preHandler: requireUser }, async (req, reply) => {
     if (!(await requireOwner(req, reply))) return;
-    const body = req.body ?? {};
-    const patch: SettingsPatch = {};
-
-    if (body.appName !== undefined) {
-      // Chaîne vide → remise au défaut (null en base).
-      if (body.appName === null || body.appName === "") {
-        patch.appName = null;
-      } else if (typeof body.appName === "string") {
-        const name = body.appName.trim();
-        if (!name || name.length > 60)
-          return reply
-            .code(400)
-            .send({ error: "nom de l'instance invalide (1 à 60 caractères)" });
-        patch.appName = name;
-      } else {
-        return reply.code(400).send({ error: "appName invalide" });
-      }
-    }
-
-    if (body.signupEnabled !== undefined) {
-      if (typeof body.signupEnabled !== "boolean")
-        return reply.code(400).send({ error: "signupEnabled invalide" });
-      patch.signupEnabled = body.signupEnabled;
-    }
-
-    if (body.emailNotificationsEnabled !== undefined) {
-      if (typeof body.emailNotificationsEnabled !== "boolean")
-        return reply
-          .code(400)
-          .send({ error: "emailNotificationsEnabled invalide" });
-      patch.emailNotificationsEnabled = body.emailNotificationsEnabled;
-    }
-
-    if (body.invitationTtlDays !== undefined) {
-      const n = Number(body.invitationTtlDays);
-      if (!Number.isInteger(n) || n < 1 || n > 365)
-        return reply
-          .code(400)
-          .send({ error: "durée d'invitation invalide (1 à 365 jours)" });
-      patch.invitationTtlDays = n;
-    }
-
-    if (body.vlmModel !== undefined) {
-      if (typeof body.vlmModel !== "string" || !body.vlmModel.trim())
-        return reply.code(400).send({ error: "modèle VLM invalide" });
-      const model = body.vlmModel.trim();
-      if (model.length > 100)
-        return reply.code(400).send({ error: "modèle VLM invalide" });
-      patch.vlmModel = model;
-    }
+    // La validation est celle du domaine — la même que l'outil MCP
+    // `update_instance_settings` applique de son côté.
+    const parsed = parseSettingsPatch(req.body ?? {});
+    if (!parsed.ok) return reply.code(400).send({ error: parsed.error });
+    const patch = parsed.patch;
 
     const settings = await updateSettings(patch, req.user!.id);
     return { settings, meta: infraMeta() };

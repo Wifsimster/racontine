@@ -1,19 +1,14 @@
-import { createRequire } from "node:module";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { mcpTooling } from "./composition.js";
 import type { McpTokenUser } from "./mcp-tokens.js";
 import { MCP_TOOLS } from "./mcp/tools/index.js";
+import { SERVER_VERSION } from "./version.js";
 
 export { decodeBase64Image } from "./mcp/protocol.js";
-
 // Version alignée sur le package (évite une valeur figée qui dérive à chaque
-// release). `require` résout `../package.json` aussi bien depuis `src/` (tsx) que
-// depuis `dist/` (build) : le fichier est toujours à la racine de `server/`.
-const require = createRequire(import.meta.url);
-/** Version du serveur MCP, tirée de `server/package.json`. */
-export const SERVER_VERSION: string = (
-  require("../package.json") as { version: string }
-).version;
+// release). Elle vit dans `version.ts` : les outils d'exploitation la lisent
+// sans passer par ce fichier, qui dépend, lui, de la racine de composition.
+export { SERVER_VERSION };
 
 const SERVER_INFO = { name: "racontine", version: SERVER_VERSION } as const;
 
