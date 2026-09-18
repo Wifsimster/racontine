@@ -9,7 +9,7 @@
 #  continue n'avait jamais testées. `--frozen-lockfile` échoue désormais
 #  bruyamment si le lockfile et les manifestes divergent : c'est tout l'intérêt.
 # ===========================================================================
-FROM node:24-alpine AS build
+FROM node:26-alpine AS build
 WORKDIR /app
 # pnpm est installé PAR NPM, et non par corepack.
 #
@@ -39,7 +39,7 @@ RUN pnpm --filter @racontine/server build
 # d'étape), dépendances de production seulement.
 RUN pnpm --filter @racontine/server deploy --prod --legacy /out
 
-FROM node:24-alpine
+FROM node:26-alpine
 WORKDIR /app
 ENV NODE_ENV=production
 
