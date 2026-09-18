@@ -2,6 +2,13 @@
 
 Toutes les versions notables de Racontine. Format issu des messages de commit conventionnels (`feat`, `fix`, …).
 
+## [1.28.1](https://github.com/Wifsimster/racontine/compare/v1.28.0...v1.28.1) (2026-09-18)
+
+
+### Bug Fixes
+
+* **images:** installer pnpm par npm, corepack ayant disparu de Node 26 ([#81](https://github.com/Wifsimster/racontine/issues/81)) ([1524bfc](https://github.com/Wifsimster/racontine/commit/1524bfcd32c63f45a8633261134d6769f5c65100)), closes [#73](https://github.com/Wifsimster/racontine/issues/73) [#74](https://github.com/Wifsimster/racontine/issues/74) [#9](https://github.com/Wifsimster/racontine/issues/9) [#9](https://github.com/Wifsimster/racontine/issues/9) [#69](https://github.com/Wifsimster/racontine/issues/69)
+
 # [1.28.0](https://github.com/Wifsimster/racontine/compare/v1.27.1...v1.28.0) (2026-09-17)
 
 
