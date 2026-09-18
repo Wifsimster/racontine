@@ -6,7 +6,7 @@
 #  une résolution libre à chaque build. `--frozen-lockfile` garantit désormais
 #  que l'image servie est bâtie sur les versions que `pnpm test` a vues.
 # ===========================================================================
-FROM node:24-alpine AS build
+FROM node:26-alpine AS build
 WORKDIR /app
 # pnpm est installé PAR NPM, et non par corepack.
 #
