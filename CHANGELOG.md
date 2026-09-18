@@ -2,6 +2,13 @@
 
 Toutes les versions notables de Racontine. Format issu des messages de commit conventionnels (`feat`, `fix`, …).
 
+# [1.29.0](https://github.com/Wifsimster/racontine/compare/v1.28.2...v1.29.0) (2026-09-18)
+
+
+### Features
+
+* **mcp:** piloter l'instance et le cercle depuis un agent ([#83](https://github.com/Wifsimster/racontine/issues/83)) ([bfd5079](https://github.com/Wifsimster/racontine/commit/bfd5079011875e487ab32f847ec8da009957b424))
+
 ## [1.28.2](https://github.com/Wifsimster/racontine/compare/v1.28.1...v1.28.2) (2026-09-18)
 
 
