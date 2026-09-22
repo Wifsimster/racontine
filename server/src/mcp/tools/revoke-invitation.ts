@@ -16,7 +16,7 @@ export const revokeInvitationTool: McpTool = {
       {
         title: "Révoquer une invitation",
         description:
-          "Révoque une invitation en attente : son lien cesse de fonctionner. Réservé à l'administrateur du carnet concerné. Idempotent — révoquer une invitation déjà révoquée ou inexistante réussit sans rien changer. L'`id` se lit dans `list_circle`, `admin_console` ou `instance_status` (invitations expirées).",
+          "Révoque une invitation en attente : son lien cesse de fonctionner. Réservé à l'administrateur du carnet concerné. Idempotent — révoquer une invitation déjà révoquée ou inexistante réussit sans rien changer. Une invitation déjà acceptée ne se révoque pas : retirer le membre avec `remove_member`. L'`id` se lit dans `list_circle`, `admin_console` ou `instance_status` (invitations expirées).",
         inputSchema: {
           invitationId: z
             .string()
@@ -38,7 +38,17 @@ export const revokeInvitationTool: McpTool = {
         );
         if (!verdict.ok) return errorContent(verdict.error);
 
-        await ctx.sharing.revokeInvitation(invitationId);
+        // Une invitation déjà acceptée n'est plus un lien : c'est un membre.
+        // La « révoquer » ne retirerait rien — il faut retirer le membre.
+        if (invitation.status === "accepted")
+          return errorContent(
+            "Cette invitation a déjà été acceptée : le proche fait partie du cercle. Pour lui retirer l'accès, utilisez `remove_member`.",
+          );
+        const revoked = await ctx.sharing.revokeInvitation(invitationId);
+        if (!revoked && invitation.status === "pending")
+          return errorContent(
+            "L'invitation vient d'être acceptée : le proche fait partie du cercle. Pour lui retirer l'accès, utilisez `remove_member`.",
+          );
         return jsonContent({
           id: invitationId,
           childId: invitation.childId,

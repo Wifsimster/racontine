@@ -55,11 +55,6 @@ DUMP="$SRC/base.dump"
 PHOTOS="$SRC/uploads.tar.gz"
 [ -f "$DUMP" ] || { echo "✗ Pas de base.dump dans $SRC" >&2; exit 1; }
 
-# On relit AVANT de détruire quoi que ce soit : une archive illisible doit
-# arrêter le geste tant qu'il est encore temps.
-TABLES=$(pg_restore --list "$DUMP" 2>/dev/null | grep -c "TABLE DATA" || true)
-[ "${TABLES:-0}" -ge 1 ] || { echo "✗ $DUMP est illisible ou vide — on ne touche à rien." >&2; exit 1; }
-
 compose() {
   if [ -n "$COMPOSE_FILE" ]; then docker compose -f "$COMPOSE_FILE" "$@"
   else docker compose "$@"; fi
@@ -73,6 +68,22 @@ else
   echo "✗ Aucune base joignable (démarrez la pile, ou posez DATABASE_URL)." >&2
   exit 1
 fi
+
+# On relit AVANT de détruire quoi que ce soit : une archive illisible doit
+# arrêter le geste tant qu'il est encore temps. Relue par le `pg_restore` qui
+# va restaurer (celui de la base en mode compose) : celui de l'hôte peut
+# manquer ou être trop ancien, et refusait alors toute archive.
+list_dump() {
+  if [ "$MODE" = "url" ]; then pg_restore --list "$DUMP"
+  else compose exec -T "$DB_SERVICE" pg_restore --list < "$DUMP"; fi
+}
+if ! LISTING=$(list_dump 2>&1); then
+  echo "✗ Relecture de $DUMP impossible — on ne touche à rien :" >&2
+  printf '%s\n' "$LISTING" | sed 's/^/    /' >&2
+  exit 1
+fi
+TABLES=$(printf '%s\n' "$LISTING" | grep -c "TABLE DATA" || true)
+[ "${TABLES:-0}" -ge 1 ] || { echo "✗ $DUMP est vide — on ne touche à rien." >&2; exit 1; }
 
 echo "─────────────────────────────────────────────────────────────"
 [ -f "$SRC/manifeste.txt" ] && cat "$SRC/manifeste.txt"

@@ -143,6 +143,9 @@ export default function Invite() {
 
   const email = preview?.email ?? "";
   const mine = session?.user.email;
+  // Le serveur n'accepte qu'une adresse PROUVÉE : un compte créé par mot de
+  // passe doit d'abord suivre un lien magique — que le bouton envoie alors.
+  const canJoin = !!session && session.user.emailVerified;
   const wrongAccount = !!session && !!email && !sameEmail(mine, email);
 
   /* Le nom de l'instance : le proche doit lire le nom du carnet auquel on
@@ -245,12 +248,13 @@ export default function Invite() {
     if (phase !== "ready" || sessionPending) return;
     if (!preview || loadError) return;
     if (preview.status !== "pending" || preview.expired) return;
-    if (!session || !sameEmail(mine, email)) return;
+    if (!canJoin || !sameEmail(mine, email)) return;
     if (!hadIntent(token)) return;
     autoTried.current = true;
     void accept();
   }, [
     accept,
+    canJoin,
     email,
     loadError,
     mine,
@@ -627,9 +631,9 @@ export default function Invite() {
         size="lg"
         loading={busy}
         disabled={offline}
-        onClick={() => (session ? accept() : sendMagicLink(email))}
+        onClick={() => (canJoin ? accept() : sendMagicLink(email))}
       >
-        {session ? (
+        {canJoin ? (
           <>
             <UserCheck aria-hidden="true" />
             Rejoindre le cercle

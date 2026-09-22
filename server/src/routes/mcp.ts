@@ -7,8 +7,13 @@ import {
   listMcpTokens,
   revokeMcpToken,
 } from "../mcp-tokens.js";
-import { MAX_STAGED_BYTES, stageUpload } from "../mcp-uploads.js";
+import {
+  MAX_PENDING_UPLOADS,
+  MAX_STAGED_BYTES,
+  stageUpload,
+} from "../mcp-uploads.js";
 import { buildMcpServer } from "../mcp.js";
+import { canContributeSomewhere } from "../access.js";
 
 // Les images arrivent en base64 dans le corps JSON (une page ~2400px pèse
 // quelques Mo une fois encodée) : on relève la limite de corps pour cette route.
@@ -86,6 +91,13 @@ export async function mcpRoutes(app: FastifyInstance) {
           .header("WWW-Authenticate", "Bearer")
           .send({ error: "jeton MCP invalide ou absent" });
 
+      // Mettre une page en attente ne sert qu'à contribuer : un lecteur (qui
+      // ne peut rien importer) n'a pas à écrire sur le disque du foyer.
+      if (!(await canContributeSomewhere(user.id)))
+        return reply.code(403).send({
+          error: "Ce compte ne peut ajouter de journée à aucun carnet.",
+        });
+
       const body = req.body;
       if (!Buffer.isBuffer(body) || body.length === 0)
         return reply.code(400).send({
@@ -98,6 +110,10 @@ export async function mcpRoutes(app: FastifyInstance) {
           .send({ error: "Photo trop volumineuse (max 20 Mo par page)." });
 
       const staged = await stageUpload(user.id, body);
+      if (!staged)
+        return reply.code(429).send({
+          error: `Trop de pages en attente (${MAX_PENDING_UPLOADS} au plus) : importez-les avec \`upload_daily_note\`, ou attendez leur expiration (30 min).`,
+        });
       return reply.code(201).send({
         uploadId: staged.id,
         byteSize: staged.byteSize,

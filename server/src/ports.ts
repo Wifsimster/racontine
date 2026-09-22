@@ -178,8 +178,12 @@ export interface EntryRepository {
     entry: NewEntry,
     items: ItemRow[],
   ): Promise<EntryRecord | null>;
-  /** Repasse une journée en lecture (quel que soit son état courant). */
-  markProcessing(entryId: string): Promise<void>;
+  /**
+   * Repasse une journée en lecture, SAUF si elle est publiée — vérifié dans la
+   * même écriture : une publication survenue entre la lecture de l'état et
+   * cette bascule ne doit pas être rouverte. False si elle était publiée.
+   */
+  markProcessingUnlessPublished(entryId: string): Promise<boolean>;
   /**
    * Remplace contenu ET moments d'une journée ENCORE EN LECTURE, d'un seul
    * tenant. Rend false si la journée a changé d'état entre-temps (relecture
@@ -274,8 +278,14 @@ export interface EntryRevisionRepository {
     patch: EntryRevision,
     correction: RecordedCorrection,
   ): Promise<void>;
-  /** Supprime une journée (et, par cascade, ses moments et ses pages). */
-  remove(entryId: string): Promise<void>;
+  /**
+   * Supprime une journée (et, par cascade, ses moments et ses pages) et rend
+   * les fichiers de ses pages : la cascade n'efface que les LIGNES, les photos
+   * du carnet restent à effacer du disque.
+   */
+  remove(
+    entryId: string,
+  ): Promise<{ originalPath: string; thumbPath: string | null }[]>;
 }
 
 /** Création d'un enfant et du cercle qui va avec. */
@@ -443,6 +453,13 @@ export interface PrivacyRepository {
   stagedFilesOf(userId: string): Promise<StoredFile[]>;
   /** Efface les carnets (et, par cascade, journées, moments, pages, cercles). */
   deleteChildren(childIds: string[]): Promise<void>;
-  /** Efface le compte (et, par cascade, sessions, adhésions, jetons, réglages). */
-  deleteAccount(userId: string): Promise<void>;
+  /**
+   * Efface le compte (et, par cascade, sessions, adhésions, jetons, réglages),
+   * SAUF s'il est — au moment même de l'écriture, cercles verrouillés — le
+   * dernier administrateur d'un carnet qui subsiste. False : rien n'est effacé.
+   * Le plan a vérifié la même règle plus tôt, mais deux administrateurs qui
+   * effacent leur compte au même instant la passaient chacun, et le carnet
+   * restait sans personne pour le gérer.
+   */
+  deleteAccount(userId: string): Promise<boolean>;
 }

@@ -302,6 +302,11 @@ export default function Capture() {
         // Premier usage : crée un enfant par défaut à renommer ensuite.
         const child = await api.createChild("Mon enfant");
         cid = child.id;
+        // Retenu TOUT DE SUITE : si l'envoi qui suit échoue, le brouillon est
+        // gardé et « Réessayer » repasse ici — sans cette mémoire, chaque essai
+        // créait un nouveau carnet « Mon enfant ».
+        setChildren([child]);
+        setChildId(child.id);
       }
       // Réduit chaque page avant l'envoi : évite de dépasser la limite de
       // taille du proxy (upload « Failed to fetch ») et accélère l'envoi en 4G.

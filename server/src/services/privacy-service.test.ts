@@ -53,8 +53,9 @@ class FakePrivacyRepo implements PrivacyRepository {
   async deleteChildren(childIds: string[]): Promise<void> {
     this.steps.push(`efface-carnets:${childIds.join(",")}`);
   }
-  async deleteAccount(userId: string): Promise<void> {
+  async deleteAccount(userId: string): Promise<boolean> {
     this.steps.push(`efface-compte:${userId}`);
+    return true;
   }
 }
 

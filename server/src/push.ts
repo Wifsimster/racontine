@@ -11,6 +11,41 @@ import { config } from "./config.js";
  * notifs in-app et e-mail restent actives).
  */
 
+/**
+ * Services de push des navigateurs (Chrome/Android, Firefox, Edge, Safari).
+ * L'endpoint d'un abonnement est une URL que le SERVEUR appelle à chaque
+ * publication : sans cette liste, n'importe quel membre pouvait y inscrire
+ * une adresse interne (`http://169.254.169.254/…`, un service du réseau
+ * Docker) et faire frapper le serveur où il voulait.
+ */
+const PUSH_SERVICE_HOSTS = [
+  "fcm.googleapis.com",
+  "android.googleapis.com",
+  "updates.push.services.mozilla.com",
+  "web.push.apple.com",
+];
+const PUSH_SERVICE_SUFFIXES = [
+  ".push.services.mozilla.com",
+  ".notify.windows.com",
+  ".push.apple.com",
+];
+
+/** L'endpoint désigne-t-il bien un service de push de navigateur, en HTTPS ? */
+export function isPushServiceEndpoint(endpoint: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(endpoint);
+  } catch {
+    return false;
+  }
+  if (url.protocol !== "https:" || url.port !== "" || url.username) return false;
+  const host = url.hostname.toLowerCase();
+  return (
+    PUSH_SERVICE_HOSTS.includes(host) ||
+    PUSH_SERVICE_SUFFIXES.some((suffix) => host.endsWith(suffix))
+  );
+}
+
 let configured: boolean | undefined;
 
 /**
@@ -65,9 +100,12 @@ export async function sendPushToUser(
     .where(eq(pushSubscriptions.userId, userId));
   if (subs.length === 0) return;
 
+  // Un abonnement enregistré avant la vérification d'endpoint ne part pas.
+  const reachable = subs.filter((s) => isPushServiceEndpoint(s.endpoint));
+
   const body = JSON.stringify(payload);
   await Promise.allSettled(
-    subs.map(async (s) => {
+    reachable.map(async (s) => {
       try {
         await webpush.sendNotification(
           { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },

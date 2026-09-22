@@ -168,11 +168,18 @@ export class PrivacyService {
        ils survivraient au compte qui les a envoyés, sur le disque, sans plus
        aucune ligne en base pour dire à qui ils sont. */
     const staged = await this.deps.privacy.stagedFilesOf(params.userId);
-    await this.erase(
+    const erased = await this.erase(
       plan.deletes.map((c) => c.id),
       staged,
       params.userId,
     );
+    if (!erased)
+      return {
+        ok: false,
+        httpCode: 409,
+        error:
+          "Un autre administrateur vient de quitter l'un de vos carnets : vous en êtes maintenant le seul. Rechargez la page pour voir quoi faire avant d'effacer votre compte.",
+      };
     this.deps.logger.info("Compte effacé", {
       userId: params.userId,
       carnets: plan.deletes.length,
@@ -203,7 +210,7 @@ export class PrivacyService {
     childIds: string[],
     extraFiles: StoredFile[],
     userId?: string,
-  ): Promise<void> {
+  ): Promise<boolean> {
     const files = childIds.length
       ? await this.deps.privacy.filesOfChildren(childIds)
       : [];
@@ -226,7 +233,8 @@ export class PrivacyService {
     }
 
     if (childIds.length) await this.deps.privacy.deleteChildren(childIds);
-    if (userId) await this.deps.privacy.deleteAccount(userId);
+    if (userId) return this.deps.privacy.deleteAccount(userId);
+    return true;
   }
 }
 

@@ -232,14 +232,23 @@ export default function Timeline() {
     };
   }, [childId]);
 
+  /* LE CADRAGE COURANT, numéroté. Chaque changement de carnet ou de mois (et
+     chaque rechargement) en ouvre un nouveau ; une réponse partie sous un
+     ancien cadrage est jetée à l'arrivée. Sans ce numéro, passer d'Anouk à Lou
+     pendant que la page d'Anouk chargeait affichait — puis mémorisait — les
+     journées d'Anouk sous le nom de Lou, si sa réponse arrivait en dernier. */
+  const cadrage = useRef(0);
+
   /** La première page d'un cadrage donné. */
   const ouvrir = useCallback(
     async (child: string | null, depuis: string | null) => {
+      const mine = cadrage.current;
       const res = await api.timeline({
         childId: child,
         from: depuis,
         limit: PAGE,
       });
+      if (mine !== cadrage.current) return;
       setEntries(res.entries);
       setCursor(res.nextCursor);
       setPhase("ready");
@@ -255,7 +264,9 @@ export default function Timeline() {
    * ne rétrécisse sous le doigt.
    */
   const rafraichir = useCallback(async () => {
+    const mine = cadrage.current;
     const res = await api.timeline({ childId, from, limit: PAGE });
+    if (mine !== cadrage.current) return;
     setEntries((prev) => {
       if (!prev.length) {
         setCursor(res.nextCursor);
@@ -274,6 +285,7 @@ export default function Timeline() {
      mémoire, on le REMONTRE tout de suite et on le rafraîchit derrière : au
      retour d'une journée, l'écran ne clignote pas et ne perd pas sa place. */
   useEffect(() => {
+    cadrage.current += 1;
     const cache = filMemorise(childId);
 
     /* Ce cadrage est déjà en mémoire : on le REMONTRE tel quel — toutes les
@@ -315,6 +327,7 @@ export default function Timeline() {
   }, [phase, childId, entries, cursor, from]);
 
   const reload = useCallback(() => {
+    cadrage.current += 1;
     setError("");
     setPhase("loading");
     setEntries([]);
@@ -376,10 +389,12 @@ export default function Timeline() {
    */
   const loadMore = useCallback(async () => {
     if (!cursor) return;
+    const mine = cadrage.current;
     setMore(true);
     setMoreError("");
     try {
       const res = await api.timeline({ childId, from, cursor, limit: PAGE });
+      if (mine !== cadrage.current) return;
       let ajoutees = 0;
       setEntries((prev) => {
         const seen = new Set(prev.map((e) => e.id));
@@ -389,6 +404,7 @@ export default function Timeline() {
       });
       setCursor(ajoutees === 0 ? null : res.nextCursor);
     } catch (e) {
+      if (mine !== cadrage.current) return;
       setMoreError(
         e instanceof Error
           ? e.message

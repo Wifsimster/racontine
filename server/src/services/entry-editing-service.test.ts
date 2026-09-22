@@ -8,6 +8,7 @@ import {
   FakeAccessPolicy,
   FakeChildDirectory,
   FakeEntryRepository,
+  FakeImageStore,
   FakeLogger,
   FakePublicationNotifier,
   ImmediateRunner,
@@ -26,6 +27,8 @@ function build(
   );
   const notifier = new FakePublicationNotifier();
   const background = new ImmediateRunner();
+  const images = new FakeImageStore();
+  const logger = new FakeLogger();
   const service = new EntryEditingService({
     entries,
     revisions: entries,
@@ -33,8 +36,10 @@ function build(
     children: new FakeChildDirectory("Lou"),
     notifier,
     background,
+    images,
+    logger,
   });
-  return { service, entries, notifier, background, logger: new FakeLogger() };
+  return { service, entries, notifier, background, logger, images };
 }
 
 test("publier une journée prévient les abonnés une seule fois", async () => {
@@ -221,4 +226,32 @@ test("supprimer une journée est réservé à l'admin de l'enfant", async () => 
   const admin = build({ role: "admin" });
   assert.equal((await admin.service.remove("e1", "user-1")).ok, true);
   assert.equal(admin.entries.rows.size, 0);
+});
+
+test("une journée en lecture ou en échec ne se publie pas", async () => {
+  for (const status of ["processing", "failed"] as const) {
+    const { service, notifier, background } = build({
+      entries: [entryRecord({ id: "e1", status })],
+    });
+    const result = await service.revise({
+      entryId: "e1",
+      userId: "user-1",
+      publish: true,
+    });
+    await background.settle();
+    assert.equal(result.ok, false);
+    if (!result.ok) assert.equal(result.httpCode, 409);
+    assert.equal(notifier.announcements.length, 0);
+  }
+});
+
+test("supprimer une journée efface aussi les photos de ses pages", async () => {
+  const { service, entries, images } = build({ role: "admin" });
+  entries.files.set("e1", [
+    { originalPath: "a.jpg", thumbPath: "a_thumb.jpg" },
+    { originalPath: "b.jpg", thumbPath: null },
+  ]);
+  const result = await service.remove("e1", "user-1");
+  assert.equal(result.ok, true);
+  assert.deepEqual(images.deleted, ["a.jpg", "b.jpg"]);
 });

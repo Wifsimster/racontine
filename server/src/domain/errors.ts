@@ -18,3 +18,10 @@ export class DuplicateEntryError extends Error {}
 
 /** Date bien formée (AAAA-MM-JJ) mais impossible au calendrier (2026-13-40). */
 export class InvalidEntryDateError extends Error {}
+
+/**
+ * La journée n'est pas relisible : sa lecture est en cours (elle écraserait la
+ * relecture en se terminant) ou a échoué (il n'y a rien à publier — une journée
+ * vide partirait chez les proches).
+ */
+export class EntryNotReviewableError extends Error {}

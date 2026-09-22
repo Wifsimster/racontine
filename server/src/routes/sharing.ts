@@ -83,7 +83,14 @@ export async function sharingRoutes(app: FastifyInstance) {
       // L'autorisation se vérifie AVANT de révoquer — et il faut d'abord
       // retrouver l'invitation pour savoir de quel enfant elle relève.
       if (!(await requireChildAdmin(req, reply, inv.childId))) return;
-      await sharing.revokeInvitation(req.params.id);
+      if (
+        inv.status === "accepted" ||
+        (!(await sharing.revokeInvitation(req.params.id)) &&
+          inv.status === "pending")
+      )
+        return reply.code(409).send({
+          error: "invitation déjà acceptée : retirez plutôt ce proche du cercle",
+        });
       return reply.code(204).send();
     },
   );
@@ -146,6 +153,7 @@ export async function sharingRoutes(app: FastifyInstance) {
         token: req.params.token,
         userId: req.user!.id,
         userEmail: req.user!.email,
+        emailVerified: req.user!.emailVerified,
       });
       if (!result.ok)
         return reply.code(result.httpCode).send({ error: result.error });

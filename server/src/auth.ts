@@ -1,4 +1,5 @@
 import { betterAuth } from "better-auth";
+import { and, eq, gt, sql } from "drizzle-orm";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { magicLink } from "better-auth/plugins";
 import { createAuthMiddleware, APIError } from "better-auth/api";
@@ -79,7 +80,9 @@ export const auth = betterAuth({
   hooks: {
     // Bloque l'inscription email/mot de passe quand le propriétaire l'a fermée.
     // Ne concerne QUE /sign-up/email : les proches invités par magic link
-    // continuent de rejoindre le cercle même inscriptions fermées.
+    // continuent de rejoindre le cercle même inscriptions fermées (le lien
+    // magique d'une adresse inconnue ne part que pour une invitation en
+    // attente — voir `magicLinkMayOpen`).
     before: createAuthMiddleware(async (ctx) => {
       if (ctx.path !== "/sign-up/email") return;
       // AMORÇAGE : une instance sans aucun compte accepte toujours le premier.
@@ -111,6 +114,13 @@ export const auth = betterAuth({
     // `sendResetPassword` ci-dessus et mène au choix d'un nouveau mot de passe.
     magicLink({
       async sendMagicLink({ email, url }) {
+        // Le lien magique CRÉE le compte d'une adresse inconnue : c'est ainsi
+        // qu'un proche invité entre. Inscriptions fermées, il ne doit le faire
+        // que pour une adresse attendue — sans quoi n'importe qui ouvrait un
+        // compte par ce chemin, et le réglage `signupEnabled` ne fermait rien.
+        // On se tait plutôt que de refuser : la réponse ne dit pas si
+        // l'adresse a un compte sur l'instance.
+        if (!(await magicLinkMayOpen(email))) return;
         await deliverLink(
           email,
           "Votre lien de connexion Racontine",
@@ -126,5 +136,35 @@ export const auth = betterAuth({
     updateAge: 60 * 60 * 24, // prolongée chaque jour d'usage
   },
 });
+
+/**
+ * Un lien magique peut-il partir vers cette adresse ? Toujours pour un compte
+ * existant ; pour une adresse inconnue (le lien CRÉERA le compte), seulement
+ * si les inscriptions sont ouvertes, si l'instance n'a encore aucun compte
+ * (amorçage), ou si une invitation en attente et non expirée l'attend.
+ */
+async function magicLinkMayOpen(email: string): Promise<boolean> {
+  const address = email.trim().toLowerCase();
+  const [existing] = await db
+    .select({ id: schema.user.id })
+    .from(schema.user)
+    .where(sql`lower(${schema.user.email}) = ${address}`)
+    .limit(1);
+  if (existing) return true;
+  if ((await ownerUserId()) === null) return true;
+  if ((await getSettings()).signupEnabled) return true;
+  const [invited] = await db
+    .select({ id: schema.invitations.id })
+    .from(schema.invitations)
+    .where(
+      and(
+        sql`lower(${schema.invitations.email}) = ${address}`,
+        eq(schema.invitations.status, "pending"),
+        gt(schema.invitations.expiresAt, new Date()),
+      ),
+    )
+    .limit(1);
+  return Boolean(invited);
+}
 
 export type AuthSession = typeof auth.$Infer.Session;

@@ -4,12 +4,15 @@ import { z } from "zod";
 import { db } from "../db/index.js";
 import { pushSubscriptions } from "../db/schema.js";
 import { requireUser } from "../plugins/auth.js";
-import { vapidPublicKey } from "../push.js";
+import { isPushServiceEndpoint, vapidPublicKey } from "../push.js";
 
 // Un abonnement PushSubscription tel que sérialisé par le navigateur
 // (`subscription.toJSON()`). On ne retient que ce dont web-push a besoin.
 const subscribeSchema = z.object({
-  endpoint: z.string().url(),
+  endpoint: z
+    .string()
+    .url()
+    .refine(isPushServiceEndpoint, "service de push inconnu"),
   keys: z.object({
     p256dh: z.string().min(1),
     auth: z.string().min(1),

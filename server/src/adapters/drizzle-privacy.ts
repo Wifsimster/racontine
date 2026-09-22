@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, inArray, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, ne, or, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
 import {
   attachments,
@@ -17,6 +17,7 @@ import {
   wordCorrections,
 } from "../db/schema.js";
 import { ownerUserId, roleAtLeast } from "../access.js";
+import { lockCircle } from "./drizzle-sharing.js";
 import type { CarnetStanding, ErasureSnapshot } from "../domain/erasure.js";
 import { attachmentUrls } from "../routes/attachment-urls.js";
 import type {
@@ -416,8 +417,34 @@ export class DrizzlePrivacyRepository implements PrivacyRepository {
     await db.delete(children).where(inArray(children.id, childIds));
   }
 
-  async deleteAccount(userId: string): Promise<void> {
-    await db.delete(user).where(eq(user.id, userId));
+  async deleteAccount(userId: string): Promise<boolean> {
+    return db.transaction(async (tx) => {
+      const administered = await tx
+        .select({ childId: memberships.childId })
+        .from(memberships)
+        .where(
+          and(eq(memberships.userId, userId), eq(memberships.role, "admin")),
+        )
+        // Toujours dans le même ordre : deux effacements simultanés ne
+        // s'attendent pas l'un l'autre en croix (interblocage).
+        .orderBy(asc(memberships.childId));
+      for (const { childId } of administered) {
+        await lockCircle(tx, childId);
+        const [others] = await tx
+          .select({ n: count() })
+          .from(memberships)
+          .where(
+            and(
+              eq(memberships.childId, childId),
+              eq(memberships.role, "admin"),
+              ne(memberships.userId, userId),
+            ),
+          );
+        if ((others?.n ?? 0) === 0) return false;
+      }
+      await tx.delete(user).where(eq(user.id, userId));
+      return true;
+    });
   }
 }
 

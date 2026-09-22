@@ -3,6 +3,7 @@ import { test } from "node:test";
 import type { MemberRole } from "../db/schema.js";
 import {
   SharingService,
+  type CircleChange,
   type InvitationRow,
   type InvitationRepository,
   type LinkDelivery,
@@ -32,16 +33,24 @@ class FakeMemberships implements MembershipRepository {
       createdAt: NOW,
     }));
   }
-  async adminIds(): Promise<string[]> {
-    return this.admins;
+  private lastAdmin(userId: string) {
+    return this.admins.includes(userId) && this.admins.length <= 1;
   }
-  async setRole(childId: string, userId: string, role: MemberRole) {
-    if (!this.members.includes(userId)) return false;
+  async setRole(
+    childId: string,
+    userId: string,
+    role: MemberRole,
+  ): Promise<CircleChange> {
+    if (!this.members.includes(userId)) return "missing";
+    if (role !== "admin" && this.lastAdmin(userId)) return "last-admin";
     this.roles.push([childId, userId, role]);
-    return true;
+    return "ok";
   }
-  async remove(childId: string, userId: string) {
+  async remove(childId: string, userId: string): Promise<CircleChange> {
+    if (!this.members.includes(userId)) return "missing";
+    if (this.lastAdmin(userId)) return "last-admin";
     this.removed.push([childId, userId]);
+    return "ok";
   }
   async upsert() {}
   async isMember(_childId: string, userId: string) {
@@ -75,7 +84,13 @@ class FakeInvitations implements InvitationRepository {
   async findByToken() {
     return this.row ? { ...this.row, childName: "Lou" } : null;
   }
-  async revoke() {}
+  revokedFor: [string, string][] = [];
+  async revoke() {
+    return this.row?.status === "pending";
+  }
+  async revokePendingFor(childId: string, email: string) {
+    this.revokedFor.push([childId, email]);
+  }
   async acceptIfPending(id: string) {
     if (!this.pendingAccept) return false;
     this.accepted.push(id);
@@ -223,6 +238,7 @@ test("une invitation est nominative : un autre compte ne peut pas l'accepter", a
     token: "jeton",
     userId: "u-voisin",
     userEmail: "voisin@example.test",
+    emailVerified: true,
   });
   assert.equal(result.ok, false);
   if (!result.ok) assert.equal(result.httpCode, 403);
@@ -238,6 +254,7 @@ test("une invitation expirée ou déjà utilisée ne vaut plus rien", async () =
     token: "jeton",
     userId: "u",
     userEmail: "mamie@example.test",
+    emailVerified: true,
   });
   assert.equal(e.ok, false);
   if (!e.ok) assert.equal(e.httpCode, 410);
@@ -249,6 +266,7 @@ test("une invitation expirée ou déjà utilisée ne vaut plus rien", async () =
     token: "jeton",
     userId: "u",
     userEmail: "mamie@example.test",
+    emailVerified: true,
   });
   assert.equal(u.ok, false);
   if (!u.ok) assert.equal(u.httpCode, 410);
@@ -261,6 +279,7 @@ test("deux acceptations simultanées : une seule gagne", async () => {
     token: "jeton",
     userId: "u-mamie",
     userEmail: "Mamie@Example.test",
+    emailVerified: true,
   });
   assert.deepEqual(first, { ok: true, childId: "c1", role: "reader" });
 
@@ -270,6 +289,7 @@ test("deux acceptations simultanées : une seule gagne", async () => {
     token: "jeton",
     userId: "u-autre",
     userEmail: "mamie@example.test",
+    emailVerified: true,
   });
   assert.equal(second.ok, false);
   if (!second.ok) assert.equal(second.httpCode, 410);
@@ -284,4 +304,28 @@ test("le cercle dit quelles invitations sont périmées", async () => {
   const circle = await service.circle("c1");
   assert.equal(circle.invitations[0].expired, true);
   assert.equal(circle.invitations[0].url, "https://racontine.test/invite/jeton");
+});
+
+test("une adresse non prouvée ne peut pas accepter une invitation", async () => {
+  const invitations = new FakeInvitations(invitation());
+  const { service } = build({ invitations });
+  const result = await service.accept({
+    token: "jeton",
+    userId: "u-mamie",
+    userEmail: "mamie@example.test",
+    emailVerified: false,
+  });
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.equal(result.httpCode, 403);
+  assert.deepEqual(invitations.accepted, []);
+});
+
+test("réinviter une adresse révoque ses liens encore en attente", async () => {
+  const { service, invitations } = build();
+  await service.invite({
+    childId: "c1",
+    inviterId: "u-admin",
+    email: "Mamie@Example.test",
+  });
+  assert.deepEqual(invitations.revokedFor, [["c1", "mamie@example.test"]]);
 });

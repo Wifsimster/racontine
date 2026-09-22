@@ -32,3 +32,17 @@ test("trancher une incertitude ne touche pas les autres", () => {
   assert.equal(after[1].resolved, "B");
   assert.equal(before[1].resolved, null); // l'entrée d'origine n'est pas mutée
 });
+
+test("seul le mot entier est remplacé, pas les mots qui le contiennent", () => {
+  const patch = applyResolvedReading(
+    {
+      title: null,
+      story: "Il a mis sa mise en plis. (mis?) l'mis",
+      highlight: null,
+      transcription: null,
+    },
+    "mis",
+    "mit",
+  );
+  assert.deepEqual(patch, { story: "Il a mit sa mise en plis. (mit?) l'mit" });
+});

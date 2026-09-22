@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, writeFile, readFile, unlink } from "node:fs/promises";
 import path from "node:path";
-import { and, eq, gt, inArray, lt } from "drizzle-orm";
+import { and, count, eq, gt, inArray, lt } from "drizzle-orm";
 import { db } from "./db/index.js";
 import { mcpUploads } from "./db/schema.js";
 import { resolveUpload } from "./storage.js";
@@ -26,6 +26,13 @@ export const STAGING_TTL_MS = 30 * 60 * 1000; // 30 min
 
 /** Taille maximale d'une page brute (aligné sur la limite du formulaire web). */
 export const MAX_STAGED_BYTES = 20 * 1024 * 1024; // 20 Mo
+
+/**
+ * Pages en attente qu'un même compte peut accumuler. Sans plafond, un jeton
+ * qui boucle sur `POST /api/mcp/uploads` remplissait le volume des pages à
+ * raison de 20 Mo par appel, balayés seulement au bout de 30 minutes.
+ */
+export const MAX_PENDING_UPLOADS = 24;
 
 export type StagedUpload = {
   id: string;
@@ -60,13 +67,19 @@ export async function sweepExpiredUploads(): Promise<void> {
 /**
  * Met en attente les octets bruts d'une page pour `userId`. Écrit le fichier
  * sous `UPLOADS_DIR/staging/<uuid>` puis enregistre la ligne de suivi (chemin,
- * taille, expiration). Renvoie l'identifiant court à passer à `upload_daily_note`.
+ * taille, expiration). Renvoie l'identifiant court à passer à `upload_daily_note`,
+ * ou null si le compte a déjà `MAX_PENDING_UPLOADS` pages en attente.
  */
 export async function stageUpload(
   userId: string,
   bytes: Buffer,
-): Promise<StagedUpload> {
-  void sweepExpiredUploads();
+): Promise<StagedUpload | null> {
+  await sweepExpiredUploads();
+  const [pending] = await db
+    .select({ n: count() })
+    .from(mcpUploads)
+    .where(eq(mcpUploads.userId, userId));
+  if ((pending?.n ?? 0) >= MAX_PENDING_UPLOADS) return null;
 
   const id = randomUUID();
   const rel = path.join(STAGING_DIR, id);

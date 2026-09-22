@@ -22,6 +22,15 @@ export function applyResolvedReading(
   value: string,
 ): Partial<ValorizedFields> {
   const patch: Partial<ValorizedFields> = {};
+  if (!original) return patch;
+  // Le mot ENTIER seulement : trancher « mis » en « mit » ne doit pas changer
+  // « mise » en « mite » ailleurs dans le récit — un texte qui part chez les
+  // proches. Une lettre ou un chiffre collé au mot fait de lui un autre mot.
+  const escaped = original.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const whole = new RegExp(
+    `(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`,
+    "gu",
+  );
   for (const key of [
     "title",
     "story",
@@ -29,8 +38,9 @@ export function applyResolvedReading(
     "transcription",
   ] as const) {
     const current = fields[key];
-    if (current?.includes(original))
-      patch[key] = current.split(original).join(value);
+    if (!current) continue;
+    const next = current.replace(whole, () => value);
+    if (next !== current) patch[key] = next;
   }
   return patch;
 }
