@@ -121,7 +121,22 @@ fi
 
 # ── 3. La vérification, sans laquelle rien de tout cela ne vaut ────────────
 echo "→ Relecture de ce qui vient d'être écrit"
-TABLES=$(pg_restore --list "$DUMP" 2>/dev/null | grep -c "TABLE DATA" || true)
+# Relu par le `pg_restore` DE LA BASE, comme il a été écrit par son `pg_dump` :
+# celui de l'hôte peut manquer, ou être trop ancien pour lire l'en-tête d'un
+# dump récent — et la sauvegarde, parfaitement valide, était alors SUPPRIMÉE.
+list_dump() {
+  if [ "$MODE" = "url" ]; then pg_restore --list "$DUMP"
+  else compose exec -T "$DB_SERVICE" pg_restore --list < "$DUMP"; fi
+}
+if ! LISTING=$(list_dump 2>"$DEST/relecture.err"); then
+  # L'outil de relecture a échoué : on ne sait RIEN du dump. On le garde (il
+  # est peut-être bon) et on échoue bruyamment plutôt que de l'effacer.
+  echo "✗ Relecture impossible — la sauvegarde est CONSERVÉE mais NON VÉRIFIÉE :" >&2
+  sed 's/^/    /' "$DEST/relecture.err" >&2
+  exit 1
+fi
+rm -f "$DEST/relecture.err"
+TABLES=$(printf '%s\n' "$LISTING" | grep -c "TABLE DATA" || true)
 if [ "${TABLES:-0}" -lt 1 ]; then
   echo "✗ Le dump ne contient aucune table : sauvegarde INVALIDE, elle est supprimée." >&2
   rm -rf "$DEST"

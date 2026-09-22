@@ -453,6 +453,13 @@ export interface PrivacyRepository {
   stagedFilesOf(userId: string): Promise<StoredFile[]>;
   /** Efface les carnets (et, par cascade, journées, moments, pages, cercles). */
   deleteChildren(childIds: string[]): Promise<void>;
-  /** Efface le compte (et, par cascade, sessions, adhésions, jetons, réglages). */
-  deleteAccount(userId: string): Promise<void>;
+  /**
+   * Efface le compte (et, par cascade, sessions, adhésions, jetons, réglages),
+   * SAUF s'il est — au moment même de l'écriture, cercles verrouillés — le
+   * dernier administrateur d'un carnet qui subsiste. False : rien n'est effacé.
+   * Le plan a vérifié la même règle plus tôt, mais deux administrateurs qui
+   * effacent leur compte au même instant la passaient chacun, et le carnet
+   * restait sans personne pour le gérer.
+   */
+  deleteAccount(userId: string): Promise<boolean>;
 }

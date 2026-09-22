@@ -76,28 +76,34 @@ export function useReviewEntry(id: string) {
     });
   }, []);
 
-  const fetchEntry = useCallback(async () => {
-    const e = await api.getEntry(id);
-    setLoadError(null);
-    hydrate(e);
-    if (e.status === "processing") {
-      pollRef.current = setTimeout(fetchEntry, 2500);
-    }
-  }, [id, hydrate]);
-
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
+    /* `alive` borne CE chargement : une réponse arrivée après le démontage (ou
+       après un `reload`) ne réarme plus de minuterie. Sans lui, un sondage en
+       vol au moment du nettoyage relançait une boucle orpheline, doublée à
+       chaque rechargement, jusqu'à la fin de la lecture. */
+    let alive = true;
+    const fetchEntry = async (): Promise<void> => {
+      const e = await api.getEntry(id);
+      if (!alive) return;
+      setLoadError(null);
+      hydrate(e);
+      if (e.status === "processing")
+        pollRef.current = setTimeout(() => void fetchEntry().catch(fail), 2500);
+    };
     // L'échec de CHARGEMENT est un état à part entière : avant, il était rangé
     // dans `error` alors que le rendu, lui, restait bloqué sur « Chargement… »
     // parce que `entry` valait toujours null. L'écran mentait indéfiniment.
-    fetchEntry().catch((err) =>
-      setLoadError(err instanceof Error ? err.message : String(err)),
-    );
+    const fail = (err: unknown) => {
+      if (alive) setLoadError(err instanceof Error ? err.message : String(err));
+    };
+    fetchEntry().catch(fail);
     return () => {
+      alive = false;
       if (pollRef.current) clearTimeout(pollRef.current);
     };
-  }, [fetchEntry, reloadKey]);
+  }, [id, hydrate, reloadKey]);
 
   /* ── QUI A LE DROIT D'ÊTRE ICI ────────────────────────────────────────────
      `/api/entries/:id` renvoie la journée à TOUS les membres du carnet, lecteurs

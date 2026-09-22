@@ -239,7 +239,10 @@ export async function startCheckout(userId: string): Promise<BillingLink> {
       cancelUrl: `${base}?paiement=annule`,
       customerId: row.stripeCustomerId,
       customerEmail: me?.email ?? null,
-      reference: SINGLETON_ID,
+      // Le repère doit distinguer CE foyer : un compte Stripe peut porter
+      // plusieurs instances, et ses webhooks les servent toutes. L'identifiant
+      // du propriétaire est propre à l'instance ; « singleton » ne l'était pas.
+      reference: userId,
     });
     return { ok: true, url: session.url };
   } catch (err) {
@@ -311,6 +314,39 @@ async function save(
 }
 
 /**
+ * La session de paiement vient-elle de CE foyer ? Soit elle porte notre repère
+ * (l'identifiant du propriétaire), soit elle facture le client Stripe déjà
+ * rattaché au foyer (sessions ouvertes avant l'existence du repère).
+ */
+async function checkoutIsOurs(
+  reference: string | null,
+  customerId: string | null,
+): Promise<boolean> {
+  const owner = await ownerUserId();
+  if (owner && reference === owner) return true;
+  const row = await ensureRow(new Date());
+  return Boolean(row.stripeCustomerId && customerId === row.stripeCustomerId);
+}
+
+/**
+ * Un abonnement relu chez Stripe concerne-t-il l'abonnement COURANT du foyer ?
+ *
+ * Deux gardes. Le client : un compte Stripe peut servir plusieurs foyers (et
+ * d'autres produits), et chaque webhook reçoit les événements de TOUS ses
+ * clients — sans elle, l'abonnement d'une autre famille ouvrait ou fermait ce
+ * carnet. L'abonnement : après un réabonnement, l'ancien abonnement vit encore
+ * chez Stripe ; ses derniers événements (relances, résiliation finale) ne
+ * doivent pas écraser le nouveau. Seul un paiement (`checkout`) fait changer
+ * le foyer d'abonnement.
+ */
+async function concernsCurrent(snapshot: SubscriptionSnapshot): Promise<boolean> {
+  const row = await ensureRow(new Date());
+  if (!row.stripeCustomerId || snapshot.customerId !== row.stripeCustomerId)
+    return false;
+  return !row.stripeSubscriptionId || row.stripeSubscriptionId === snapshot.id;
+}
+
+/**
  * Applique un événement Stripe déjà VÉRIFIÉ (la signature se contrôle dans la
  * route, avec le corps brut).
  *
@@ -339,6 +375,14 @@ export async function applyStripeEvent(event: {
           ? event.data.subscription
           : null;
       if (!subscriptionId) return { applied: false, reason: "sans abonnement" };
+      const reference =
+        typeof event.data.client_reference_id === "string"
+          ? event.data.client_reference_id
+          : null;
+      const customerId =
+        typeof event.data.customer === "string" ? event.data.customer : null;
+      if (!(await checkoutIsOurs(reference, customerId)))
+        return { applied: false, reason: "autre foyer" };
       await save(await api.getSubscription(subscriptionId), at);
       return { applied: true, reason: event.type };
     }
@@ -351,7 +395,10 @@ export async function applyStripeEvent(event: {
     case "invoice.payment_failed": {
       const subscriptionId = subscriptionIdOf(event.data);
       if (!subscriptionId) return { applied: false, reason: "sans abonnement" };
-      await save(await api.getSubscription(subscriptionId), at);
+      const snapshot = await api.getSubscription(subscriptionId);
+      if (!(await concernsCurrent(snapshot)))
+        return { applied: false, reason: "autre abonnement" };
+      await save(snapshot, at);
       return { applied: true, reason: event.type };
     }
 
@@ -359,17 +406,16 @@ export async function applyStripeEvent(event: {
       // Un abonnement supprimé ne se relit pas : Stripe rend l'objet final dans
       // l'événement, et c'est le dernier mot.
       const data = event.data;
-      await save(
-        {
-          id: String(data.id ?? ""),
-          customerId:
-            typeof data.customer === "string" ? data.customer : null,
-          status: "canceled",
-          currentPeriodEnd: periodEndFromEvent(data),
-          cancelAtPeriodEnd: true,
-        },
-        at,
-      );
+      const snapshot: SubscriptionSnapshot = {
+        id: String(data.id ?? ""),
+        customerId: typeof data.customer === "string" ? data.customer : null,
+        status: "canceled",
+        currentPeriodEnd: periodEndFromEvent(data),
+        cancelAtPeriodEnd: true,
+      };
+      if (!(await concernsCurrent(snapshot)))
+        return { applied: false, reason: "autre abonnement" };
+      await save(snapshot, at);
       return { applied: true, reason: event.type };
     }
 
@@ -417,6 +463,10 @@ export async function syncFromCheckoutSession(
   try {
     const session = await api.getCheckoutSession(sessionId);
     if (!session.subscriptionId) return false;
+    // Un identifiant de session d'un AUTRE foyer du même compte Stripe ne
+    // s'applique pas ici : n'importe quel membre peut appeler ce rattrapage.
+    if (!(await checkoutIsOurs(session.reference, session.customerId)))
+      return false;
     await save(await api.getSubscription(session.subscriptionId), new Date());
     return true;
   } catch {

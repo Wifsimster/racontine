@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { db } from "./db/index.js";
 import {
   children,
@@ -26,6 +26,21 @@ export async function accessibleChildIds(userId: string): Promise<string[]> {
     .from(memberships)
     .where(eq(memberships.userId, userId));
   return rows.map((r) => r.childId);
+}
+
+/** L'utilisateur peut-il contribuer (contributor ou admin) à au moins un enfant ? */
+export async function canContributeSomewhere(userId: string): Promise<boolean> {
+  const [row] = await db
+    .select({ childId: memberships.childId })
+    .from(memberships)
+    .where(
+      and(
+        eq(memberships.userId, userId),
+        inArray(memberships.role, ["contributor", "admin"]),
+      ),
+    )
+    .limit(1);
+  return Boolean(row);
 }
 
 /** Rôle de l'utilisateur sur un enfant, ou null s'il n'y a pas accès. */

@@ -38,7 +38,7 @@ import {
 } from "../src/adapters/drizzle-sharing.js";
 import { DrizzleAdminRepository } from "../src/adapters/drizzle-admin.js";
 import { listTimeline, listTimelineMonths } from "../src/queries/entry-feed.js";
-import { DuplicateEntryError } from "../src/domain/errors.js";
+import { DuplicateEntryError, EntryNotReviewableError } from "../src/domain/errors.js";
 
 const ok = (label: string) => console.log("  ok —", label);
 
@@ -155,6 +155,29 @@ await assert.rejects(
 );
 ok("une collision de date devient DuplicateEntryError, pas un code SQL");
 
+assert.equal(await repo.markProcessingUnlessPublished(created.id), false);
+const third = await repo.createWithItems({
+  childId: child.id,
+  date: "2026-01-15",
+  source: "nounou",
+  status: "draft",
+  createdBy: owner,
+}, []);
+assert.ok(third);
+await pages.addMany(third.id, [
+  { originalPath: "c.jpg", thumbPath: "c_t.jpg", mime: "image/jpeg", width: 10, height: 20 },
+], 0);
+assert.equal(await repo.markProcessingUnlessPublished(third.id), true);
+await assert.rejects(
+  () => revisions.revise(third.id, { title: "Trop tôt" }, null, true),
+  EntryNotReviewableError,
+);
+assert.deepEqual(await revisions.remove(third.id), [
+  { originalPath: "c.jpg", thumbPath: "c_t.jpg" },
+]);
+assert.equal(await repo.findById(third.id), null);
+ok("une journée publiée ne se rouvre pas ; en lecture, elle ne se relit pas ; supprimée, elle rend ses fichiers");
+
 await repo.appendUncertainty(created.id, {
   original: "pages du 2026-02-02",
   contexte: "signalement",
@@ -184,7 +207,9 @@ assert.equal(await pageRepo.countSiblings(created.id), 1);
 ok("le dépôt des pages lit la journée qui les porte et enregistre l'orientation");
 
 const memberships = new DrizzleMembershipRepository();
-assert.deepEqual(await memberships.adminIds(child.id), [owner]);
+assert.equal(await memberships.setRole(child.id, owner, "reader"), "last-admin");
+assert.equal(await memberships.remove(child.id, owner), "last-admin");
+ok("le dernier administrateur ne peut ni se rétrograder ni partir");
 const invitations = new DrizzleInvitationRepository();
 const token = `jeton-${randomUUID()}`;
 const inv = await invitations.create({
@@ -205,9 +230,55 @@ assert.equal(
   await new DrizzleUserDirectory().findIdByEmail(`${invitee}@example.test`),
   invitee,
 );
+// Un vieux lien « lecteur » n'abaisse pas un rôle plus élevé.
+assert.equal(await memberships.setRole(child.id, invitee, "admin"), "ok");
+const stale = await invitations.create({
+  childId: child.id,
+  email: `${invitee}@example.test`,
+  role: "reader",
+  token: `jeton-${randomUUID()}`,
+  invitedBy: owner,
+  expiresAt: new Date(Date.now() + 86_400_000),
+});
+assert.equal(await invitations.acceptIfPending(stale.id, invitee), true);
+assert.equal(
+  (await memberships.listMembers(child.id)).find((m) => m.userId === invitee)
+    ?.role,
+  "admin",
+);
+ok("accepter une invitation n'abaisse jamais un rôle");
+
+// Deux administrateurs qui se rétrogradent l'un l'autre au même instant : un
+// seul passe, l'enfant garde un administrateur.
+const crossed = await Promise.all([
+  memberships.setRole(child.id, owner, "reader"),
+  memberships.setRole(child.id, invitee, "reader"),
+]);
+assert.deepEqual([...crossed].sort(), ["last-admin", "ok"]);
+assert.equal(
+  (await memberships.listMembers(child.id)).filter((m) => m.role === "admin")
+    .length,
+  1,
+);
+// On remet le propriétaire administrateur pour la suite.
+await memberships.setRole(child.id, owner, "admin");
+await memberships.setRole(child.id, invitee, "reader");
+ok("deux rétrogradations croisées laissent un administrateur");
+
+// Une invitation acceptée ne se révoque pas ; une en attente, si.
+assert.equal(await invitations.revoke(stale.id), false);
+const pending2 = await invitations.create({
+  childId: child.id,
+  email: `${invitee}@example.test`,
+  role: "reader",
+  token: `jeton-${randomUUID()}`,
+  invitedBy: owner,
+  expiresAt: new Date(Date.now() + 86_400_000),
+});
 await memberships.remove(child.id, invitee);
 assert.equal(await memberships.isMember(child.id, invitee), false);
-ok("retirer un membre retire son adhésion");
+assert.equal((await invitations.findById(pending2.id))?.status, "revoked");
+ok("retirer un membre retire son adhésion et ses invitations en attente");
 
 /* Le fil, page par page : le curseur doit avancer sans jamais rendre deux fois
    la même journée — c'est tout l'intérêt d'avoir quitté le décalage. */

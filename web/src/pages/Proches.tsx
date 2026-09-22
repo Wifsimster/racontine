@@ -32,7 +32,8 @@ import {
 
 type ChildState = {
   status: SubscriptionStatus;
-  subscribers: Subscriber[];
+  /** Null hors administrateur : la liste (noms, e-mails) lui est réservée. */
+  subscribers: Subscriber[] | null;
 };
 
 /**
@@ -118,12 +119,18 @@ function ChildCard({ child }: { child: Child }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // La liste des abonnés expose noms et e-mails : le serveur la réserve à
+  // l'administrateur (404 sinon). La demander à un lecteur faisait échouer
+  // TOUT le chargement — et le bouton « Suivre » avec, pour le public même
+  // des notifications.
+  const isAdmin = child.role === "admin";
+
   async function load() {
     const [status, subs] = await Promise.all([
       api.getSubscription(child.id),
-      api.listSubscribers(child.id),
+      isAdmin ? api.listSubscribers(child.id) : Promise.resolve(null),
     ]);
-    setState({ status, subscribers: subs.subscribers });
+    setState({ status, subscribers: subs?.subscribers ?? null });
   }
 
   useEffect(() => {
@@ -234,37 +241,39 @@ function ChildCard({ child }: { child: Child }) {
         </InlineError>
       )}
 
-      <div className="flex flex-col gap-2 border-t pt-4">
-        <p className="surtitre flex items-center gap-1.5 text-muted-foreground">
-          <Users className="size-3.5 shrink-0" aria-hidden="true" />
-          Proches abonnés ({state?.subscribers.length ?? 0})
-        </p>
-        {state && state.subscribers.length > 0 ? (
-          <ul className="flex flex-col gap-1.5">
-            {state.subscribers.map((s) => (
-              <li
-                key={s.userId}
-                className="flex items-center justify-between gap-2"
-              >
-                <span className="min-w-0 truncate text-meta">
-                  {s.name}{" "}
-                  <span className="text-muted-foreground">({s.email})</span>
-                </span>
-                {s.emailEnabled && (
-                  <Mail
-                    className="size-3.5 shrink-0 text-muted-foreground"
-                    aria-label="reçoit les e-mails"
-                  />
-                )}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-meta text-muted-foreground">
-            Personne ne suit encore ce carnet.
+      {isAdmin && (
+        <div className="flex flex-col gap-2 border-t pt-4">
+          <p className="surtitre flex items-center gap-1.5 text-muted-foreground">
+            <Users className="size-3.5 shrink-0" aria-hidden="true" />
+            Proches abonnés ({state?.subscribers?.length ?? 0})
           </p>
-        )}
-      </div>
+          {state?.subscribers && state.subscribers.length > 0 ? (
+            <ul className="flex flex-col gap-1.5">
+              {state.subscribers.map((s) => (
+                <li
+                  key={s.userId}
+                  className="flex items-center justify-between gap-2"
+                >
+                  <span className="min-w-0 truncate text-meta">
+                    {s.name}{" "}
+                    <span className="text-muted-foreground">({s.email})</span>
+                  </span>
+                  {s.emailEnabled && (
+                    <Mail
+                      className="size-3.5 shrink-0 text-muted-foreground"
+                      aria-label="reçoit les e-mails"
+                    />
+                  )}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-meta text-muted-foreground">
+              Personne ne suit encore ce carnet.
+            </p>
+          )}
+        </div>
+      )}
     </li>
   );
 }

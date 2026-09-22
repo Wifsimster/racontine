@@ -300,7 +300,11 @@ export class StripeClient {
   /** Session de paiement relue après le retour du client (customer + abonnement). */
   async getCheckoutSession(
     id: string,
-  ): Promise<{ customerId: string | null; subscriptionId: string | null }> {
+  ): Promise<{
+    customerId: string | null;
+    subscriptionId: string | null;
+    reference: string | null;
+  }> {
     const session = await call(
       this.apiKey,
       `/checkout/sessions/${encodeURIComponent(id)}`,
@@ -316,6 +320,10 @@ export class StripeClient {
     return {
       customerId: idOf(session.customer),
       subscriptionId: idOf(session.subscription),
+      reference:
+        typeof session.client_reference_id === "string"
+          ? session.client_reference_id
+          : null,
     };
   }
 }
