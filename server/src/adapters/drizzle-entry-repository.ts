@@ -105,11 +105,13 @@ export class DrizzleEntryRepository implements EntryRepository {
     });
   }
 
-  async markProcessing(entryId: string): Promise<void> {
-    await this.db
+  async markProcessingUnlessPublished(entryId: string): Promise<boolean> {
+    const rows = await this.db
       .update(entries)
       .set({ status: "processing", updatedAt: new Date() })
-      .where(eq(entries.id, entryId));
+      .where(and(eq(entries.id, entryId), ne(entries.status, "published")))
+      .returning({ id: entries.id });
+    return rows.length > 0;
   }
 
   async applyReadingIfProcessing(
@@ -321,7 +323,7 @@ export class DrizzleEntryRevisionRepository
     try {
       return await this.db.transaction(async (tx) => {
         // Verrou sur la ligne : la lecture qui se termine (`applyReadingIfProcessing`)
-        // et l'ingestion qui rouvre la journée (`markProcessing`) attendent la
+        // et l'ingestion qui rouvre la journée (`markProcessingUnlessPublished`) attendent la
         // fin de cette relecture au lieu de s'y entrelacer.
         const [current] = await tx
           .select({ status: entries.status })

@@ -245,3 +245,65 @@ test("au démarrage, les lectures mortes avec le processus repassent en échec",
   );
   assert.equal((await entries.findById("e2"))?.status, "draft");
 });
+
+test("deux journées lues à la même date fusionnent au lieu de s'écraser", async () => {
+  const { service, entries } = build({
+    pages: { e1: ["p1.jpg", "p2.jpg"] },
+    days: [
+      { pages: [1], date: "2026-02-01", titre: "Matin", recit: "Le matin." },
+      { pages: [2], date: "2026-02-01", recit: "L'après-midi." },
+    ],
+  });
+
+  await service.read("e1", ["p1.jpg", "p2.jpg"], "user-1");
+
+  assert.equal(entries.rows.size, 1);
+  const entry = await entries.findById("e1");
+  assert.equal(entry?.status, "draft");
+  assert.equal(entry?.title, "Matin");
+  assert.equal(entry?.story, "Le matin.\n\nL'après-midi.");
+});
+
+test("une première journée dont la date est déjà prise garde la date de la photo", async () => {
+  const monday = entryRecord({
+    id: "e0",
+    date: "2026-01-31",
+    status: "draft",
+    title: "Lundi déjà là",
+  });
+  const { service, entries } = build({
+    entries: [entryRecord({ id: "e1", status: "processing" }), monday],
+    pages: { e1: ["p1.jpg", "p2.jpg"] },
+    days: [
+      { pages: [1], date: "2026-01-31", titre: "Lundi relu" },
+      { pages: [2], date: "2026-02-02", titre: "Mardi" },
+    ],
+  });
+
+  await service.read("e1", ["p1.jpg", "p2.jpg"], "user-1");
+
+  const first = await entries.findById("e1");
+  assert.equal(first?.status, "draft");
+  assert.equal(first?.date, "2026-02-01");
+  assert.match(first?.uncertainties?.at(-1)?.contexte ?? "", /existe déjà/);
+  assert.equal((await entries.findById("e0"))?.title, "Lundi déjà là");
+});
+
+test("seule la dernière lecture lancée écrit : une page ajoutée n'est pas perdue", async () => {
+  const { service, entries, background } = build({
+    pages: { e1: ["p1.jpg"] },
+  });
+  // Le lecteur rend d'abord la lecture partielle, puis la complète.
+  let call = 0;
+  (service as unknown as { deps: { reader: unknown } }).deps.reader = {
+    read: async () => [
+      carnetDay({ titre: ++call === 1 ? "Page 1 seule" : "Pages 1 et 2" }),
+    ],
+  };
+
+  service.readInBackground("e1", ["p1.jpg"], "user-1");
+  service.readInBackground("e1", ["p1.jpg", "p2.jpg"], "user-1");
+  await background.settle();
+
+  assert.equal((await entries.findById("e1"))?.title, "Pages 1 et 2");
+});

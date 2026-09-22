@@ -38,9 +38,26 @@ export function isIsoDate(value: string): boolean {
   );
 }
 
-/** Date du jour, en AAAA-MM-JJ. */
-export function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
+/**
+ * Fuseau du foyer : celui où « aujourd'hui » se décide. Le conteneur tourne
+ * en UTC ; sans ce fuseau, une journée envoyée entre minuit et 2 h (heure de
+ * Paris) sans date explicite tombait sur la VEILLE.
+ */
+export const HOUSEHOLD_TIMEZONE =
+  process.env.APP_TIMEZONE || "Europe/Paris";
+
+/** Date du jour dans le fuseau du foyer, en AAAA-MM-JJ. */
+export function todayIso(
+  now: Date = new Date(),
+  timeZone: string = HOUSEHOLD_TIMEZONE,
+): string {
+  // `en-CA` écrit AAAA-MM-JJ.
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
 }
 
 /** `date` (AAAA-MM-JJ) + `n` jours, en arithmétique calendaire (pas de fuseau). */

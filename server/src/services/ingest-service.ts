@@ -14,6 +14,13 @@ import type {
 import type { CarnetReadingService } from "./carnet-reading-service.js";
 import { resolveContributionTarget } from "./contribution-target.js";
 
+/** Pages lues en un seul appel au modèle, fusions comprises. */
+const MAX_PAGES_PER_DAY = 20;
+
+/** Journée réservée dont les pages n'ont pas pu être enregistrées. */
+const INGEST_FAILED_REASON =
+  "L'envoi des pages a échoué avant leur lecture. Réessayez l'envoi.";
+
 /** Résultat d'une ingestion : succès (entrée en lecture) ou échec typé. */
 export type IngestResult =
   | { ok: true; id: string; status: "processing" }
@@ -89,6 +96,20 @@ export class IngestService {
     if (!target.ok) return target;
     const childId = target.childId;
 
+    // Chaque ajout relit TOUTES les pages de la journée. Au-delà de 20 images
+    // par appel, le fournisseur réduit la taille admise de chaque image sous
+    // celle des pages rangées, et refuse la lecture : on le dit avant.
+    const sameDay = await this.deps.entries.findByDay(childId, date, source);
+    const already = sameDay
+      ? (await this.deps.attachments.pathsFor(sameDay.id)).length
+      : 0;
+    if (already + input.images.length > MAX_PAGES_PER_DAY)
+      return {
+        ok: false,
+        httpCode: 400,
+        error: `Une journée compte au plus ${MAX_PAGES_PER_DAY} pages (elle en a déjà ${already}).`,
+      };
+
     // Normalisation des images (auto-rotation, JPEG, redimensionnement +
     // miniature). Le stockage lève sur un format indécodable → on nettoie ce qui
     // a déjà été écrit.
@@ -107,12 +128,14 @@ export class IngestService {
     // Une fois les pages enregistrées, les fichiers sont référencés en base : on
     // ne doit plus les supprimer en cas d'erreur (sinon lignes orphelines).
     let attachmentsCommitted = false;
+    let claimedId: string | null = null;
     try {
       const entry = await this.claimDay(input.userId, childId, date, source);
       if (!entry.ok) {
         await this.discard(stored);
         return entry;
       }
+      claimedId = entry.id;
 
       // Positions à la suite des pages déjà rattachées (fusion multi-requêtes).
       const basePosition = await this.deps.attachments.nextPosition(entry.id);
@@ -127,6 +150,12 @@ export class IngestService {
       return { ok: true, id: entry.id, status: "processing" };
     } catch (err) {
       if (!attachmentsCommitted) await this.discard(stored);
+      // La journée est déjà « en lecture », mais aucune lecture ne partira :
+      // sans cette bascule, elle attendrait jusqu'au prochain redémarrage.
+      if (claimedId)
+        await this.deps.entries
+          .failIfProcessing(claimedId, INGEST_FAILED_REASON)
+          .catch(() => {});
       throw err;
     }
   }
@@ -161,7 +190,9 @@ export class IngestService {
         httpCode: 409,
         error: "Cette journée vient d'être modifiée. Réessayez.",
       };
-    if (existing.status === "published")
+    // La garde « déjà publiée » est dans l'écriture elle-même : une
+    // publication survenue depuis `findByDay` ne se rouvre pas non plus.
+    if (!(await this.deps.entries.markProcessingUnlessPublished(existing.id)))
       return {
         ok: false,
         httpCode: 409,
@@ -169,7 +200,6 @@ export class IngestService {
           "Cette journée est déjà publiée. Modifiez ou supprimez l'entrée existante avant de re-photographier.",
         id: existing.id,
       };
-    await this.deps.entries.markProcessing(existing.id);
     return { ok: true, id: existing.id };
   }
 

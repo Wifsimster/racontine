@@ -136,9 +136,11 @@ export class FakeEntryRepository
     return row;
   }
 
-  async markProcessing(entryId: string): Promise<void> {
+  async markProcessingUnlessPublished(entryId: string): Promise<boolean> {
     const row = this.rows.get(entryId);
-    if (row) this.rows.set(entryId, { ...row, status: "processing" });
+    if (!row || row.status === "published") return false;
+    this.rows.set(entryId, { ...row, status: "processing" });
+    return true;
   }
 
   async applyReadingIfProcessing(

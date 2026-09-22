@@ -37,3 +37,34 @@ export function contentFromNote(note: TranscribedNote): EntryContent {
     uncertainties: tidyUncertainties(note.uncertainties ?? []),
   };
 }
+
+/**
+ * Deux journées d'un même lot lues à la MÊME date n'en font qu'une : sans cette
+ * fusion, la seconde écrasait la première (même entrée, contenu remplacé) et
+ * le texte de la première page disparaissait. Les listes s'ajoutent, les
+ * textes se suivent dans l'ordre des pages, et un titre déjà trouvé est gardé.
+ */
+export function mergeCarnetDays(a: CarnetDay, b: CarnetDay): CarnetDay {
+  const join = (x: string | null, y: string | null) =>
+    x && y ? `${x}\n\n${y}` : (x ?? y);
+  return {
+    date: a.date ?? b.date,
+    enfant: a.enfant ?? b.enfant,
+    repas: [...a.repas, ...b.repas],
+    siestes: [...a.siestes, ...b.siestes],
+    humeur: a.humeur ?? b.humeur,
+    activites: [...a.activites, ...b.activites],
+    sante: join(a.sante, b.sante),
+    anecdotes: [...a.anecdotes, ...b.anecdotes],
+    transcription_integrale: join(
+      a.transcription_integrale,
+      b.transcription_integrale,
+    ),
+    titre: a.titre ?? b.titre,
+    recit: join(a.recit, b.recit),
+    temps_fort: a.temps_fort ?? b.temps_fort,
+    incertitudes: [...a.incertitudes, ...b.incertitudes],
+    illisible: a.illisible && b.illisible,
+    pages: [...a.pages, ...b.pages],
+  };
+}

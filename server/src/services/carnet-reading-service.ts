@@ -1,5 +1,8 @@
 import { randomUUID } from "node:crypto";
-import { contentFromCarnetDay } from "../domain/carnet-content.js";
+import {
+  contentFromCarnetDay,
+  mergeCarnetDays,
+} from "../domain/carnet-content.js";
 import type { CarnetDay } from "../domain/carnet.js";
 import { addDays, isIsoDate } from "../domain/dates.js";
 import { itemsFromCarnetDay } from "../domain/entry-items.js";
@@ -16,6 +19,7 @@ import type {
   ImageStore,
   Logger,
 } from "../ports.js";
+import type { Uncertainty } from "../db/schema.js";
 
 /**
  * Message porté par une journée dont la lecture est morte avec le processus.
@@ -81,6 +85,16 @@ export type CarnetReadingDeps = {
  */
 export class CarnetReadingService {
   private readonly newBatchId: () => string;
+  /**
+   * La lecture la plus récente de chaque journée. Ajouter une page à une
+   * journée EN COURS de lecture relance une lecture sur toutes ses pages : la
+   * première, partie avec moins de pages, finissait souvent avant et gagnait —
+   * la page ajoutée n'apparaissait jamais. Seule la dernière lecture lancée a
+   * désormais le droit d'écrire (un seul processus serveur : voir
+   * `reclaimStuck`).
+   */
+  private readonly latestRead = new Map<string, number>();
+  private readSeq = 0;
 
   constructor(private readonly deps: CarnetReadingDeps) {
     this.newBatchId = deps.newBatchId ?? randomUUID;
@@ -139,8 +153,17 @@ export class CarnetReadingService {
 
   /** Lance une lecture sans attendre sa fin (la réponse HTTP part tout de suite). */
   readInBackground(entryId: string, paths: string[], userId: string): void {
+    const generation = ++this.readSeq;
+    this.latestRead.set(entryId, generation);
     this.deps.background.run("Lecture de carnet", () =>
-      this.read(entryId, paths, userId),
+      this.read(entryId, paths, userId, generation),
+    );
+  }
+
+  /** Cette lecture est-elle encore la dernière lancée pour la journée ? */
+  private isLatest(entryId: string, generation?: number): boolean {
+    return (
+      generation === undefined || this.latestRead.get(entryId) === generation
     );
   }
 
@@ -148,9 +171,17 @@ export class CarnetReadingService {
    * Lit les pages d'une journée et écrit le résultat. Ne lève jamais : tout
    * échec devient un état `failed` porteur d'un message affichable.
    */
-  async read(entryId: string, paths: string[], userId: string): Promise<void> {
+  async read(
+    entryId: string,
+    paths: string[],
+    userId: string,
+    generation?: number,
+  ): Promise<void> {
     try {
       const days = await this.extract(entryId, paths, userId);
+      // Une lecture plus récente (pages ajoutées entre-temps) est en route :
+      // celle-ci n'a vu qu'une partie des pages, elle se retire sans écrire.
+      if (!this.isLatest(entryId, generation)) return;
 
       if (!days.length || days.every((d) => d.illisible)) {
         await this.deps.entries.failIfProcessing(entryId, UNREADABLE_REASON);
@@ -174,7 +205,12 @@ export class CarnetReadingService {
 
       await this.commitBatch(entryId, sorted, userId);
     } catch (err) {
-      await this.recordFailure(entryId, err);
+      // L'échec d'une lecture dépassée ne condamne pas la suivante.
+      if (this.isLatest(entryId, generation))
+        await this.recordFailure(entryId, err);
+    } finally {
+      if (generation !== undefined && this.isLatest(entryId, generation))
+        this.latestRead.delete(entryId);
     }
   }
 
@@ -212,25 +248,67 @@ export class CarnetReadingService {
 
     const attachmentIds = await this.deps.attachments.idsFor(entryId);
     const batchId = this.newBatchId();
-    let previousDate = placeholder.date;
 
+    // Date illisible : la première journée retombe sur la date de capture, les
+    // suivantes sur « veille + 1 jour » (les pages suivent l'ordre
+    // chronologique du carnet). Reste éditable à la relecture.
+    const dated: { date: string; day: CarnetDay }[] = [];
+    let previousDate = placeholder.date;
     for (const [index, day] of days.entries()) {
-      const isFirst = index === 0;
-      // Date illisible : la première journée retombe sur la date de capture, les
-      // suivantes sur « veille + 1 jour » (les pages suivent l'ordre
-      // chronologique du carnet). Reste éditable à la relecture.
       const date =
         day.date && isIsoDate(day.date)
           ? day.date
-          : isFirst
+          : index === 0
             ? placeholder.date
             : addDays(previousDate, 1);
       previousDate = date;
+      dated.push({ date, day });
+    }
 
-      if (isFirst) {
+    // La première journée reprend l'entrée d'origine — et donc sa date, si une
+    // AUTRE journée occupe déjà la date lue : déplacer l'entrée violerait
+    // l'unicité (enfant, date, lieu) et ferait échouer tout le lot, relance
+    // comprise. On garde la date de capture et on le signale à la relecture.
+    const warnings: Uncertainty[] = [];
+    const firstRead = dated[0]!.date;
+    if (firstRead !== placeholder.date) {
+      const occupant = await this.deps.entries.findByDay(
+        placeholder.childId,
+        firstRead,
+        placeholder.source,
+      );
+      if (occupant && occupant.id !== placeholder.id) {
+        dated[0]!.date = placeholder.date;
+        warnings.push({
+          original: `date du ${firstRead}`,
+          contexte: `Ces pages semblent dater du ${firstRead}, mais une journée existe déjà à cette date : la date de la photo a été gardée. Vérifiez-la avant de publier.`,
+          suggestions: [],
+          champ: null,
+          resolved: null,
+        });
+      }
+    }
+
+    // Deux journées lues à la même date n'en font qu'une (sinon la seconde
+    // écraserait la première, puisqu'elles visent la même entrée).
+    const merged: { date: string; day: CarnetDay }[] = [];
+    for (const d of dated) {
+      const same = merged.find((m) => m.date === d.date);
+      if (same) same.day = mergeCarnetDays(same.day, d.day);
+      else merged.push({ ...d });
+    }
+
+    for (const [index, { date, day }] of merged.entries()) {
+      if (index === 0) {
+        const content = contentFromCarnetDay(day);
         await this.deps.entries.applyReadingIfProcessing(
           entryId,
-          { ...contentFromCarnetDay(day), date, batchId },
+          {
+            ...content,
+            uncertainties: [...content.uncertainties, ...warnings],
+            date,
+            batchId: merged.length > 1 ? batchId : null,
+          },
           itemsFromCarnetDay(day),
         );
         continue;

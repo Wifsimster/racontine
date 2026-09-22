@@ -39,3 +39,10 @@ test("le lendemain reste une date valide, y compris au passage de mois", () => {
   assert.equal(addDays("2024-02-28", 1), "2024-02-29");
   assert.equal(isIsoDate(addDays("2025-12-31", 1)), true);
 });
+
+test("todayIso suit le fuseau du foyer, pas l'UTC du conteneur", () => {
+  // 23 h 30 UTC le 14 = 1 h 30 le 15 à Paris (heure d'été).
+  const late = new Date("2026-07-14T23:30:00Z");
+  assert.equal(todayIso(late, "Europe/Paris"), "2026-07-15");
+  assert.equal(todayIso(late, "UTC"), "2026-07-14");
+});

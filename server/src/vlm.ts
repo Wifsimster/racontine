@@ -375,6 +375,19 @@ export function normalizeJournees(
   return days;
 }
 
+const TRUNCATED_MESSAGE =
+  "Trop de texte d'un coup : la lecture a été coupée avant la fin. Envoyez ces pages en plusieurs fois.";
+
+/**
+ * Budget de sortie : chaque journée porte une transcription intégrale, et un
+ * budget fixe de 4096 jetons coupait les lots denses au milieu de l'appel
+ * d'outil. On l'élargit avec le nombre de pages, sans dépasser ce qu'un appel
+ * non streamé accepte.
+ */
+export function maxTokensFor(pages: number): number {
+  return Math.min(16_000, 4096 + 2048 * Math.max(0, pages - 1));
+}
+
 /**
  * Envoie les pages (JPEG) au modèle vision et renvoie une journée par date
  * distincte détectée dans le lot (une seule si tout le lot ne couvre qu'un
@@ -404,7 +417,7 @@ export async function extractFromImages(
   try {
     message = await anthropic.messages.create({
       model: vlmModel,
-      max_tokens: 4096,
+      max_tokens: maxTokensFor(jpegs.length),
       system: SYSTEM_PROMPT + glossaryBlock(glossary),
       tools: [EXTRACTION_TOOL],
       tool_choice: { type: "tool", name: EXTRACTION_TOOL.name },
@@ -429,6 +442,12 @@ export async function extractFromImages(
     );
     throw new CarnetReadError(vlmUserMessage(err));
   }
+
+  // Sortie coupée par la limite : l'extraction est partielle ou vide, et
+  // `normalizeJournees` en ferait des pages « illisibles » — un faux diagnostic
+  // qui fait rephotographier des pages parfaitement lisibles.
+  if (message.stop_reason === "max_tokens")
+    throw new CarnetReadError(TRUNCATED_MESSAGE);
 
   const toolUse = message.content.find(
     (b): b is Anthropic.ToolUseBlock => b.type === "tool_use",

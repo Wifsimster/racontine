@@ -178,8 +178,12 @@ export interface EntryRepository {
     entry: NewEntry,
     items: ItemRow[],
   ): Promise<EntryRecord | null>;
-  /** Repasse une journée en lecture (quel que soit son état courant). */
-  markProcessing(entryId: string): Promise<void>;
+  /**
+   * Repasse une journée en lecture, SAUF si elle est publiée — vérifié dans la
+   * même écriture : une publication survenue entre la lecture de l'état et
+   * cette bascule ne doit pas être rouverte. False si elle était publiée.
+   */
+  markProcessingUnlessPublished(entryId: string): Promise<boolean>;
   /**
    * Remplace contenu ET moments d'une journée ENCORE EN LECTURE, d'un seul
    * tenant. Rend false si la journée a changé d'état entre-temps (relecture
