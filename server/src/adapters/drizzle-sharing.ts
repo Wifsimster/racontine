@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, count, eq, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
 import {
   children,
@@ -9,14 +9,42 @@ import {
   type MemberRole,
 } from "../db/schema.js";
 import { deliverLink } from "../notify.js";
-import type {
-  InvitationRepository,
-  InvitationRow,
-  LinkDelivery,
-  MemberRow,
-  MembershipRepository,
-  UserDirectory,
+import {
+  roleRank,
+  type CircleChange,
+  type InvitationRepository,
+  type InvitationRow,
+  type LinkDelivery,
+  type MemberRow,
+  type MembershipRepository,
+  type UserDirectory,
 } from "../services/sharing-service.js";
+
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/**
+ * Verrouille le cercle d'un enfant jusqu'à la fin de la transaction.
+ *
+ * La règle du dernier administrateur est un « lire puis écrire » : sans verrou,
+ * deux administrateurs qui se rétrogradent l'un l'autre au même instant voient
+ * chacun deux administrateurs, passent tous deux, et l'enfant n'en a plus
+ * aucun. Toute modification du cercle passe donc par ce verrou de ligne.
+ */
+export async function lockCircle(tx: Tx, childId: string): Promise<void> {
+  await tx
+    .select({ id: children.id })
+    .from(children)
+    .where(eq(children.id, childId))
+    .for("update");
+}
+
+async function countAdmins(tx: Tx, childId: string): Promise<number> {
+  const [row] = await tx
+    .select({ n: count() })
+    .from(memberships)
+    .where(and(eq(memberships.childId, childId), eq(memberships.role, "admin")));
+  return row?.n ?? 0;
+}
 
 /** Les adhésions au cercle d'un enfant, en Postgres. */
 export class DrizzleMembershipRepository implements MembershipRepository {
@@ -50,19 +78,47 @@ export class DrizzleMembershipRepository implements MembershipRepository {
     childId: string,
     userId: string,
     role: MemberRole,
-  ): Promise<boolean> {
-    const rows = await db
-      .update(memberships)
-      .set({ role })
-      .where(
-        and(eq(memberships.childId, childId), eq(memberships.userId, userId)),
+  ): Promise<CircleChange> {
+    return db.transaction(async (tx) => {
+      await lockCircle(tx, childId);
+      const [current] = await tx
+        .select({ role: memberships.role })
+        .from(memberships)
+        .where(
+          and(eq(memberships.childId, childId), eq(memberships.userId, userId)),
+        )
+        .limit(1);
+      if (!current) return "missing";
+      if (
+        current.role === "admin" &&
+        role !== "admin" &&
+        (await countAdmins(tx, childId)) <= 1
       )
-      .returning({ id: memberships.id });
-    return rows.length > 0;
+        return "last-admin";
+      await tx
+        .update(memberships)
+        .set({ role })
+        .where(
+          and(eq(memberships.childId, childId), eq(memberships.userId, userId)),
+        );
+      return "ok";
+    });
   }
 
-  async remove(childId: string, userId: string): Promise<void> {
-    await db.transaction(async (tx) => {
+  async remove(childId: string, userId: string): Promise<CircleChange> {
+    return db.transaction(async (tx) => {
+      await lockCircle(tx, childId);
+      const [current] = await tx
+        .select({ role: memberships.role, email: user.email })
+        .from(memberships)
+        .innerJoin(user, eq(user.id, memberships.userId))
+        .where(
+          and(eq(memberships.childId, childId), eq(memberships.userId, userId)),
+        )
+        .limit(1);
+      if (!current) return "missing";
+      if (current.role === "admin" && (await countAdmins(tx, childId)) <= 1)
+        return "last-admin";
       await tx
         .delete(memberships)
         .where(
@@ -76,6 +132,20 @@ export class DrizzleMembershipRepository implements MembershipRepository {
             eq(subscriptions.userId, userId),
           ),
         );
+      // Une invitation encore en attente pour cette adresse rouvrirait la
+      // porte qu'on vient de fermer (lien envoyé deux fois, ou préparé avant
+      // le retrait) : elle tombe avec l'adhésion.
+      await tx
+        .update(invitations)
+        .set({ status: "revoked" })
+        .where(
+          and(
+            eq(invitations.childId, childId),
+            eq(invitations.status, "pending"),
+            sql`lower(${invitations.email}) = lower(${current.email})`,
+          ),
+        );
+      return "ok";
     });
   }
 
@@ -162,11 +232,28 @@ export class DrizzleInvitationRepository implements InvitationRepository {
     return row ?? null;
   }
 
-  async revoke(id: string): Promise<void> {
+  async revoke(id: string): Promise<boolean> {
+    // Seule une invitation EN ATTENTE se révoque : réécrire une invitation
+    // acceptée en « revoked » mentirait sur l'historique sans rien retirer.
+    const rows = await db
+      .update(invitations)
+      .set({ status: "revoked" })
+      .where(and(eq(invitations.id, id), eq(invitations.status, "pending")))
+      .returning({ id: invitations.id });
+    return rows.length > 0;
+  }
+
+  async revokePendingFor(childId: string, email: string): Promise<void> {
     await db
       .update(invitations)
       .set({ status: "revoked" })
-      .where(eq(invitations.id, id));
+      .where(
+        and(
+          eq(invitations.childId, childId),
+          eq(invitations.status, "pending"),
+          sql`lower(${invitations.email}) = lower(${email})`,
+        ),
+      );
   }
 
   async acceptIfPending(invitationId: string, userId: string): Promise<boolean> {
@@ -186,13 +273,34 @@ export class DrizzleInvitationRepository implements InvitationRepository {
         )
         .returning({ childId: invitations.childId, role: invitations.role });
       if (!inv) return false;
-      await tx
-        .insert(memberships)
-        .values({ userId, childId: inv.childId, role: inv.role })
-        .onConflictDoUpdate({
-          target: [memberships.userId, memberships.childId],
-          set: { role: inv.role },
-        });
+      await lockCircle(tx, inv.childId);
+      // Une invitation AJOUTE des droits, elle n'en retire jamais : un vieux
+      // lien « lecteur » ouvert par l'administrateur en titre le rétrograderait
+      // — et pourrait laisser l'enfant sans administrateur.
+      const [current] = await tx
+        .select({ role: memberships.role })
+        .from(memberships)
+        .where(
+          and(
+            eq(memberships.childId, inv.childId),
+            eq(memberships.userId, userId),
+          ),
+        )
+        .limit(1);
+      if (!current)
+        await tx
+          .insert(memberships)
+          .values({ userId, childId: inv.childId, role: inv.role });
+      else if (roleRank(inv.role) > roleRank(current.role))
+        await tx
+          .update(memberships)
+          .set({ role: inv.role })
+          .where(
+            and(
+              eq(memberships.childId, inv.childId),
+              eq(memberships.userId, userId),
+            ),
+          );
       return true;
     });
   }

@@ -12,6 +12,7 @@ import {
 import type { Uncertainty } from "../db/schema.js";
 import {
   DuplicateEntryError,
+  EntryNotReviewableError,
   InvalidEntryDateError,
 } from "../domain/errors.js";
 import type { ItemRow } from "../domain/entry-items.js";
@@ -319,6 +320,20 @@ export class DrizzleEntryRevisionRepository
   ): Promise<{ firstPublish: boolean }> {
     try {
       return await this.db.transaction(async (tx) => {
+        // Verrou sur la ligne : la lecture qui se termine (`applyReadingIfProcessing`)
+        // et l'ingestion qui rouvre la journée (`markProcessing`) attendent la
+        // fin de cette relecture au lieu de s'y entrelacer.
+        const [current] = await tx
+          .select({ status: entries.status })
+          .from(entries)
+          .where(eq(entries.id, entryId))
+          .for("update");
+        if (!current || (current.status !== "draft" && current.status !== "published"))
+          throw new EntryNotReviewableError(
+            current?.status === "processing"
+              ? "la lecture de cette journée est en cours : attendez qu'elle se termine"
+              : "cette journée n'a pas pu être lue : relancez la lecture avant de la relire",
+          );
         if (items) {
           await tx.delete(entryItems).where(eq(entryItems.entryId, entryId));
           if (items.length)
@@ -373,8 +388,20 @@ export class DrizzleEntryRevisionRepository
     });
   }
 
-  async remove(entryId: string): Promise<void> {
-    await this.db.delete(entries).where(eq(entries.id, entryId));
+  async remove(
+    entryId: string,
+  ): Promise<{ originalPath: string; thumbPath: string | null }[]> {
+    return this.db.transaction(async (tx) => {
+      const files = await tx
+        .select({
+          originalPath: attachments.originalPath,
+          thumbPath: attachments.thumbPath,
+        })
+        .from(attachments)
+        .where(eq(attachments.entryId, entryId));
+      await tx.delete(entries).where(eq(entries.id, entryId));
+      return files;
+    });
   }
 }
 

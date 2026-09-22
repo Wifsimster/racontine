@@ -40,13 +40,32 @@ export type InvitationRow = {
   expiresAt: Date;
 };
 
+/** Rang d'un rôle : plus il est haut, plus il donne de droits. */
+export function roleRank(role: MemberRole): number {
+  return ROLES.length - ROLES.indexOf(role);
+}
+
+/**
+ * Issue d'une modification du cercle. « last-admin » : elle aurait laissé
+ * l'enfant sans administrateur, et n'a donc PAS été appliquée.
+ */
+export type CircleChange = "ok" | "missing" | "last-admin";
+
 export interface MembershipRepository {
   listMembers(childId: string): Promise<MemberRow[]>;
-  /** Adhésions « admin » de cet enfant (pour la règle du dernier administrateur). */
-  adminIds(childId: string): Promise<string[]>;
-  setRole(childId: string, userId: string, role: MemberRole): Promise<boolean>;
-  /** Retire l'adhésion ET l'abonnement, d'un seul tenant. */
-  remove(childId: string, userId: string): Promise<void>;
+  /**
+   * Change le rôle d'un membre, sauf s'il est le dernier administrateur et
+   * perdrait ce rôle. La vérification et l'écriture sont ATOMIQUES (verrou sur
+   * le cercle) : deux rétrogradations croisées ne peuvent pas passer toutes
+   * les deux.
+   */
+  setRole(childId: string, userId: string, role: MemberRole): Promise<CircleChange>;
+  /**
+   * Retire l'adhésion, l'abonnement et les invitations encore en attente pour
+   * son adresse, d'un seul tenant — sauf s'il s'agit du dernier administrateur
+   * (même atomicité que `setRole`).
+   */
+  remove(childId: string, userId: string): Promise<CircleChange>;
   /** Crée ou met à jour l'adhésion d'un utilisateur. */
   upsert(childId: string, userId: string, role: MemberRole): Promise<void>;
   isMember(childId: string, userId: string): Promise<boolean>;
@@ -64,7 +83,10 @@ export interface InvitationRepository {
   }): Promise<InvitationRow>;
   findById(id: string): Promise<InvitationRow | null>;
   findByToken(token: string): Promise<(InvitationRow & { childName: string }) | null>;
-  revoke(id: string): Promise<void>;
+  /** Révoque une invitation EN ATTENTE. False si elle ne l'était plus. */
+  revoke(id: string): Promise<boolean>;
+  /** Révoque toutes les invitations en attente de cet enfant pour cette adresse. */
+  revokePendingFor(childId: string, email: string): Promise<void>;
   /**
    * Marque l'invitation acceptée SI elle est encore en attente, et crée
    * l'adhésion dans la même transaction. False si quelqu'un l'a acceptée
@@ -150,6 +172,11 @@ export class SharingService {
         error: "cette personne suit déjà cet enfant",
       };
 
+    // Une seule invitation vivante par adresse : les liens précédents tombent.
+    // Sinon, un doublon oublié survivrait à l'acceptation du premier… et au
+    // retrait du proche, qu'il ferait revenir dans le cercle.
+    await this.deps.invitations.revokePendingFor(params.childId, email);
+
     const token = this.deps.newToken();
     const ttlDays = await this.deps.invitationTtlDays();
     const expiresAt = new Date(
@@ -182,21 +209,9 @@ export class SharingService {
     const role = params.role ?? "";
     if (!isRole(role)) return { ok: false, httpCode: 400, error: "rôle invalide" };
 
-    if (await this.wouldOrphanAdmin(params.childId, params.userId, role))
-      return {
-        ok: false,
-        httpCode: 400,
-        error: "il doit rester au moins un administrateur",
-      };
-
-    const changed = await this.deps.memberships.setRole(
-      params.childId,
-      params.userId,
-      role,
+    return circleOutcome(
+      await this.deps.memberships.setRole(params.childId, params.userId, role),
     );
-    if (!changed)
-      return { ok: false, httpCode: 404, error: "membre introuvable" };
-    return { ok: true };
   }
 
   /** Retire un membre (et son abonnement), sauf s'il est le dernier admin. */
@@ -204,16 +219,14 @@ export class SharingService {
     childId: string;
     userId: string;
   }): Promise<Ok<object> | Rejection> {
-    if (await this.wouldOrphanAdmin(params.childId, params.userId, null))
-      return {
-        ok: false,
-        httpCode: 400,
-        error: "il doit rester au moins un administrateur",
-      };
     // Retirer l'adhésion ET l'abonnement : sans quoi le proche continuerait de
     // recevoir notifications et e-mails de la timeline malgré l'accès révoqué.
-    await this.deps.memberships.remove(params.childId, params.userId);
-    return { ok: true };
+    const outcome = await this.deps.memberships.remove(
+      params.childId,
+      params.userId,
+    );
+    // Déjà absent : l'état voulu est atteint (retrait idempotent).
+    return outcome === "missing" ? { ok: true } : circleOutcome(outcome);
   }
 
   /** Aperçu public d'une invitation (le jeton EST la capacité). */
@@ -241,6 +254,13 @@ export class SharingService {
     token: string;
     userId: string;
     userEmail: string;
+    /**
+     * L'adresse du compte a-t-elle été PROUVÉE (lien magique suivi) ? Une
+     * adresse seulement déclarée à l'inscription ne dit pas que ce compte est
+     * bien le destinataire : sans cette preuve, quiconque tient un lien
+     * transféré pourrait créer le compte à l'adresse invitée et entrer.
+     */
+    emailVerified: boolean;
   }): Promise<Ok<{ childId: string; role: MemberRole }> | Rejection> {
     const inv = await this.deps.invitations.findByToken(params.token);
     if (!inv) return { ok: false, httpCode: 404, error: "invitation introuvable" };
@@ -257,6 +277,13 @@ export class SharingService {
         ok: false,
         httpCode: 403,
         error: "cette invitation est destinée à une autre adresse e-mail",
+      };
+    if (!params.emailVerified)
+      return {
+        ok: false,
+        httpCode: 403,
+        error:
+          "confirmez d'abord votre adresse e-mail : demandez un lien de connexion",
       };
 
     if (!(await this.deps.invitations.acceptIfPending(inv.id, params.userId)))
@@ -278,23 +305,23 @@ export class SharingService {
     return this.deps.invitations.findById(id);
   }
 
-  /** Révoque une invitation en attente (l'autorisation est déjà vérifiée). */
-  revokeInvitation(id: string): Promise<void> {
+  /**
+   * Révoque une invitation en attente (l'autorisation est déjà vérifiée).
+   * False si elle ne l'était plus (acceptée ou déjà révoquée).
+   */
+  revokeInvitation(id: string): Promise<boolean> {
     return this.deps.invitations.revoke(id);
   }
+}
 
-  /**
-   * Modifier ou retirer ce membre laisserait-il l'enfant sans administrateur ?
-   * `nextRole` vaut null pour une suppression.
-   */
-  private async wouldOrphanAdmin(
-    childId: string,
-    userId: string,
-    nextRole: MemberRole | null,
-  ): Promise<boolean> {
-    const admins = await this.deps.memberships.adminIds(childId);
-    if (!admins.includes(userId)) return false;
-    const remaining = admins.filter((a) => a !== userId).length;
-    return remaining === 0 && nextRole !== "admin";
-  }
+function circleOutcome(outcome: CircleChange): Ok<object> | Rejection {
+  if (outcome === "missing")
+    return { ok: false, httpCode: 404, error: "membre introuvable" };
+  if (outcome === "last-admin")
+    return {
+      ok: false,
+      httpCode: 400,
+      error: "il doit rester au moins un administrateur",
+    };
+  return { ok: true };
 }

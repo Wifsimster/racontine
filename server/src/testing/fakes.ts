@@ -2,6 +2,7 @@ import type { Entry, EntryItemData, MemberRole, Uncertainty } from "../db/schema
 import type { CarnetDay } from "../domain/carnet.js";
 import type { ItemRow, ItemType } from "../domain/entry-items.js";
 import type { Source } from "../domain/entry-metadata.js";
+import { EntryNotReviewableError } from "../domain/errors.js";
 import type {
   AccessPolicy,
   ApiKeyStore,
@@ -231,6 +232,8 @@ export class FakeEntryRepository
     }
     const row = this.rows.get(entryId);
     if (!row) return { firstPublish: false };
+    if (row.status !== "draft" && row.status !== "published")
+      throw new EntryNotReviewableError(`journée ${row.status}`);
     if (items) this.items.set(entryId, items);
     const next = { ...row, ...patch };
     const firstPublish = publish && next.status !== "published";
@@ -257,9 +260,20 @@ export class FakeEntryRepository
     this.corrections.push(correction);
   }
 
-  async remove(entryId: string): Promise<void> {
+  /** Fichiers des pages de chaque journée, rendus par `remove`. */
+  readonly files = new Map<
+    string,
+    { originalPath: string; thumbPath: string | null }[]
+  >();
+
+  async remove(
+    entryId: string,
+  ): Promise<{ originalPath: string; thumbPath: string | null }[]> {
     this.rows.delete(entryId);
     this.items.delete(entryId);
+    const files = this.files.get(entryId) ?? [];
+    this.files.delete(entryId);
+    return files;
   }
 }
 

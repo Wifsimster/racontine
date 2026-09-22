@@ -123,6 +123,8 @@ export const entryEditing = new EntryEditingService({
   children,
   notifier: subscriberNotifier,
   background,
+  images,
+  logger,
 });
 
 /** Les pages photographiées : les servir, les tourner, les retirer. */

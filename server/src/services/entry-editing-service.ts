@@ -3,6 +3,7 @@ import { isItemType, type ItemRow } from "../domain/entry-items.js";
 import { isSource } from "../domain/entry-metadata.js";
 import {
   DuplicateEntryError,
+  EntryNotReviewableError,
   InvalidEntryDateError,
 } from "../domain/errors.js";
 import {
@@ -16,6 +17,8 @@ import type {
   BackgroundRunner,
   ChildDirectory,
   EntryRepository,
+  ImageStore,
+  Logger,
   EntryRevision,
   EntryRevisionRepository,
   PublicationNotifier,
@@ -48,6 +51,8 @@ export type EntryEditingDeps = {
   children: ChildDirectory;
   notifier: PublicationNotifier;
   background: BackgroundRunner;
+  images: ImageStore;
+  logger: Logger;
 };
 
 /**
@@ -112,6 +117,8 @@ export class EntryEditingService {
         return { ok: false, httpCode: 409, error: err.message };
       if (err instanceof InvalidEntryDateError)
         return { ok: false, httpCode: 400, error: err.message };
+      if (err instanceof EntryNotReviewableError)
+        return { ok: false, httpCode: 409, error: err.message };
       throw err;
     }
 
@@ -185,7 +192,22 @@ export class EntryEditingService {
     if (!entry) return { ok: true, entryId }; // déjà absente : rien à faire.
     if (!(await this.deps.access.hasChildRole(userId, entry.childId, "admin")))
       return { ok: false, httpCode: 403, error: "accès refusé" };
-    await this.deps.revisions.remove(entryId);
+    const files = await this.deps.revisions.remove(entryId);
+    // Les photos du carnet partent avec la journée : la cascade n'efface que
+    // les lignes, et un fichier sans ligne n'est plus effaçable par personne.
+    for (const file of files) {
+      try {
+        await this.deps.images.delete({
+          originalPath: file.originalPath,
+          thumbPath: file.thumbPath ?? file.originalPath,
+        });
+      } catch (err) {
+        this.deps.logger.error("Fichier non effacé", {
+          path: file.originalPath,
+          err: err instanceof Error ? err.message : err,
+        });
+      }
+    }
     return { ok: true, entryId };
   }
 

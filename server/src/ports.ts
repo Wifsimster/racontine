@@ -274,8 +274,14 @@ export interface EntryRevisionRepository {
     patch: EntryRevision,
     correction: RecordedCorrection,
   ): Promise<void>;
-  /** Supprime une journée (et, par cascade, ses moments et ses pages). */
-  remove(entryId: string): Promise<void>;
+  /**
+   * Supprime une journée (et, par cascade, ses moments et ses pages) et rend
+   * les fichiers de ses pages : la cascade n'efface que les LIGNES, les photos
+   * du carnet restent à effacer du disque.
+   */
+  remove(
+    entryId: string,
+  ): Promise<{ originalPath: string; thumbPath: string | null }[]>;
 }
 
 /** Création d'un enfant et du cercle qui va avec. */
