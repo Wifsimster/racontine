@@ -8,8 +8,9 @@
      · la confirmation voyage dans le CORPS d'un DELETE. Un parseur qui
        l'ignorerait ne casserait rien de visible : chaque effacement répondrait
        simplement « recopiez votre adresse », pour toujours ;
-     · l'export doit DESCENDRE (`Content-Disposition`) et ne dormir dans aucun
-       cache — deux en-têtes qu'aucune assertion de service ne regarde ;
+     · l'export doit DESCENDRE (`Content-Disposition`), être un zip qui se
+       rouvre, et ne dormir dans aucun cache — ce qu'aucune assertion de
+       service ne regarde ;
      · après le départ, le cookie encore dans le navigateur ne doit plus rien
        ouvrir. C'est la dernière promesse de l'effacement, et la seule qui se
        vérifie de l'extérieur.
@@ -25,6 +26,7 @@ import { buildApp } from "../src/app.js";
 import { db } from "../src/db/index.js";
 import { children, memberships, user } from "../src/db/schema.js";
 import { eq } from "drizzle-orm";
+import yauzl from "yauzl";
 
 const app = await buildApp();
 const ok = (l: string) => console.log("  ok —", l);
@@ -76,13 +78,32 @@ const exported = await app.inject({
   headers: { cookie: jar },
 });
 assert.equal(exported.statusCode, 200);
-assert.match(exported.headers["content-disposition"] as string, /attachment; filename="racontine-export-\d{4}-\d{2}-\d{2}\.json"/);
+assert.match(exported.headers["content-disposition"] as string, /attachment; filename="racontine-export-\d{4}-\d{2}-\d{2}\.zip"/);
+assert.equal(exported.headers["content-type"], "application/zip");
 assert.equal(exported.headers["cache-control"], "no-store");
-const archive = JSON.parse(exported.body);
+const zip = await yauzl.fromBufferPromise(exported.rawPayload, { lazyEntries: true });
+const names: string[] = [];
+let json = "";
+await new Promise<void>((resolve, reject) => {
+  zip.on("entry", async (entry: yauzl.Entry) => {
+    names.push(entry.fileName);
+    if (entry.fileName === "racontine-export.json") {
+      const chunks: Buffer[] = [];
+      for await (const c of await zip.openReadStreamPromise(entry)) chunks.push(c);
+      json = Buffer.concat(chunks).toString();
+    }
+    zip.readEntry();
+  });
+  zip.on("end", resolve);
+  zip.on("error", reject);
+  zip.readEntry();
+});
+assert.deepEqual(names, ["racontine-export.json", "LISEZ-MOI.txt"]);
+const archive = JSON.parse(json);
 assert.equal(archive.format, "racontine.export.v1");
 assert.equal(archive.account.email, email);
 assert.equal(archive.carnets[0].name, "Léa");
-ok("l'export descend en pièce jointe, nommée et hors cache");
+ok("l'export descend en zip, nommé et hors cache, et se rouvre");
 
 const preview = await app.inject({
   method: "GET",

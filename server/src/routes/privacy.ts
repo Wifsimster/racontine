@@ -17,25 +17,26 @@ import { requireUser } from "../plugins/auth.js";
 
 /** Nom de fichier de l'archive : daté, pour qu'un dossier de téléchargements reste lisible. */
 function archiveName(): string {
-  return `racontine-export-${new Date().toISOString().slice(0, 10)}.json`;
+  return `racontine-export-${new Date().toISOString().slice(0, 10)}.zip`;
 }
 
 export async function privacyRoutes(app: FastifyInstance) {
   app.addHook("preHandler", requireUser);
 
   /**
-   * EMPORTER — tout ce que le compte peut lire, en un fichier.
+   * EMPORTER — tout ce que le compte peut lire, en un zip : le journal en JSON
+   * et les photos du carnet. Le zip part en flux : les photos ne transitent
+   * pas par la mémoire du serveur.
    *
    * `Content-Disposition: attachment` pour que le navigateur ENREGISTRE au lieu
-   * d'afficher : une archive de plusieurs mégaoctets de JSON dans un onglet
-   * n'est pas une restitution de données, c'est une page illisible. Le nom de
-   * fichier voyage avec, sinon le fichier s'appellerait « export ».
+   * d'afficher. Le nom de fichier voyage avec, sinon le fichier s'appellerait
+   * « export ».
    */
   app.get("/api/me/export", async (req, reply) => {
     const archive = await privacy.exportAccount(req.user!.id);
     if (!archive) return reply.code(404).send({ error: "compte introuvable" });
     return reply
-      .header("Content-Type", "application/json; charset=utf-8")
+      .header("Content-Type", "application/zip")
       .header("Content-Disposition", `attachment; filename="${archiveName()}"`)
       // Une archive porte l'intégralité d'un journal d'enfant : elle ne doit
       // dormir dans aucun cache intermédiaire.

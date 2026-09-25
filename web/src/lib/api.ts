@@ -358,36 +358,13 @@ export const api = {
   /* ------------------ Emporter ses données, partir -------------------- */
 
   /**
-   * L'archive du compte, TÉLÉCHARGÉE et non lue en mémoire.
-   *
-   * Elle passe par `fetch` comme le reste — la session est un cookie, un
-   * `<a download>` nu fonctionnerait aussi — mais on la fait descendre en blob
-   * pour pouvoir dire « échec » avec la phrase du serveur plutôt que d'ouvrir
-   * un onglet sur une page d'erreur JSON. Le nom du fichier vient de
-   * `Content-Disposition` ; on garde un repli daté si l'en-tête manque.
+   * L'archive du compte (zip : journal JSON + photos). Pas de `fetch` ici : un
+   * carnet d'un an pèse quelques centaines de mégaoctets de photos, qu'un blob
+   * garderait en mémoire — de quoi faire tomber l'onglet sur un téléphone. Un
+   * lien `download` laisse le navigateur écrire le flux sur le disque, avec le
+   * nom donné par `Content-Disposition` ; la session est un cookie, il suit.
    */
-  exportMyData: async (): Promise<{ blob: Blob; filename: string }> => {
-    const res = await fetch("/api/me/export", { credentials: "include" });
-    if (!res.ok) {
-      let message = `Erreur ${res.status}`;
-      try {
-        const body = await res.json();
-        if (typeof body?.message === "string" && body.message) message = body.message;
-        else if (typeof body?.error === "string" && body.error) message = body.error;
-      } catch {
-        /* pas de corps JSON */
-      }
-      throw new Error(message);
-    }
-    const disposition = res.headers.get("Content-Disposition") ?? "";
-    const match = /filename="([^"]+)"/.exec(disposition);
-    return {
-      blob: await res.blob(),
-      filename:
-        match?.[1] ??
-        `racontine-export-${new Date().toISOString().slice(0, 10)}.json`,
-    };
-  },
+  exportUrl: "/api/me/export",
 
   /** Ce que l'effacement du compte emporterait — sans rien effacer. */
   erasurePreview: () => req<ErasurePreview>("/api/me/erasure"),

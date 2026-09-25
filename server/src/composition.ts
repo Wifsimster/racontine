@@ -21,6 +21,7 @@ import { DrizzleAdminRepository } from "./adapters/drizzle-admin.js";
 import { DrizzlePageRepository } from "./adapters/drizzle-page-repository.js";
 import { DrizzlePrivacyRepository } from "./adapters/drizzle-privacy.js";
 import { FileSystemImageStore } from "./adapters/fs-image-store.js";
+import { ZipArchivePacker } from "./adapters/zip-archive-packer.js";
 import { ConsoleLogger, FireAndForgetRunner } from "./adapters/runtime.js";
 import { randomBytes } from "node:crypto";
 import { blockedReason } from "./billing/index.js";
@@ -144,6 +145,7 @@ export const pages = new PageService({
 export const privacy = new PrivacyService({
   privacy: new DrizzlePrivacyRepository(),
   images,
+  packer: new ZipArchivePacker(),
   logger,
 });
 

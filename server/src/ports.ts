@@ -1,3 +1,4 @@
+import type { Readable } from "node:stream";
 import type { Entry, Uncertainty } from "./db/schema.js";
 import type { CarnetDay } from "./domain/carnet.js";
 import type { ItemRow } from "./domain/entry-items.js";
@@ -38,6 +39,10 @@ export interface ImageStore {
   store(input: Buffer): Promise<StoredImage>;
   /** Relit une page rangée, par son chemin relatif. */
   read(relPath: string): Promise<Buffer>;
+  /** Vrai si la page rangée est bien sur le support (un export ne promet que celles-là). */
+  exists(relPath: string): Promise<boolean>;
+  /** Flux d'une page rangée, pour la verser dans une archive sans la charger en mémoire. */
+  openRead(relPath: string): Readable;
   /** Efface une page rangée. Best-effort : un fichier absent n'est pas une erreur. */
   delete(img: { originalPath: string; thumbPath: string }): Promise<void>;
   /**
@@ -338,7 +343,7 @@ export interface ChildDirectory {
  */
 export type StoredFile = { originalPath: string; thumbPath: string | null };
 
-/** Une page photographiée, dans l'export (les octets se retirent par `url`). */
+/** Une page photographiée, dans l'export. */
 export type ExportedPage = {
   id: string;
   mime: string;
@@ -346,6 +351,11 @@ export type ExportedPage = {
   height: number | null;
   /** Adresse de la photo dans cette instance, à ouvrir avec la même session. */
   url: string;
+  /**
+   * Chemin de la photo DANS l'archive zip (`photos/Lou/2026-09-17-1.jpg`) ;
+   * null si le fichier manquait sur le disque au moment de l'export.
+   */
+  file: string | null;
 };
 
 /** Une journée, telle qu'elle part dans l'export. */
@@ -447,6 +457,8 @@ export interface PrivacyRepository {
   erasureSnapshot(userId: string): Promise<ErasureSnapshot | null>;
   /** Nom d'un enfant et poids du compte dans son cercle ; null hors du cercle. */
   standingOn(userId: string, childId: string): Promise<CarnetStanding | null>;
+  /** Où sont rangées ces pages (fichier plein cadre), par identifiant. */
+  pageFilesOf(pageIds: string[]): Promise<{ id: string; originalPath: string }[]>;
   /** Les fichiers de toutes les pages de ces carnets. */
   filesOfChildren(childIds: string[]): Promise<StoredFile[]>;
   /** Les fichiers mis en attente par ce compte et jamais rattachés (MCP). */
@@ -462,4 +474,18 @@ export interface PrivacyRepository {
    * restait sans personne pour le gérer.
    */
   deleteAccount(userId: string): Promise<boolean>;
+}
+
+/** Un fichier à mettre dans une archive : des octets déjà là, ou un flux ouvert au dernier moment. */
+export type ArchiveEntry =
+  | { path: string; data: Buffer }
+  | { path: string; open: () => Readable };
+
+/**
+ * Mise en archive d'un export. Le résultat est un FLUX : une année de carnet,
+ * c'est quelques centaines de mégaoctets de photos, qu'on ne charge pas en
+ * mémoire pour les renvoyer d'un bloc.
+ */
+export interface ArchivePacker {
+  pack(entries: ArchiveEntry[]): Readable;
 }

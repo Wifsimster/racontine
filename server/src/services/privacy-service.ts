@@ -1,11 +1,13 @@
+import type { Readable } from "node:stream";
 import {
   confirms,
   planAccountErasure,
   type CarnetRef,
   type ErasureBlockCode,
 } from "../domain/erasure.js";
+import { planExportPhotos } from "../domain/export-photos.js";
 import type {
-  ExportArchive,
+  ArchivePacker,
   ImageStore,
   Logger,
   PrivacyRepository,
@@ -22,8 +24,8 @@ import type {
    l'ensemble, jamais partir.
 
    Ce service ferme ce trou, en trois gestes qui vont ensemble :
-     · EMPORTER  — une archive JSON de tout ce que le compte peut lire, avec
-                   l'adresse de chaque photo pour aller chercher les octets ;
+     · EMPORTER  — un zip de tout ce que le compte peut lire : le journal en
+                   JSON, et les photos du carnet elles-mêmes ;
      · EFFACER UN CARNET — le journal d'un enfant, ses journées, ses photos ;
      · EFFACER SON COMPTE — et avec lui les carnets que personne d'autre ne tient.
 
@@ -51,18 +53,73 @@ export type ErasurePreview =
 export type PrivacyDeps = {
   privacy: PrivacyRepository;
   images: ImageStore;
+  packer: ArchivePacker;
   logger: Logger;
 };
+
+/** Nom du journal dans l'archive, à côté du dossier `photos/`. */
+export const EXPORT_JSON = "racontine-export.json";
+
+/** Ce qu'on lit en ouvrant le zip sans rien savoir de Racontine. */
+const README = `Racontine — vos données
+
+${EXPORT_JSON}
+  Le journal : vos carnets, les journées que vous pouvez lire, leurs moments,
+  vos corrections, vos abonnements et vos notifications. Chaque page
+  photographiée y indique, dans « file », où trouver sa photo dans ce dossier.
+
+photos/
+  Les pages du carnet, rangées par enfant puis par date
+  (photos/<prénom>/<date>-<n° de page>.jpg).
+
+Aucun mot de passe, jeton ni clé n'y figure.
+`;
 
 export class PrivacyService {
   constructor(private readonly deps: PrivacyDeps) {}
 
   /**
-   * L'archive du compte. `null` si le compte n'existe plus (session survivant
-   * à un effacement concurrent) : la route en fait un 404, pas un 500.
+   * L'archive du compte, en zip : le journal et ses photos. `null` si le
+   * compte n'existe plus (session survivant à un effacement concurrent) : la
+   * route en fait un 404, pas un 500.
+   *
+   * Tout ce qui peut échouer est vérifié AVANT que le premier octet parte : une
+   * fois le téléchargement commencé, il n'y a plus de code d'erreur à rendre.
+   * Une photo absente du disque n'arrête donc pas l'export — elle y figure avec
+   * `file: null`, et le journal le dit.
    */
-  exportAccount(userId: string): Promise<ExportArchive | null> {
-    return this.deps.privacy.exportFor(userId);
+  async exportAccount(userId: string): Promise<Readable | null> {
+    const archive = await this.deps.privacy.exportFor(userId);
+    if (!archive) return null;
+
+    const pageIds = archive.carnets.flatMap((c) =>
+      c.entries.flatMap((e) => e.pages.map((p) => p.id)),
+    );
+    const files = await this.deps.privacy.pageFilesOf(pageIds);
+    const present = await Promise.all(
+      files.map((f) => this.deps.images.exists(f.originalPath)),
+    );
+    const stored = new Map(
+      files.filter((_, i) => present[i]).map((f) => [f.id, f.originalPath]),
+    );
+    if (stored.size < pageIds.length)
+      this.deps.logger.warn("Export : photos absentes du disque", {
+        userId,
+        missing: pageIds.length - stored.size,
+      });
+
+    const plan = planExportPhotos(archive, stored);
+    return this.deps.packer.pack([
+      {
+        path: EXPORT_JSON,
+        data: Buffer.from(JSON.stringify(plan.archive, null, 2)),
+      },
+      { path: "LISEZ-MOI.txt", data: Buffer.from(README) },
+      ...plan.photos.map((p) => ({
+        path: p.file,
+        open: () => this.deps.images.openRead(p.storedPath),
+      })),
+    ]);
   }
 
   /**

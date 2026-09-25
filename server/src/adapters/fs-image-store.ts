@@ -1,4 +1,6 @@
-import { readFile } from "node:fs/promises";
+import { createReadStream } from "node:fs";
+import { readFile, stat } from "node:fs/promises";
+import type { Readable } from "node:stream";
 import {
   deleteStored,
   resolveUpload,
@@ -20,6 +22,18 @@ export class FileSystemImageStore implements ImageStore {
 
   read(relPath: string): Promise<Buffer> {
     return readFile(resolveUpload(relPath));
+  }
+
+  async exists(relPath: string): Promise<boolean> {
+    try {
+      return (await stat(resolveUpload(relPath))).isFile();
+    } catch {
+      return false;
+    }
+  }
+
+  openRead(relPath: string): Readable {
+    return createReadStream(resolveUpload(relPath));
   }
 
   delete(img: { originalPath: string; thumbPath: string }): Promise<void> {

@@ -30,7 +30,7 @@ import { InlineError } from "@/components/PageState";
  * et se termine par une adresse recopiée. Entre les deux, rien n'est effacé.
  */
 export default function MesDonnees({ email }: { email?: string }) {
-  const [busy, setBusy] = useState<"export" | "preview" | "delete" | null>(null);
+  const [busy, setBusy] = useState<"preview" | "delete" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   /* L'aperçu ouvre le dialogue. `blocked` porte la phrase du serveur quand
@@ -42,30 +42,6 @@ export default function MesDonnees({ email }: { email?: string }) {
   const [blocked, setBlocked] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [typed, setTyped] = useState("");
-
-  async function exportData() {
-    setBusy("export");
-    setError(null);
-    try {
-      const { blob, filename } = await api.exportMyData();
-      /* Un lien fabriqué puis cliqué : c'est la seule façon de donner un NOM au
-         fichier téléchargé. On révoque l'URL derrière nous, sinon le blob (le
-         journal entier, potentiellement des mégaoctets) reste en mémoire
-         jusqu'au rechargement de l'onglet. */
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Échec de l'export");
-    } finally {
-      setBusy(null);
-    }
-  }
 
   async function askToLeave() {
     setBusy("preview");
@@ -118,19 +94,16 @@ export default function MesDonnees({ email }: { email?: string }) {
         </p>
 
         <div className="flex flex-col gap-1.5">
-          <Button
-            variant="outline"
-            onClick={exportData}
-            loading={busy === "export"}
-            className="self-start"
-          >
-            {busy !== "export" && <Download aria-hidden="true" />}
-            Télécharger mes données
+          <Button variant="outline" asChild className="self-start">
+            <a href={api.exportUrl} download>
+              <Download aria-hidden="true" />
+              Télécharger mes données
+            </a>
           </Button>
           <p className="text-meta text-muted-foreground">
-            Un fichier JSON : vos carnets, toutes les journées que vous pouvez
-            lire, leurs moments et l'adresse de chaque photo. Ni mot de passe ni
-            jeton n'y figurent — ce sont des clés, pas des souvenirs.
+            Une archive zip : vos carnets, toutes les journées que vous pouvez
+            lire, leurs moments, et les photos des pages du carnet. Ni mot de
+            passe ni jeton n'y figurent — ce sont des clés, pas des souvenirs.
           </p>
         </div>
 

@@ -1,3 +1,4 @@
+import { Readable } from "node:stream";
 import type { Entry, EntryItemData, MemberRole, Uncertainty } from "../db/schema.js";
 import type { CarnetDay } from "../domain/carnet.js";
 import type { ItemRow, ItemType } from "../domain/entry-items.js";
@@ -379,6 +380,17 @@ export class FakeImageStore implements ImageStore {
 
   async read(relPath: string): Promise<Buffer> {
     return this.contents.get(relPath) ?? Buffer.from(relPath);
+  }
+
+  /** Chemins à tenir pour absents du disque (`exists` rend faux). */
+  readonly missing = new Set<string>();
+
+  async exists(relPath: string): Promise<boolean> {
+    return !this.missing.has(relPath);
+  }
+
+  openRead(relPath: string): Readable {
+    return Readable.from([this.contents.get(relPath) ?? Buffer.from(relPath)]);
   }
 
   async delete(img: { originalPath: string; thumbPath: string }): Promise<void> {

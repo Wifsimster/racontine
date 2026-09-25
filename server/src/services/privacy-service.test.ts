@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { CarnetStanding, ErasureSnapshot } from "../domain/erasure.js";
+import { Readable } from "node:stream";
 import type {
+  ArchiveEntry,
+  ArchivePacker,
   ExportArchive,
   PrivacyRepository,
   StoredFile,
@@ -12,7 +15,7 @@ import { PrivacyService } from "./privacy-service.js";
 /* Emporter et partir, vérifiés sans base ni disque : la confirmation exigée, la
    porte de l'administrateur, et l'ORDRE — les fichiers avant les lignes. */
 
-const ARCHIVE = { format: "racontine.export.v1" } as ExportArchive;
+const ARCHIVE = { format: "racontine.export.v1", carnets: [] } as unknown as ExportArchive;
 
 /**
  * Dépôt en mémoire qui RETIENT L'ORDRE des gestes. C'est tout l'intérêt de la
@@ -29,6 +32,7 @@ class FakePrivacyRepo implements PrivacyRepository {
       standing?: CarnetStanding | null;
       files?: StoredFile[];
       staged?: StoredFile[];
+      pageFiles?: { id: string; originalPath: string }[];
     } = {},
   ) {}
 
@@ -39,6 +43,9 @@ class FakePrivacyRepo implements PrivacyRepository {
     return this.state.snapshot === undefined
       ? { isOwner: false, otherAccounts: 1, carnets: [], activeSubscription: false }
       : this.state.snapshot;
+  }
+  async pageFilesOf(ids: string[]): Promise<{ id: string; originalPath: string }[]> {
+    return (this.state.pageFiles ?? []).filter((f) => ids.includes(f.id));
   }
   async standingOn(): Promise<CarnetStanding | null> {
     return this.state.standing ?? null;
@@ -59,6 +66,28 @@ class FakePrivacyRepo implements PrivacyRepository {
   }
 }
 
+/** Mise en archive qui garde la liste de ce qu'on lui a confié, et lit les flux. */
+class FakePacker implements ArchivePacker {
+  entries: ArchiveEntry[] = [];
+  pack(entries: ArchiveEntry[]): Readable {
+    this.entries = entries;
+    return Readable.from([]);
+  }
+  /** Le contenu de chaque fichier de l'archive, flux compris. */
+  async contents(): Promise<Map<string, string>> {
+    const out = new Map<string, string>();
+    for (const e of this.entries) {
+      if ("data" in e) out.set(e.path, e.data.toString());
+      else {
+        const chunks: Buffer[] = [];
+        for await (const c of e.open()) chunks.push(Buffer.from(c));
+        out.set(e.path, Buffer.concat(chunks).toString());
+      }
+    }
+    return out;
+  }
+}
+
 function standing(over: Partial<CarnetStanding> = {}): CarnetStanding {
   return {
     childId: "child-1",
@@ -73,20 +102,82 @@ function standing(over: Partial<CarnetStanding> = {}): CarnetStanding {
 function build(state: ConstructorParameters<typeof FakePrivacyRepo>[0] = {}) {
   const repo = new FakePrivacyRepo(state);
   const images = new FakeImageStore();
+  const packer = new FakePacker();
   const logger = new FakeLogger();
   return {
     repo,
     images,
+    packer,
     logger,
-    service: new PrivacyService({ privacy: repo, images, logger }),
+    service: new PrivacyService({ privacy: repo, images, packer, logger }),
   };
 }
 
 /* -------------------------------- Emporter ------------------------------- */
 
-test("l'export rend l'archive du compte", async () => {
-  const { service } = build();
-  assert.equal(await service.exportAccount("u1"), ARCHIVE);
+/** Un carnet d'une journée à deux pages. */
+function archiveWithPages(): ExportArchive {
+  const page = (id: string) => ({
+    id,
+    mime: "image/jpeg",
+    width: 1200,
+    height: 1600,
+    url: `/api/attachments/${id}?size=full`,
+    file: null,
+  });
+  return {
+    format: "racontine.export.v1",
+    carnets: [
+      {
+        name: "Lou",
+        entries: [{ date: "2026-09-17", pages: [page("p1"), page("p2")] }],
+      },
+    ],
+  } as unknown as ExportArchive;
+}
+
+test("l'export met le journal ET les photos dans l'archive", async () => {
+  const { service, packer, images } = build({
+    archive: archiveWithPages(),
+    pageFiles: [
+      { id: "p1", originalPath: "2026/09/a.jpg" },
+      { id: "p2", originalPath: "2026/09/b.jpg" },
+    ],
+  });
+  images.contents.set("2026/09/a.jpg", Buffer.from("octets-a"));
+  images.contents.set("2026/09/b.jpg", Buffer.from("octets-b"));
+
+  assert.ok(await service.exportAccount("u1"));
+  const files = await packer.contents();
+  assert.equal(files.get("photos/Lou/2026-09-17-1.jpg"), "octets-a");
+  assert.equal(files.get("photos/Lou/2026-09-17-2.jpg"), "octets-b");
+  assert.ok(files.has("LISEZ-MOI.txt"));
+
+  const json = JSON.parse(files.get("racontine-export.json")!);
+  assert.deepEqual(
+    json.carnets[0].entries[0].pages.map((p: { file: string }) => p.file),
+    ["photos/Lou/2026-09-17-1.jpg", "photos/Lou/2026-09-17-2.jpg"],
+  );
+  // Le chemin interne au serveur ne sort pas.
+  assert.doesNotMatch(files.get("racontine-export.json")!, /2026\/09\/a\.jpg/);
+});
+
+test("une photo absente du disque n'arrête pas l'export : file vaut null", async () => {
+  const { service, packer, images } = build({
+    archive: archiveWithPages(),
+    pageFiles: [
+      { id: "p1", originalPath: "2026/09/a.jpg" },
+      { id: "p2", originalPath: "2026/09/b.jpg" },
+    ],
+  });
+  images.missing.add("2026/09/b.jpg");
+
+  assert.ok(await service.exportAccount("u1"));
+  const files = await packer.contents();
+  assert.ok(files.has("photos/Lou/2026-09-17-1.jpg"));
+  assert.equal([...files.keys()].filter((k) => k.startsWith("photos/")).length, 1);
+  const json = JSON.parse(files.get("racontine-export.json")!);
+  assert.equal(json.carnets[0].entries[0].pages[1].file, null);
 });
 
 test("un compte disparu n'a pas d'archive (404, pas 500)", async () => {
