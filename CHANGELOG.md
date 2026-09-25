@@ -2,6 +2,13 @@
 
 Toutes les versions notables de Racontine. Format issu des messages de commit conventionnels (`feat`, `fix`, …).
 
+# [1.30.0](https://github.com/Wifsimster/racontine/compare/v1.29.2...v1.30.0) (2026-09-25)
+
+
+### Features
+
+* **export:** emporter les photos du carnet dans un zip ([#91](https://github.com/Wifsimster/racontine/issues/91)) ([a645f14](https://github.com/Wifsimster/racontine/commit/a645f144c2834e14be345944e75c2ee43492d4a5))
+
 ## [1.29.2](https://github.com/Wifsimster/racontine/compare/v1.29.1...v1.29.2) (2026-09-22)
 
 
