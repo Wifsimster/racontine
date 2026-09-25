@@ -181,6 +181,15 @@ assert.equal(louExport.entries[0]!.pages.length, 1);
 assert.match(louExport.entries[0]!.pages[0]!.url, /\?size=full&v=1$/);
 ok("un administrateur emporte ses carnets, brouillons compris");
 
+// Le chemin de rangement ne sort que par `pageFilesOf`, jamais dans l'archive.
+const pageId = louExport.entries[0]!.pages[0]!.id;
+const pageFiles = await repo.pageFilesOf([pageId]);
+assert.equal(pageFiles.length, 1);
+assert.equal(pageFiles[0]!.id, pageId);
+assert.equal(JSON.stringify(mine).includes(pageFiles[0]!.originalPath), false);
+assert.deepEqual(await repo.pageFilesOf([]), []);
+ok("les photos du carnet se retrouvent sur le disque, sans que leur chemin sorte");
+
 const hers = await repo.exportFor(mamie);
 assert.ok(hers);
 assert.deepEqual(hers.carnets.map((c) => c.name), ["Lou"]);

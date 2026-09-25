@@ -234,6 +234,8 @@ export class DrizzlePrivacyRepository implements PrivacyRepository {
             width: p.width,
             height: p.height,
             url: attachmentUrls({ id: p.id, rotation: p.rotation }).url,
+            // Rempli par le service, qui seul sait ce qui entre dans le zip.
+            file: null,
           })),
         }),
       ),
@@ -390,6 +392,16 @@ export class DrizzlePrivacyRepository implements PrivacyRepository {
         admins: row?.admins ?? (own.role === "admin" ? 1 : 0),
       };
     });
+  }
+
+  async pageFilesOf(
+    pageIds: string[],
+  ): Promise<{ id: string; originalPath: string }[]> {
+    if (pageIds.length === 0) return [];
+    return db
+      .select({ id: attachments.id, originalPath: attachments.originalPath })
+      .from(attachments)
+      .where(inArray(attachments.id, pageIds));
   }
 
   async filesOfChildren(childIds: string[]): Promise<StoredFile[]> {

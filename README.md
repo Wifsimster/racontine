@@ -221,11 +221,21 @@ Racontine garde le quotidien d'un enfant, des photos de son carnet et le nom de
 ses proches. Trois gestes, accessibles depuis l'application, permettent de tout
 reprendre ou de tout faire disparaître.
 
-**Emporter** — « Mon compte » → *Télécharger mes données*. Un fichier JSON
-(`racontine-export-AAAA-MM-JJ.json`) portant vos carnets, **toutes les journées
-que vous pouvez lire**, leurs moments, vos corrections, vos abonnements et vos
-notifications, plus l'adresse de chaque photo (`/api/attachments/…`, à ouvrir
-avec la même session). Deux règles le composent :
+**Emporter** — « Mon compte » → *Télécharger mes données*. Une archive zip
+(`racontine-export-AAAA-MM-JJ.zip`) qui se lit sans l'application :
+
+- `racontine-export.json` — vos carnets, **toutes les journées que vous pouvez
+  lire**, leurs moments, vos corrections, vos abonnements et vos notifications.
+  Chaque page photographiée y indique dans `file` où trouver sa photo dans
+  l'archive ;
+- `photos/<prénom>/<date>-<n° de page>.jpg` — les pages du carnet elles-mêmes,
+  pas seulement leur adresse : l'archive reste complète le jour où l'instance
+  n'est plus là. Une photo introuvable sur le disque au moment de l'export
+  n'arrête rien — sa page porte `file: null` ;
+- `LISEZ-MOI.txt` — ce qui précède, pour qui ouvre le zip sans connaître Racontine.
+
+Le zip est écrit au fil de l'eau : une année de photos ne passe ni par la
+mémoire du serveur, ni par celle du téléphone. Deux règles le composent :
 
 - il ne montre **jamais plus que l'écran** — un lecteur y retrouve le journal
   publié, pas les brouillons que l'application lui cache ;
