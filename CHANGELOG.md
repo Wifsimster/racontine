@@ -2,6 +2,13 @@
 
 Toutes les versions notables de Racontine. Format issu des messages de commit conventionnels (`feat`, `fix`, …).
 
+## [1.30.2](https://github.com/Wifsimster/racontine/compare/v1.30.1...v1.30.2) (2026-09-26)
+
+
+### Bug Fixes
+
+* **ui:** chevron des menus déroulants posé dans le champ ([#93](https://github.com/Wifsimster/racontine/issues/93)) ([deebc20](https://github.com/Wifsimster/racontine/commit/deebc20ce30168961d190fc6fdad6ab2a12d48ac))
+
 ## [1.30.1](https://github.com/Wifsimster/racontine/compare/v1.30.0...v1.30.1) (2026-09-26)
 
 
