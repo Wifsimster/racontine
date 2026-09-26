@@ -2,6 +2,13 @@
 
 Toutes les versions notables de Racontine. Format issu des messages de commit conventionnels (`feat`, `fix`, …).
 
+## [1.30.3](https://github.com/Wifsimster/racontine/compare/v1.30.2...v1.30.3) (2026-09-26)
+
+
+### Bug Fixes
+
+* **deps:** fastify 5.12.5, react-router-dom 7.18.4, sharp 0.35.4, nodemailer 10, zod 4 ([#94](https://github.com/Wifsimster/racontine/issues/94)) ([4846b6f](https://github.com/Wifsimster/racontine/commit/4846b6f8c2045cd40e0dba6ad5dff1da9f0dc9a5)), closes [#85](https://github.com/Wifsimster/racontine/issues/85) [#89](https://github.com/Wifsimster/racontine/issues/89)
+
 ## [1.30.2](https://github.com/Wifsimster/racontine/compare/v1.30.1...v1.30.2) (2026-09-26)
 
 
