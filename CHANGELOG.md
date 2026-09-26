@@ -2,6 +2,13 @@
 
 Toutes les versions notables de Racontine. Format issu des messages de commit conventionnels (`feat`, `fix`, …).
 
+# [1.31.0](https://github.com/Wifsimster/racontine/compare/v1.30.3...v1.31.0) (2026-09-26)
+
+
+### Features
+
+* **partage:** nommer un proche qui n'a pas de nom ([#95](https://github.com/Wifsimster/racontine/issues/95)) ([46716ba](https://github.com/Wifsimster/racontine/commit/46716ba3290fda2f29f96c161a1d6ee5df9812c8))
+
 ## [1.30.3](https://github.com/Wifsimster/racontine/compare/v1.30.2...v1.30.3) (2026-09-26)
 
 
