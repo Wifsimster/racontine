@@ -2,6 +2,13 @@
 
 Toutes les versions notables de Racontine. Format issu des messages de commit conventionnels (`feat`, `fix`, …).
 
+## [1.30.1](https://github.com/Wifsimster/racontine/compare/v1.30.0...v1.30.1) (2026-09-26)
+
+
+### Bug Fixes
+
+* **partage:** cartes du cercle sans ligne vide ni select grisé ([#92](https://github.com/Wifsimster/racontine/issues/92)) ([39cd022](https://github.com/Wifsimster/racontine/commit/39cd022313153c6d2a512d377b4d1b8022ea6267))
+
 # [1.30.0](https://github.com/Wifsimster/racontine/compare/v1.29.2...v1.30.0) (2026-09-25)
 
 
