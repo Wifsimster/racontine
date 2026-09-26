@@ -115,6 +115,26 @@ export async function sharingRoutes(app: FastifyInstance) {
     },
   );
 
+  // Nommer un proche qui n'a pas de nom (admin). Jamais d'écrasement.
+  app.put<{
+    Params: { childId: string; userId: string };
+    Body: { name?: string };
+  }>(
+    "/api/children/:childId/members/:userId/name",
+    { preHandler: requireUser },
+    async (req, reply) => {
+      if (!(await requireChildAdmin(req, reply, req.params.childId))) return;
+      const result = await sharing.nameMember({
+        childId: req.params.childId,
+        userId: req.params.userId,
+        name: req.body?.name,
+      });
+      if (!result.ok)
+        return reply.code(result.httpCode).send({ error: result.error });
+      return reply.code(200).send({ name: result.name });
+    },
+  );
+
   // Retirer un membre (admin). Interdit de retirer le dernier admin.
   app.delete<{ Params: { childId: string; userId: string } }>(
     "/api/children/:childId/members/:userId",

@@ -163,6 +163,22 @@ export class DrizzleMembershipRepository implements MembershipRepository {
       });
   }
 
+  async nameIfBlank(
+    childId: string,
+    userId: string,
+    name: string,
+  ): Promise<"ok" | "missing" | "named"> {
+    if (!(await this.isMember(childId, userId))) return "missing";
+    // Condition dans le WHERE : deux admins qui nomment en même temps, un seul
+    // gagne, et un nom choisi entre-temps par la personne n'est pas écrasé.
+    const updated = await db
+      .update(user)
+      .set({ name, updatedAt: new Date() })
+      .where(and(eq(user.id, userId), sql`trim(${user.name}) = ''`))
+      .returning({ id: user.id });
+    return updated.length ? "ok" : "named";
+  }
+
   async isMember(childId: string, userId: string): Promise<boolean> {
     const [row] = await db
       .select({ id: memberships.id })

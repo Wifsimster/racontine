@@ -60,6 +60,7 @@ test("le catalogue expose le carnet, l'exploitation ET le cercle", () => {
     "list_circle",
     "invite_relative",
     "set_member_role",
+    "set_member_name",
     "remove_member",
     "revoke_invitation",
   ])

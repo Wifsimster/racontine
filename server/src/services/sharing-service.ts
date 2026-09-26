@@ -66,6 +66,16 @@ export interface MembershipRepository {
    * (même atomicité que `setRole`).
    */
   remove(childId: string, userId: string): Promise<CircleChange>;
+  /**
+   * Donne un nom à un membre de CE cercle, uniquement s'il n'en a pas encore
+   * (compte créé par lien magique). `named` : il en a déjà un, qu'on ne
+   * remplace pas — le nom qu'une personne a choisi n'appartient qu'à elle.
+   */
+  nameIfBlank(
+    childId: string,
+    userId: string,
+    name: string,
+  ): Promise<"ok" | "missing" | "named">;
   /** Crée ou met à jour l'adhésion d'un utilisateur. */
   upsert(childId: string, userId: string, role: MemberRole): Promise<void>;
   isMember(childId: string, userId: string): Promise<boolean>;
@@ -120,6 +130,8 @@ export type SharingDeps = {
 
 export type Rejection = { ok: false; httpCode: number; error: string };
 export type Ok<T> = { ok: true } & T;
+
+const MAX_NAME = 80;
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
@@ -212,6 +224,35 @@ export class SharingService {
     return circleOutcome(
       await this.deps.memberships.setRole(params.childId, params.userId, role),
     );
+  }
+
+  /**
+   * Nomme un proche qui n'a pas de nom. Le nom est celui du COMPTE (visible
+   * dans tous ses cercles), d'où la règle : on complète un vide, on n'écrase
+   * jamais un nom existant.
+   */
+  async nameMember(params: {
+    childId: string;
+    userId: string;
+    name?: string;
+  }): Promise<Ok<{ name: string }> | Rejection> {
+    const name = (params.name ?? "").trim().replace(/\s+/g, " ");
+    if (!name || name.length > MAX_NAME)
+      return {
+        ok: false,
+        httpCode: 400,
+        error: `nom invalide (1 à ${MAX_NAME} caractères)`,
+      };
+    const outcome = await this.deps.memberships.nameIfBlank(
+      params.childId,
+      params.userId,
+      name,
+    );
+    if (outcome === "missing")
+      return { ok: false, httpCode: 404, error: "membre introuvable" };
+    if (outcome === "named")
+      return { ok: false, httpCode: 409, error: "ce proche a déjà un nom" };
+    return { ok: true, name };
   }
 
   /** Retire un membre (et son abonnement), sauf s'il est le dernier admin. */

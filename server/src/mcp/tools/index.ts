@@ -11,6 +11,7 @@ import { publishDailyNoteTool } from "./publish-daily-note.js";
 import { removeMemberTool } from "./remove-member.js";
 import { retryDailyNoteTool } from "./retry-daily-note.js";
 import { revokeInvitationTool } from "./revoke-invitation.js";
+import { setMemberNameTool } from "./set-member-name.js";
 import { setMemberRoleTool } from "./set-member-role.js";
 import { updateInstanceSettingsTool } from "./update-instance-settings.js";
 import { uploadDailyNoteTool } from "./upload-daily-note.js";
@@ -43,6 +44,7 @@ export const MCP_TOOLS: readonly McpTool[] = [
   listCircleTool,
   inviteRelativeTool,
   setMemberRoleTool,
+  setMemberNameTool,
   removeMemberTool,
   revokeInvitationTool,
 ];
