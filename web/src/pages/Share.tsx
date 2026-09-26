@@ -11,6 +11,7 @@ import {
   Clock,
   Camera,
   TriangleAlert,
+  PenLine,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useSession } from "@/lib/auth-client";
@@ -91,6 +92,66 @@ function CopyButton({ url }: { url: string }) {
     >
       {copied ? <Check className="text-success" /> : <Copy />}
     </Button>
+  );
+}
+
+/**
+ * Nommer un proche dont le compte n'a pas de nom (créé par lien magique). Un
+ * lien discret sous l'adresse, qui s'ouvre en champ + bouton. Le serveur
+ * n'écrase jamais un nom existant : ce geste ne sert qu'à combler un vide.
+ */
+function NameMember({
+  email,
+  onSave,
+}: {
+  email: string;
+  onSave: (name: string) => Promise<void>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  if (!open)
+    return (
+      <Button
+        variant="link"
+        size="xs"
+        className="-my-2.5 -ml-3 self-start"
+        onClick={() => setOpen(true)}
+      >
+        <PenLine aria-hidden="true" />
+        Ajouter son nom
+      </Button>
+    );
+
+  return (
+    <form
+      className="flex items-center gap-2"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        if (!name.trim()) return;
+        setSaving(true);
+        try {
+          await onSave(name);
+        } finally {
+          setSaving(false);
+        }
+      }}
+    >
+      <Input
+        autoFocus
+        aria-label={`Nom de ${email}`}
+        placeholder="Mamie Jacqueline"
+        maxLength={80}
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        onKeyDown={(e) => e.key === "Escape" && setOpen(false)}
+      />
+      <Button type="submit" loading={saving} disabled={!name.trim()}>
+        {!saving && <Check aria-hidden="true" />}
+        Enregistrer
+      </Button>
+    </form>
   );
 }
 
@@ -364,6 +425,21 @@ export default function Share() {
                     </span>
                   )}
                 </div>
+                {!name && !isSelf && (
+                  <NameMember
+                    email={m.email}
+                    onSave={async (n) => {
+                      if (!selected) return;
+                      try {
+                        setError(null);
+                        await api.setMemberName(selected, m.userId, n);
+                        await refresh(selected);
+                      } catch (e) {
+                        setError(e instanceof Error ? e.message : "Échec");
+                      }
+                    }}
+                  />
+                )}
                 {!isSelf && (
                   <div className="flex items-center gap-2">
                     <RoleSelect

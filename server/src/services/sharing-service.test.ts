@@ -52,6 +52,13 @@ class FakeMemberships implements MembershipRepository {
     this.removed.push([childId, userId]);
     return "ok";
   }
+  names = new Map<string, string>();
+  async nameIfBlank(_childId: string, userId: string, name: string) {
+    if (!this.members.includes(userId)) return "missing" as const;
+    if (this.names.get(userId)) return "named" as const;
+    this.names.set(userId, name);
+    return "ok" as const;
+  }
   async upsert() {}
   async isMember(_childId: string, userId: string) {
     return this.members.includes(userId);
@@ -328,4 +335,40 @@ test("réinviter une adresse révoque ses liens encore en attente", async () => 
     email: "Mamie@Example.test",
   });
   assert.deepEqual(invitations.revokedFor, [["c1", "mamie@example.test"]]);
+});
+
+test("on nomme un proche sans nom, sans jamais écraser un nom existant", async () => {
+  const { service, memberships } = build({
+    memberships: new FakeMemberships(["u-admin"], ["u-admin", "u-mamie"]),
+  });
+  const named = await service.nameMember({
+    childId: "c1",
+    userId: "u-mamie",
+    name: "  Mamie   Jacqueline ",
+  });
+  assert.deepEqual(named, { ok: true, name: "Mamie Jacqueline" });
+  assert.equal(memberships.names.get("u-mamie"), "Mamie Jacqueline");
+
+  const again = await service.nameMember({
+    childId: "c1",
+    userId: "u-mamie",
+    name: "Autre",
+  });
+  assert.equal(again.ok, false);
+  if (!again.ok) assert.equal(again.httpCode, 409);
+  assert.equal(memberships.names.get("u-mamie"), "Mamie Jacqueline");
+
+  const stranger = await service.nameMember({
+    childId: "c1",
+    userId: "u-inconnu",
+    name: "X",
+  });
+  if (!stranger.ok) assert.equal(stranger.httpCode, 404);
+  else assert.fail("un non-membre ne se nomme pas");
+
+  for (const bad of ["", "   ", "x".repeat(81)]) {
+    const r = await service.nameMember({ childId: "c1", userId: "u-mamie", name: bad });
+    if (!r.ok) assert.equal(r.httpCode, 400);
+    else assert.fail(`nom accepté : « ${bad} »`);
+  }
 });

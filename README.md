@@ -334,10 +334,11 @@ moment. Outils exposés, en deux familles.
 | `list_circle` | Le cercle d'un carnet : chaque membre (avec son `userId`) et chaque invitation en attente, **lien compris** — celui qu'on recopie à la main quand l'instance n'a pas de SMTP |
 | `invite_relative` | Invite un proche (invitation nominative) et renvoie son lien. Refusé si la personne suit déjà le carnet |
 | `set_member_role` | Change le rôle d'un membre (`reader` / `contributor` / `admin`) |
+| `set_member_name` | Donne un nom à un proche qui n'en a pas (compte créé par lien magique) — n'écrase jamais un nom existant |
 | `remove_member` | Retire un proche : accès **et** notifications s'arrêtent |
 | `revoke_invitation` | Révoque une invitation en attente — idempotent |
 
-Les cinq sont réservés à l'**administrateur du carnet visé** et refusent de
+Les six sont réservés à l'**administrateur du carnet visé** et refusent de
 laisser un carnet sans aucun administrateur. Accepter une invitation reste
 l'affaire du proche, dans l'application : aucun outil ne crée d'adhésion sans
 que la personne ait cliqué son lien.

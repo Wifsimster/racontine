@@ -212,6 +212,13 @@ export const api = {
       body: JSON.stringify({ role }),
     }),
 
+  /** Nomme un proche sans nom (409 s'il en a déjà un : jamais d'écrasement). */
+  setMemberName: (childId: string, userId: string, name: string) =>
+    req<{ name: string }>(`/api/children/${childId}/members/${userId}/name`, {
+      method: "PUT",
+      body: JSON.stringify({ name }),
+    }),
+
   removeMember: (childId: string, userId: string) =>
     req<void>(`/api/children/${childId}/members/${userId}`, {
       method: "DELETE",

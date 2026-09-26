@@ -21,7 +21,7 @@ export const listCircleTool: McpTool = {
       {
         title: "Lister le cercle d'un carnet",
         description:
-          "Liste le cercle d'un carnet : chaque membre (identifiant, nom, e-mail, rôle, date d'entrée) et chaque invitation en attente, avec sa date d'expiration et **son lien** — utile quand l'instance n'a pas de SMTP configuré et que le lien doit être transmis à la main. Réservé à l'administrateur de CE carnet. Les identifiants renvoyés (`userId`, `id` d'invitation) sont ceux qu'attendent `set_member_role`, `remove_member` et `revoke_invitation`.",
+          "Liste le cercle d'un carnet : chaque membre (identifiant, nom, e-mail, rôle, date d'entrée) et chaque invitation en attente, avec sa date d'expiration et **son lien** — utile quand l'instance n'a pas de SMTP configuré et que le lien doit être transmis à la main. Réservé à l'administrateur de CE carnet. Les identifiants renvoyés (`userId`, `id` d'invitation) sont ceux qu'attendent `set_member_role`, `set_member_name`, `remove_member` et `revoke_invitation`.",
         inputSchema: {
           childId: z
             .string()
