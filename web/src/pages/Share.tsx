@@ -322,12 +322,15 @@ export default function Share() {
       )}
 
       {/* ── Membres ──────────────────────────────────────────────────────────
-          CHAQUE MEMBRE EST UNE FEUILLE EMPILÉE, et c'est la correction qui
-          compte. En une seule ligne (nom + e-mail + rôle + corbeille), le
-          `<select>` « Administrateur » imposait sa largeur et le nom se coupait
-          au milieu d'un mot : « Mamie Jacque », « marc@battiste… ». Le nom et
-          l'adresse prennent maintenant toute la largeur, le rôle et la
-          suppression sont sur la ligne du dessous. Plus rien n'est tronqué. */}
+          CHAQUE MEMBRE EST UNE FEUILLE EMPILÉE : identité en haut, rôle et
+          suppression en dessous. En une seule ligne, le `<select>` imposait sa
+          largeur et le nom ou l'adresse se coupait (« marc@battiste… »).
+          Deux cas qui rendaient la carte bancale :
+          - un proche invité n'a souvent PAS de nom (compte créé par lien
+            magique) : on affiche alors son adresse en titre, au lieu d'une
+            ligne vide au-dessus de l'e-mail ;
+          - soi-même : son rôle ne se modifie pas, donc pas de `<select>` grisé
+            pleine largeur ; le rôle rejoint la ligne de l'adresse. */}
       <section className="flex flex-col gap-1">
         <SectionLabel className="px-1">
           Le cercle de {child?.name ?? "l'enfant"} ({members.length})
@@ -335,14 +338,16 @@ export default function Share() {
         <ul className="flex flex-col gap-2">
           {members.map((m) => {
             const isSelf = m.userId === session?.user.id;
+            const name = m.name?.trim();
+            const label = name || m.email;
             return (
               <li
                 key={m.userId}
                 className="flex flex-col gap-3 rounded-2xl border bg-card p-4 shadow-card"
               >
-                <div className="flex min-w-0 flex-col">
+                <div className="flex min-w-0 flex-1 flex-col">
                   <span className="flex min-w-0 items-center gap-1.5 text-ui font-bold">
-                    <span className="truncate">{m.name}</span>
+                    <span className="truncate">{label}</span>
                     {m.role === "admin" && (
                       <ShieldCheck
                         className="size-4 shrink-0 text-primary"
@@ -351,31 +356,34 @@ export default function Share() {
                     )}
                     {isSelf && <Badge variant="soft">vous</Badge>}
                   </span>
-                  <span className="truncate text-meta text-muted-foreground">
-                    {m.email}
-                  </span>
+                  {(name || isSelf) && (
+                    <span className="truncate text-meta text-muted-foreground">
+                      {[name && m.email, isSelf && ROLE_LABELS[m.role]]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </span>
+                  )}
                 </div>
-                <div className="flex items-center gap-2">
-                  <RoleSelect
-                    value={m.role}
-                    disabled={isSelf}
-                    className="min-w-0 flex-1"
-                    aria-label={`Rôle de ${m.name}`}
-                    onChange={async (r) => {
-                      if (!selected) return;
-                      try {
-                        await api.setMemberRole(selected, m.userId, r);
-                        await refresh(selected);
-                      } catch (e) {
-                        setError(e instanceof Error ? e.message : "Échec");
-                      }
-                    }}
-                  />
-                  {!isSelf && (
+                {!isSelf && (
+                  <div className="flex items-center gap-2">
+                    <RoleSelect
+                      value={m.role}
+                      className="min-w-0 flex-1"
+                      aria-label={`Rôle de ${label}`}
+                      onChange={async (r) => {
+                        if (!selected) return;
+                        try {
+                          await api.setMemberRole(selected, m.userId, r);
+                          await refresh(selected);
+                        } catch (e) {
+                          setError(e instanceof Error ? e.message : "Échec");
+                        }
+                      }}
+                    />
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      aria-label={`Retirer ${m.name} du cercle`}
+                      aria-label={`Retirer ${label} du cercle`}
                       className="text-destructive hover:bg-destructive-soft hover:text-destructive"
                       onClick={async () => {
                         if (!selected) return;
@@ -389,8 +397,8 @@ export default function Share() {
                     >
                       <Trash2 />
                     </Button>
-                  )}
-                </div>
+                  </div>
+                )}
               </li>
             );
           })}
