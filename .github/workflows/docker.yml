@@ -50,7 +50,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
 
       # Pas de connexion au registre sur une PR : on ne publie rien, et une PR
       # ne doit pas avoir besoin d'un droit d'écriture sur les paquets.
