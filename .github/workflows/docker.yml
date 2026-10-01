@@ -72,7 +72,7 @@ jobs:
             type=sha,format=short
 
       - name: Build (et publication hors PR)
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           # Contexte à la RACINE, et Dockerfile désigné par paquet : le lockfile
           # du monorepo y vit, et c'est lui qui rend le build reproductible
