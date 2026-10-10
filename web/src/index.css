@@ -49,7 +49,9 @@
 
    1. UNE couleur = UN sens. Chaque teinte est livrée en paire (encre, fond)
       et les DEUX thèmes sont mesurés : toutes les paires ci-dessous sont
-      >= 5,1:1 (script : gauntlet/probe/contrast.js). Aucune couleur décorative.
+      >= 5,1:1 (plancher : `muted-foreground` sur `muted`, 5,11:1 en clair) ;
+      les cinq feutres seuls sont >= 5,9:1. Mesure : WCAG 2.x sur les valeurs
+      sRGB de ce fichier (voir DESIGN.md). Aucune couleur décorative.
    2. SIX crans typographiques, pas un de plus, et chaque interligne est un
       multiple de 4 px. Les crans Tailwind historiques (`text-sm`, `text-xl`…)
       sont réécrits pour retomber dedans : une page ne peut plus inventer une
@@ -349,9 +351,11 @@
 @theme inline {
   /* ── Rayons ─────────────────────────────────────────────────────────────── */
   --radius-sm: calc(var(--radius) - 8px); /* 8  — puce, pastille */
-  --radius-md: calc(var(--radius) - 4px); /* 12 — tuile d'icône, champ */
-  --radius-lg: var(--radius); /* 16 — bouton, encart */
-  --radius-xl: calc(var(--radius) + 4px); /* 20 — image, carte compacte */
+  --radius-md: calc(var(--radius) - 4px); /* 12 — tuile d'icône */
+  --radius-lg: var(--radius); /* 16 — encart */
+  --radius-xl: calc(
+    var(--radius) + 4px
+  ); /* 20 — bouton, champ, image, carte compacte */
   --radius-2xl: calc(var(--radius) + 8px); /* 24 — la feuille */
   --radius-3xl: calc(var(--radius) + 16px); /* 32 — vignette d'état vide */
 

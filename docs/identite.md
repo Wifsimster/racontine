@@ -89,7 +89,8 @@ sélectionnable, il se cherche, il se lit à la synthèse vocale.
 Rien n'est répété ici — seulement les trois règles qui tiennent l'ensemble :
 
 1. **Une couleur = un sens.** Cinq feutres (repas, sieste, activité, anecdote,
-   santé), livrés en paires encre/fond, tous ≥ 5,9:1 dans les **deux** thèmes.
+   santé), livrés en paires encre/fond, tous ≥ 5,9:1 dans les **deux** thèmes
+   (plancher de l'ensemble des paires du système, feutres compris : 5,1:1).
    Le groseille ne dit qu'une chose : l'action. La provenance n'a volontairement
    aucune teinte. *Corollaire : un enfant ne peut pas avoir sa couleur* (voir §4).
 2. **Six crans typographiques** — 11 · 13 · 15 · 17 · 22 · 30 — tous les
