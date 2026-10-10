@@ -15,10 +15,11 @@ import { cn } from "@/lib/utils";
    =========================================================================== */
 
 const SIZE = {
-  /** Sur une ligne de surtitre (11/16) : la pastille tient dans l'interligne. */
-  sm: "size-5 rounded-[6px] text-[11px]",
+  /** Sur une ligne de surtitre (11/16) : la pastille tient dans l'interligne.
+   *  `tracking-normal` : l'espacement du surtitre décentrerait l'initiale. */
+  sm: "size-5 rounded-sm text-overline tracking-normal",
   /** En tête d'une carte d'enfant : la taille d'une tuile d'icône. */
-  md: "size-11 rounded-md text-[21px]",
+  md: "size-11 rounded-md text-title tracking-normal",
 } as const;
 
 export function ChildMark({

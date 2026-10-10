@@ -268,14 +268,14 @@ Usages : `shadow-card` ×58, `shadow-lift` ×11.
 
 ## Shapes
 
-`--radius: 1rem`, pas de 4 px (`@theme inline` l. 351–356) :
+`--radius: 1rem`, pas de 4 px (`@theme inline` l. 351–358) :
 
 | Classe | Valeur | Commentaire du code |
 | --- | --- | --- |
 | `rounded-sm` | 8 px | Puce, pastille |
-| `rounded-md` | 12 px | Tuile d'icône, champ |
-| `rounded-lg` | 16 px | Bouton, encart |
-| `rounded-xl` | 20 px | Image, carte compacte |
+| `rounded-md` | 12 px | Tuile d'icône |
+| `rounded-lg` | 16 px | Encart |
+| `rounded-xl` | 20 px | Bouton, champ, image, carte compacte |
 | `rounded-2xl` | 24 px | La feuille (Card) |
 | `rounded-3xl` | 32 px | Vignette d'état vide |
 
@@ -332,8 +332,20 @@ en `rem` (`48rem`, `64rem`), jamais en continu. Fond porté par `html`,
 
 ## Known Gaps
 
-Écarts constatés dans le code, non corrigés ici.
+Aucun écart ouvert. Corrigés le 2026-10-10 :
 
-1. **Seuil de contraste annoncé** : `index.css` (l. 51–52) dit toutes les paires « >= 5,1:1 », `docs/identite.md` §2 dit « ≥ 5,9:1 ».
-2. **Rayons des contrôles** : le commentaire de l'échelle attribue 16 px (`rounded-lg`) au bouton et 12 px (`rounded-md`) au champ, mais `Button` et `Input` utilisent `rounded-xl` (20 px).
-3. **`ChildMark` sort de l'échelle** (`components/ChildMark.tsx` l. 19–21) : `text-[21px]` (septième taille), `text-[11px]` au lieu de `text-overline`, `rounded-[6px]` hors de l'échelle des rayons.
+1. **Seuil de contraste annoncé** — les deux chiffres étaient vrais, sur deux
+   périmètres différents. Mesuré (WCAG 2.x, valeurs sRGB d'`index.css`) :
+   plancher de toutes les paires 5,11:1 (`muted-foreground` sur `muted`,
+   clair) ; feutres seuls ≥ 5,99:1 (`health`, clair). `index.css` et
+   `docs/identite.md` nomment désormais chacun son périmètre, et `index.css`
+   ne renvoie plus vers `gauntlet/probe/contrast.js`, absent du dépôt. Aucune
+   teinte modifiée.
+2. **Rayons des contrôles** — le code fait foi : `Button` et `Input` sont en
+   `rounded-xl` (20 px) depuis #36. C'est le commentaire de l'échelle qui a
+   été corrigé (20 px = bouton, champ, image, carte compacte). Aucun rendu
+   modifié.
+3. **`ChildMark` hors échelle** — `text-[11px]` → `text-overline`,
+   `text-[21px]` → `text-title` (22 px, +1 px), `rounded-[6px]` →
+   `rounded-sm` (8 px). `tracking-normal` annule l'espacement du surtitre,
+   qui décentrerait l'initiale.
