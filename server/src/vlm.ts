@@ -4,19 +4,8 @@ import { tidyUncertainty } from "./uncertainties.js";
 import type { CarnetDay, CarnetUncertainty } from "./domain/carnet.js";
 import { CarnetReadError } from "./domain/errors.js";
 
-/* ===========================================================================
-   L'ADAPTATEUR DE LECTURE — l'API vision d'Anthropic, et rien d'autre.
-
-   Le vocabulaire (« une journée lue », « une incertitude ») appartient au
-   domaine (`domain/carnet.ts`) ; ce fichier ne fait que le produire à partir
-   d'un fournisseur donné. Les anciens noms restent exportés : ils étaient déjà
-   employés ailleurs, et rien ne gagne à renommer tout un code appelant.
-   =========================================================================== */
-
-/** Incertitude telle que rendue par une lecture. */
 export type VlmUncertainty = CarnetUncertainty;
 
-/** Une journée extraite d'un sous-ensemble des pages envoyées. */
 export type DayExtraction = CarnetDay;
 
 const UNCERTAINTY_SCHEMA = {
@@ -188,20 +177,8 @@ Consignes, pour chaque journée :
 - Si les pages de cette journée ne contiennent pas de carnet lisible, mets "illisible" à true.
 Appelle toujours l'outil enregistrer_journees.`;
 
-/**
- * Erreur d'extraction dont le message est déjà sûr à afficher à l'utilisateur
- * (stocké tel quel dans `failureReason` et montré dans l'app). Les détails
- * bruts du fournisseur — corps JSON, request_id, mention de facturation —
- * restent dans les logs serveur et ne fuitent jamais vers les proches.
- *
- * C'est L'ERREUR DU DOMAINE (`CarnetReadError`), et non une classe jumelle :
- * le service qui rattrape une lecture ratée ne connaît que celle-là, et deux
- * classes distinctes lui auraient fait remplacer un message écrit pour le
- * parent par la phrase générique.
- */
 export { CarnetReadError as VlmError };
 
-/** Traduit une erreur d'appel VLM en message français sûr pour l'utilisateur. */
 function vlmUserMessage(err: unknown): string {
   if (err instanceof Anthropic.APIError) {
     const status = err.status ?? 0;
@@ -213,7 +190,6 @@ function vlmUserMessage(err: unknown): string {
       type === "permission_error"
     )
       return "Votre clé API Anthropic est invalide ou révoquée. Vérifiez-la dans les réglages.";
-    // Solde de crédits épuisé / facturation : lié au compte Anthropic de l'utilisateur.
     if (/credit balance|billing|quota|payment/i.test(err.message))
       return "Le solde de crédits de votre compte Anthropic est insuffisant. Rechargez-le puis réessayez.";
     if (status === 429 || type === "rate_limit_error")
@@ -222,18 +198,12 @@ function vlmUserMessage(err: unknown): string {
       return "Le service de lecture est surchargé pour le moment. Réessayez dans quelques minutes.";
     if (status >= 500)
       return "Le service de lecture est temporairement indisponible. Réessayez plus tard.";
-    // Autres erreurs de requête (ex. image refusée par l'API).
     return "La lecture automatique du carnet a échoué. Réessayez avec une photo plus nette.";
   }
   if (err instanceof CarnetReadError) return err.message;
   return "La lecture automatique du carnet a échoué. Réessayez plus tard.";
 }
 
-/**
- * Construit un client Anthropic pour la clé fournie. La clé appartient à
- * l'utilisateur qui téléverse (chacun apporte la sienne) — on ne met donc rien
- * en cache entre appels, pour ne jamais mélanger les clés de deux comptes.
- */
 function clientFor(apiKey: string): Anthropic {
   if (!apiKey.trim())
     throw new CarnetReadError(
@@ -241,23 +211,13 @@ function clientFor(apiKey: string): Anthropic {
     );
   return new Anthropic({
     apiKey,
-    /* Le défaut du SDK est de DIX MINUTES par tentative, deux réessais compris :
-       une lecture bloquée pouvait donc tenir une journée en « Lecture en cours »
-       une demi-heure durant, pendant que le parent regarde une carte qui ne
-       bouge pas. Une lecture de carnet qui réussit prend quelques dizaines de
-       secondes ; au-delà de trois minutes, elle ne réussira pas, et l'échec
-       explicite (avec sa sortie « relancer la lecture ») vaut mieux qu'une
-       attente sans fin. Un seul réessai : le budget total reste borné à ~6 min,
-       sous le pas de sondage du front comme sous la patience d'un parent. */
     timeout: 3 * 60 * 1000,
     maxRetries: 1,
   });
 }
 
-/** Correction déjà validée par un proche pour un enfant — voir `corrections.ts`. */
 export type GlossaryEntry = { original: string; corrected: string };
 
-/** Construit le bloc « vocabulaire déjà confirmé » ajouté au prompt système. */
 function glossaryBlock(glossary: GlossaryEntry[]): string {
   if (!glossary.length) return "";
   const lines = glossary
@@ -282,11 +242,6 @@ function normalizeUncertainties(raw: unknown): VlmUncertainty[] {
         ? (u.champ as VlmUncertainty["champ"])
         : null,
     }))
-    /* Le modèle écrit régulièrement le mot ET son explication dans `original`
-       (« «Roueil» : mot incertain après «Nounour»… »). On les sépare ici, à
-       l'écriture : c'est `original` que le serveur remplacera dans le récit
-       quand la lecture sera tranchée — une phrase n'y trouve jamais son mot.
-       Voir uncertainties.ts. */
     .map((u) => {
       const tidy = tidyUncertainty({ ...u, resolved: null });
       return {
@@ -299,11 +254,6 @@ function normalizeUncertainties(raw: unknown): VlmUncertainty[] {
     .filter((u) => u.original.trim());
 }
 
-/**
- * Normalise la sortie brute (non fiable — le SDK n'impose pas le schéma à
- * l'exécution) en un tableau de journées cohérent : chaque page de `1..totalPages`
- * apparaît dans exactement une journée. Exporté pour être testé sans appel réseau.
- */
 export function normalizeJournees(
   raw: unknown,
   totalPages: number,
@@ -323,8 +273,6 @@ export function normalizeJournees(
         (p, idx, self) =>
           p >= 1 && p <= totalPages && !claimed.has(p) && self.indexOf(p) === idx,
       );
-    // Une journée sans page valide n'a rien à rattacher : on l'ignore, ses
-    // champs éventuels ne référencent aucune photo exploitable.
     if (!pages.length) continue;
     pages.forEach((p) => claimed.add(p));
     days.push({
@@ -348,9 +296,6 @@ export function normalizeJournees(
 
   const leftover = allPages.filter((p) => !claimed.has(p));
   if (leftover.length) {
-    // Pages qu'aucune journée n'a réclamées (modèle incomplet) : plutôt que de
-    // perdre silencieusement des photos, on les rattache à la dernière journée
-    // connue, ou on crée une journée illisible dédiée s'il n'y en a aucune.
     if (days.length) days[days.length - 1].pages.push(...leftover);
     else
       days.push({
@@ -378,30 +323,16 @@ export function normalizeJournees(
 const TRUNCATED_MESSAGE =
   "Trop de texte d'un coup : la lecture a été coupée avant la fin. Envoyez ces pages en plusieurs fois.";
 
-/**
- * Budget de sortie : chaque journée porte une transcription intégrale, et un
- * budget fixe de 4096 jetons coupait les lots denses au milieu de l'appel
- * d'outil. On l'élargit avec le nombre de pages, sans dépasser ce qu'un appel
- * non streamé accepte.
- */
 export function maxTokensFor(pages: number): number {
   return Math.min(16_000, 4096 + 2048 * Math.max(0, pages - 1));
 }
 
-/**
- * Envoie les pages (JPEG) au modèle vision et renvoie une journée par date
- * distincte détectée dans le lot (une seule si tout le lot ne couvre qu'un
- * jour). `apiKey` est la clé Anthropic de l'utilisateur au nom duquel on lit
- * le carnet. `glossary` : corrections déjà validées pour cet enfant,
- * réinjectées pour améliorer la lecture de l'écriture au fil des relectures.
- */
 export async function extractFromImages(
   jpegs: Buffer[],
   apiKey: string,
   glossary: GlossaryEntry[] = [],
 ): Promise<DayExtraction[]> {
   const anthropic = clientFor(apiKey);
-  // Modèle piloté par les réglages d'instance (défaut : VLM_MODEL de l'env).
   const { vlmModel } = await getSettings();
 
   const imageBlocks: Anthropic.ImageBlockParam[] = jpegs.map((buf) => ({
@@ -435,7 +366,6 @@ export async function extractFromImages(
       ],
     });
   } catch (err) {
-    // Détail brut du fournisseur pour l'opérateur (jamais montré à l'utilisateur).
     console.error(
       "Extraction VLM — échec de l'appel Anthropic :",
       err instanceof Error ? err.message : err,
@@ -443,9 +373,6 @@ export async function extractFromImages(
     throw new CarnetReadError(vlmUserMessage(err));
   }
 
-  // Sortie coupée par la limite : l'extraction est partielle ou vide, et
-  // `normalizeJournees` en ferait des pages « illisibles » — un faux diagnostic
-  // qui fait rephotographier des pages parfaitement lisibles.
   if (message.stop_reason === "max_tokens")
     throw new CarnetReadError(TRUNCATED_MESSAGE);
 

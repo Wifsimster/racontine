@@ -23,22 +23,6 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { InlineError } from "@/components/PageState";
 
-/* ===========================================================================
-   L'OFFRE — une seule, et les écrans qui en parlent.
-
-   UNE offre, UN prix, UN bouton. Pas de grille à trois colonnes, pas de
-   « Basic / Pro / Famille+ » : un carnet de nounou n'a pas de plan Entreprise,
-   et une famille qui compare trois colonnes à 22 h ne s'abonne pas — elle
-   remet à plus tard. Le tarif est affiché en toutes lettres SUR le bouton :
-   personne ne devrait avoir à cliquer pour connaître le prix.
-
-   Ce qu'on répète partout, parce que c'est vrai et que c'est la seule chose qui
-   compte quand on demande de l'argent pour des souvenirs d'enfance :
-   LE JOURNAL DÉJÀ ÉCRIT RESTE LISIBLE, abonné ou non, pour toujours. Seul
-   l'ajout de nouvelles journées est concerné.
-   =========================================================================== */
-
-/** Ce que l'abonnement contient. Quatre lignes, écrites du point de vue du foyer. */
 const INCLUS: { icon: typeof Heart; text: string }[] = [
   {
     icon: BookOpenText,
@@ -58,14 +42,6 @@ const INCLUS: { icon: typeof Heart; text: string }[] = [
   },
 ];
 
-/**
- * LE BOUTON QUI PAIE. Il appelle le serveur, qui fabrique la page Stripe, puis
- * on y va. Racontine ne voit jamais un numéro de carte.
- *
- * `window.location.assign` et non un `<a>` : l'adresse de paiement est à usage
- * unique et n'existe pas avant le clic. Le bouton garde donc sa couleur et son
- * focus pendant l'attente (`aria-busy`), comme partout ailleurs dans l'app.
- */
 export function PayButton({
   billing,
   label,
@@ -118,7 +94,6 @@ export function PayButton({
   );
 }
 
-/** Le portail Stripe : changer de carte, prendre une facture, résilier. */
 export function ManageButton({ label = "Gérer l'abonnement" }: { label?: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -148,12 +123,6 @@ export function ManageButton({ label = "Gérer l'abonnement" }: { label?: string
   );
 }
 
-/**
- * Ce que voit quelqu'un qui n'est pas le payeur. Ce n'est PAS un mur : c'est un
- * renseignement. Le co-parent n'a rien à régler, il a quelqu'un à qui en parler,
- * et cette phrase lui donne son nom plutôt que de le laisser devant un bouton
- * qui le refuserait.
- */
 export function BilledToNote({ billing }: { billing: Billing }) {
   if (!billing.billedTo) return null;
   return (
@@ -165,11 +134,6 @@ export function BilledToNote({ billing }: { billing: Billing }) {
   );
 }
 
-/**
- * CE QUE L'ABONNEMENT COMPREND, en quatre lignes. Sorti de `OfferCard` parce
- * que l'écran d'accueil public le montre AVANT toute idée de compte : la même
- * liste, écrite une fois, ne peut pas diverger d'un écran à l'autre.
- */
 export function OfferIncludes({ className }: { className?: string }) {
   return (
     <ul className={cn("flex flex-col gap-3", className)}>
@@ -188,7 +152,6 @@ export function OfferIncludes({ className }: { className?: string }) {
   );
 }
 
-/** L'offre, en entier : le prix, ce qu'il comprend, et le bouton. */
 export function OfferCard({ billing }: { billing: Billing }) {
   const price = billing.price;
 
@@ -199,7 +162,6 @@ export function OfferCard({ billing }: { billing: Billing }) {
         Racontine Famille
       </h2>
 
-      {/* LE PRIX, au plus gros cran de l'écran. Il ne se cherche pas. */}
       <p className="mt-4 flex items-baseline gap-2">
         {price ? (
           <>
@@ -211,9 +173,6 @@ export function OfferCard({ billing }: { billing: Billing }) {
             </span>
           </>
         ) : (
-          /* Stripe n'a pas répondu : on n'invente JAMAIS un montant de secours.
-             Mieux vaut une phrase honnête qu'un prix faux au-dessus d'un bouton
-             de paiement. */
           <span className="text-ui text-muted-foreground">
             Le tarif n'a pas pu être récupéré à l'instant — il s'affichera sur la
             page de paiement, avant tout engagement.
@@ -234,8 +193,6 @@ export function OfferCard({ billing }: { billing: Billing }) {
         )}
       </div>
 
-      {/* La promesse qui doit tenir même après une résiliation, écrite là où
-          l'on décide de payer — et pas seulement dans les CGV. */}
       <p className="mt-4 flex items-start gap-2 text-meta text-muted-foreground">
         <BookOpenText className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
         <span>
@@ -247,27 +204,11 @@ export function OfferCard({ billing }: { billing: Billing }) {
   );
 }
 
-/* ==========================================================================
-   L'APPEL SUR L'ACCUEIL — la seule chose que ce travail doit vraiment réussir.
-
-   Trois formes, une par situation, et AUCUNE quand il n'y a rien à dire (foyer
-   abonné, instance auto-hébergée) : une app payée ne continue pas à se vendre.
-
-   · pendant l'essai : une BANDE. Elle compte les jours, écrit le prix, et mène
-     à l'offre. Elle ne recouvre rien, elle ne clignote pas, elle ne se ferme
-     pas non plus — un compte à rebours qu'on peut masquer est un compte à
-     rebours qui surprendra son monde le dernier jour.
-   · prélèvement en échec : la même bande, en ambre, avec le geste utile.
-   · carnet fermé : une CARTE, en haut du journal, qui dit ce qui s'arrête, ce
-     qui continue, et porte le seul bouton groseille de l'écran.
-   ========================================================================== */
-
 export function BillingCallout({ billing }: { billing: Billing }) {
   const { access, price } = billing;
 
   if (!billing.enabled) return null;
 
-  /* ── L'essai qui court ─────────────────────────────────────────────────── */
   if (access.reason === "trial") {
     const jours = access.daysLeft ?? 0;
     const fin = formatDay(access.until);
@@ -299,7 +240,6 @@ export function BillingCallout({ billing }: { billing: Billing }) {
     );
   }
 
-  /* ── La carte est passée en échec ──────────────────────────────────────── */
   if (access.reason === "payment-late")
     return (
       <section className="rise-enter flex flex-col gap-3 rounded-2xl border border-warning bg-warning-bg p-4 sm:flex-row sm:items-center">
@@ -326,7 +266,6 @@ export function BillingCallout({ billing }: { billing: Billing }) {
       </section>
     );
 
-  /* ── Le carnet est fermé à l'écriture ──────────────────────────────────── */
   if (!access.open) {
     const encore = access.reason === "subscription-over";
     return (
@@ -381,12 +320,6 @@ export function BillingCallout({ billing }: { billing: Billing }) {
   return null;
 }
 
-/**
- * L'écran de capture quand le carnet est fermé. On n'y arrive pas par un bouton
- * (l'accueil ne le propose plus), mais par un signet, un brouillon retrouvé ou
- * le bouton « précédent » — et un cul-de-sac muet serait la pire réponse au
- * geste central du produit.
- */
 export function CapturePaused({ billing }: { billing: Billing }) {
   return (
     <div className="shell-width flex min-h-[calc(100svh-3.5rem)] flex-col items-center justify-center gap-5 px-4 py-8 text-center">

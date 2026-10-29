@@ -1,46 +1,15 @@
 #!/usr/bin/env node
-/* ===========================================================================
-   PROVISIONNER STRIPE POUR RACONTINE — une commande, une fois.
-
-   Le code du paiement est dans l'app ; ce qu'il lui manque, ce sont trois
-   objets dans VOTRE compte Stripe : un produit, un prix, un point de webhook.
-   Les créer à la main dans le tableau de bord marche très bien — et se rate
-   très bien aussi : un prix « one-off » au lieu de récurrent, un webhook
-   abonné à trois événements sur sept, un secret de signature qu'on ne revoit
-   jamais. Ce script les crée dans le bon ordre, avec les bonnes options, et
-   rend les lignes à coller dans `.env`.
-
-   IDEMPOTENT : relancez-le autant de fois que vous voulez. Il reconnaît ce
-   qu'il a déjà créé (métadonnée « racontine ») et ne fabrique jamais un
-   doublon — un deuxième prix actif sur le même produit est exactement le genre
-   de chose qui se découvre sur un relevé bancaire.
-
-     # ce qui existe déjà, sans rien écrire
-     STRIPE_SECRET_KEY=sk_test_... node scripts/stripe-setup.mjs --check \
-       --url https://racontine.exemple.fr
-
-     # créer ce qui manque
-     STRIPE_SECRET_KEY=sk_test_... node scripts/stripe-setup.mjs \
-       --url https://racontine.exemple.fr
-
-     # une offre annuelle plutôt que mensuelle
-     ... --amount 3900 --interval year
-
-   COMMENCEZ EN MODE TEST (sk_test_...). Le script refuse une clé sk_live_
-   sans --live : on ne provisionne pas une caisse réelle par inadvertance.
-   =========================================================================== */
 
 const DEFAULTS = {
   name: "Racontine Famille",
   description:
     "Toutes vos journées de carnet, vos enfants et vos proches sans limite. Lire le journal reste gratuit, pour toujours.",
-  amount: 499, // en centimes — 4,99 €
+  amount: 499,
   currency: "eur",
   interval: "month",
   apiBase: "https://api.stripe.com/v1",
 };
 
-/** Les événements dont le serveur a besoin, et aucun autre. */
 const EVENTS = [
   "checkout.session.completed",
   "checkout.session.async_payment_succeeded",
@@ -51,11 +20,8 @@ const EVENTS = [
   "invoice.payment_failed",
 ];
 
-/** Marque nos objets, pour les retrouver au lieu d'en créer un deuxième. */
 const MARK = "racontine";
 const MARK_VALUE = "famille";
-
-/* ------------------------------- Arguments ------------------------------- */
 
 function parseArgs(argv) {
   const args = { ...DEFAULTS, check: false, dryRun: false, live: false, url: null };
@@ -71,7 +37,7 @@ function parseArgs(argv) {
     else if (arg === "--currency") args.currency = String(next()).toLowerCase();
     else if (arg === "--interval") args.interval = next();
     else if (arg === "--key") args.key = next();
-    else if (arg === "--api-base") args.apiBase = next(); // bac à sable / tests
+    else if (arg === "--api-base") args.apiBase = next();
     else if (arg === "--help" || arg === "-h") args.help = true;
     else {
       console.error(`Option inconnue : ${arg}`);
@@ -98,14 +64,6 @@ Provisionne Stripe pour Racontine (produit, prix, webhook, portail).
 La clé vient de STRIPE_SECRET_KEY, ou de --key.
 `;
 
-/* --------------------------------- Stripe -------------------------------- */
-
-/**
- * Encodage imbriqué attendu par Stripe (`recurring[interval]=month`). C'est une
- * copie de ce que fait `server/src/billing/stripe.ts` — quinze lignes, plutôt
- * que de faire dépendre un script d'exploitation de la compilation TypeScript
- * du serveur.
- */
 function formEncode(params, prefix = "") {
   const parts = [];
   for (const [key, value] of Object.entries(params)) {
@@ -144,14 +102,10 @@ function makeStripe(key, apiBase) {
   };
 }
 
-/* --------------------------------- Sortie -------------------------------- */
-
 const OK = "[ok]";
 const ADD = "[+] ";
 const WARN = "[!] ";
 const say = (...a) => console.log(...a);
-
-/* ------------------------------- Le travail ------------------------------ */
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
@@ -179,9 +133,6 @@ async function main() {
   const stripe = makeStripe(key, args.apiBase);
   const write = !args.check && !args.dryRun;
 
-  // `/account` exige le scope `connected_account_read`, qu'une clé RESTREINTE
-  // (`rk_…`) n'a pas forcément. L'appel n'est qu'un affichage de courtoisie : on
-  // ne fait pas échouer un provisionnement pour une ligne de titre.
   try {
     const account = await stripe("GET", "/account");
     say(
@@ -195,7 +146,6 @@ async function main() {
     );
   }
 
-  /* 1. Le produit --------------------------------------------------------- */
   const products = await stripe("GET", "/products?limit=100&active=true");
   let product = (products.data ?? []).find((p) => p.metadata?.[MARK] === MARK_VALUE);
   if (product) say(`${OK} produit « ${product.name} » (${product.id})`);
@@ -209,7 +159,6 @@ async function main() {
     say(`${ADD}produit créé : ${product.id}`);
   }
 
-  /* 2. Le prix ------------------------------------------------------------ */
   const montant = (args.amount / 100).toLocaleString("fr-FR", {
     minimumFractionDigits: args.amount % 100 ? 2 : 0,
   });
@@ -227,8 +176,6 @@ async function main() {
         p.currency === args.currency &&
         p.recurring?.interval === args.interval &&
         (p.recurring?.interval_count ?? 1) === 1 &&
-        // Le TTC fait partie de l'identité du prix, pas de sa décoration : un
-        // prix HT au bon montant n'est PAS le bon prix (voir plus bas).
         p.tax_behavior === "inclusive",
     );
     const horsTaxe = (prices.data ?? []).filter(
@@ -259,16 +206,12 @@ async function main() {
       unit_amount: args.amount,
       currency: args.currency,
       recurring: { interval: args.interval },
-      // TTC : le montant annoncé dans l'app est celui qui sera débité, taxe
-      // comprise. En `unspecified`/`exclusive`, Stripe ajouterait la taxe
-      // par-dessus au paiement. Champ IMMUABLE — à ne pas se rater ici.
       tax_behavior: "inclusive",
       metadata: { [MARK]: MARK_VALUE },
     });
     say(`${ADD}prix créé : ${price.id} (${cible})`);
   }
 
-  /* 3. Le webhook --------------------------------------------------------- */
   let secret = null;
   if (args.url) {
     const hook = `${String(args.url).replace(/\/$/, "")}/api/billing/webhook`;
@@ -316,17 +259,6 @@ async function main() {
     );
   }
 
-  /* 4. Le portail client ----------------------------------------------------
-     C'est LUI qui porte la carte, les factures et la RÉSILIATION.
-
-     Le piège : un compte Stripe n'a qu'UNE configuration de portail par DÉFAUT,
-     pour tout le compte. Se contenter de vérifier « il existe une configuration
-     active » ne prouve donc RIEN — sur un compte qui porte plusieurs produits,
-     celle qui s'appliquera est celle d'un autre, titre compris, et le client
-     lit « Gérez votre abonnement <AutreProduit> » en cliquant depuis Racontine.
-     Rien n'échoue, rien n'est journalisé. On crée donc une configuration qui
-     nous est PROPRE, et le serveur la passe explicitement à chaque session
-     (STRIPE_PORTAL_CONFIG_ID). */
   let portalId = null;
   const HEADLINE = `Gérez votre abonnement ${args.name.replace(/ Famille$/, "")}`;
   try {
@@ -352,13 +284,11 @@ async function main() {
           customer_update: { enabled: true, allowed_updates: ["email", "tax_id"] },
           invoice_history: { enabled: true },
           payment_method_update: { enabled: true },
-          // Fin de période, sans prorata : une période déjà payée reste due.
           subscription_cancel: {
             enabled: true,
             mode: "at_period_end",
             proration_behavior: "none",
           },
-          // Une seule offre : pas d'écran « changer de formule » sans destination.
           subscription_update: { enabled: false },
         },
         metadata: { [MARK]: MARK_VALUE },
@@ -370,7 +300,6 @@ async function main() {
     say(`${WARN}portail client non vérifié : ${err.message}`);
   }
 
-  /* 5. Ce qu'il reste à coller --------------------------------------------- */
   if (!write)
     say(
       `\n(${args.check ? "--check" : "--dry-run"} : rien n'a été écrit dans votre compte Stripe.)`,

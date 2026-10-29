@@ -2,14 +2,9 @@ import { test, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import { deliverLink } from "./notify.js";
 
-// Les tests tournent sans SMTP_HOST ni NOTIFY_WEBHOOK_URL dans l'env : aucun
-// canal de livraison n'est configuré. C'est justement le cas qui décide si
-// l'URL — qui est un identifiant de connexion — finit dans les logs ou non.
-
 const URL_SENSIBLE =
   "https://racontine.test/api/auth/magic-link/verify?token=secret-de-connexion";
 
-/** Exécute `fn` en capturant tout ce qui passe par console.log/console.error. */
 async function captureConsole(fn: () => Promise<void>): Promise<string> {
   const { log, error } = console;
   const lignes: string[] = [];
@@ -52,7 +47,6 @@ test("en production sans canal, l'échec de livraison est signalé bruyamment", 
   const sortie = await captureConsole(() =>
     deliverLink("proche@example.test", "Votre lien", URL_SENSIBLE, "connexion"),
   );
-  // Un lien non livré doit être un incident visible, pas un silence.
   assert.match(sortie, /AUCUN CANAL DE LIVRAISON/);
   assert.match(sortie, /SMTP_HOST/);
   assert.match(sortie, /proche@example\.test/);

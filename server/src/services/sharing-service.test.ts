@@ -12,9 +12,6 @@ import {
   type UserDirectory,
 } from "./sharing-service.js";
 
-/* Les règles qui décident QUI VOIT la journée d'un enfant — jusqu'ici
-   inatteignables sans Postgres et une requête HTTP. */
-
 const NOW = new Date("2026-02-01T12:00:00Z");
 
 class FakeMemberships implements MembershipRepository {
@@ -163,13 +160,11 @@ test("inviter un proche crée le lien et le remet à son destinataire", async ()
   });
   assert.equal(result.ok, true);
   if (!result.ok) return;
-  // L'adresse est normalisée avant d'être stockée ET avant l'envoi.
   assert.equal(invitations.created[0].email, "mamie@example.test");
   assert.equal(result.url, "https://racontine.test/invite/jeton-fixe");
   assert.deepEqual(delivery.sent, [
     { to: "mamie@example.test", url: result.url },
   ]);
-  // Le lien expire au bout du délai réglé pour l'instance.
   assert.equal(
     invitations.created[0].expiresAt.toISOString(),
     "2026-02-08T12:00:00.000Z",
@@ -225,7 +220,6 @@ test("le dernier administrateur ne peut être ni rétrogradé ni retiré", async
   assert.equal(removal.ok, false);
   assert.deepEqual(solo.memberships.removed, []);
 
-  // À deux administrateurs, en retirer un est permis.
   const pair = build({
     memberships: new FakeMemberships(["u-admin", "u-coparent"], [
       "u-admin",
@@ -290,7 +284,6 @@ test("deux acceptations simultanées : une seule gagne", async () => {
   });
   assert.deepEqual(first, { ok: true, childId: "c1", role: "reader" });
 
-  // Le dépôt signale que l'invitation n'était plus « pending » au commit.
   invitations.pendingAccept = false;
   const second = await service.accept({
     token: "jeton",

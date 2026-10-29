@@ -2,17 +2,6 @@ import { z } from "zod";
 import type { McpTool } from "../protocol.js";
 import { errorContent, jsonContent } from "../protocol.js";
 
-/* ===========================================================================
-   LE CERCLE D'UN CARNET — qui le suit, et qui a été invité sans répondre.
-
-   `admin_console` rassemble les gens de TOUS les carnets administrés ; cet
-   outil-ci regarde UN carnet et rend, en plus, le LIEN de chaque invitation en
-   attente. Ce lien compte : sur un homelab sans SMTP configuré, l'e-mail
-   d'invitation ne part pas, et c'est ce lien-là qu'un parent recopie dans un
-   message à sa mère.
-   =========================================================================== */
-
-/** Membres et invitations en attente d'un carnet. */
 export const listCircleTool: McpTool = {
   name: "list_circle",
   register(server, ctx) {

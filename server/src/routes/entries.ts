@@ -19,26 +19,11 @@ import { parseCursor, parseFrom, parseLimit } from "../domain/feed-window.js";
 import { tidyUncertainties } from "../uncertainties.js";
 import { attachmentUrls } from "./attachment-urls.js";
 
-/* ===========================================================================
-   LA COUCHE HTTP DU JOURNAL — et seulement elle.
-
-   Ces gestionnaires portaient les règles : contrôle d'accès, transition de
-   publication, substitution d'un mot tranché, jusqu'aux codes d'erreur de
-   Postgres. Tout cela est parti dans `services/` et `queries/` ; il ne reste ici
-   que ce qui est vraiment du ressort d'HTTP — lire une requête, choisir un code
-   de statut, mettre en forme la réponse.
-   =========================================================================== */
-
 type SerializableEntry = NonNullable<Awaited<ReturnType<typeof findVisibleEntry>>>;
 
-/** Entrée complète (moments + pages) mise en forme pour le front. */
 function serializeEntry(entry: SerializableEntry) {
   return {
     ...entry,
-    /* Les journées déjà en base gardent le `original` fourre-tout que le modèle
-       a parfois écrit (le mot ET sa glose dans le même champ). Aucune migration
-       ne les réécrit : on les remet en forme à la lecture, pour que l'écran de
-       relecture montre un MOT et non une phrase entre guillemets doublés. */
     uncertainties: tidyUncertainties(entry.uncertainties),
     attachments: entry.attachments.map((a) => ({
       id: a.id,
@@ -53,8 +38,6 @@ function serializeEntry(entry: SerializableEntry) {
 
 export async function entriesRoutes(app: FastifyInstance) {
   app.addHook("preHandler", requireUser);
-
-  /* --------------------------------- Enfants ---------------------------- */
 
   app.get("/api/children", async (req) => listAccessibleChildren(req.user!.id));
 
@@ -71,8 +54,6 @@ export async function entriesRoutes(app: FastifyInstance) {
       return reply.code(201).send({ ...created.child, role: "admin" as const });
     },
   );
-
-  /* --------------------------------- Ingestion -------------------------- */
 
   app.post("/api/entries/ingest", async (req, reply) => {
     let childId: string | undefined;
@@ -102,9 +83,6 @@ export async function entriesRoutes(app: FastifyInstance) {
       });
     }
 
-    // Le formulaire multipart reste tolérant : une date/source mal formée est
-    // ignorée (défaut appliqué), comme historiquement. La validation stricte du
-    // service (400 explicite) est réservée aux appels programmatiques (MCP).
     const result = await ingestService.ingest({
       userId: req.user!.id,
       images,
@@ -121,15 +99,11 @@ export async function entriesRoutes(app: FastifyInstance) {
     return reply.code(202).send({ id: result.id, status: result.status });
   });
 
-  /* --------------------------------- Timeline --------------------------- */
-
   app.get<{
     Querystring: {
       childId?: string;
       limit?: string;
-      /** Ancre : l'identifiant de la dernière journée déjà reçue. */
       cursor?: string;
-      /** Bord haut de la fenêtre (AAAA-MM-JJ) : le saut dans le carnet. */
       from?: string;
     };
   }>("/api/entries", async (req, reply) => {
@@ -155,8 +129,6 @@ export async function entriesRoutes(app: FastifyInstance) {
     };
   });
 
-  /* L'index des mois : de quoi sauter dans le carnet sans le dérouler. Route
-     STATIQUE avant `/api/entries/:id` — « months » n'est pas un identifiant. */
   app.get<{ Querystring: { childId?: string } }>(
     "/api/entries/months",
     async (req, reply) => {
@@ -170,11 +142,6 @@ export async function entriesRoutes(app: FastifyInstance) {
     },
   );
 
-  /**
-   * Journées sœurs d'un même envoi de photos couvrant plusieurs jours
-   * (voir `batchId` en base). Alimente le stepper de relecture séquentielle
-   * du front : un résumé léger par journée, trié chronologiquement.
-   */
   app.get<{ Params: { batchId: string } }>(
     "/api/entries/batch/:batchId",
     async (req, reply) => {
@@ -189,8 +156,6 @@ export async function entriesRoutes(app: FastifyInstance) {
     if (!entry) return reply.code(404).send({ error: "entrée introuvable" });
     return serializeEntry(entry);
   });
-
-  /* ------------------------- Relecture / publication -------------------- */
 
   app.patch<{
     Params: { id: string };
@@ -218,11 +183,6 @@ export async function entriesRoutes(app: FastifyInstance) {
     return entry ? serializeEntry(entry) : null;
   });
 
-  /**
-   * Valide une incertitude signalée à la relecture : la valeur choisie (une des
-   * suggestions du modèle, l'original conservé tel quel, ou une saisie libre)
-   * remplace le mot dans la valorisation et alimente le glossaire de l'enfant.
-   */
   app.patch<{
     Params: { id: string; index: string };
     Body: { value?: string };
@@ -240,14 +200,6 @@ export async function entriesRoutes(app: FastifyInstance) {
     return entry ? serializeEntry(entry) : null;
   });
 
-  /**
-   * Relance la lecture d'une journée en échec, sur ses pages déjà téléversées.
-   *
-   * La seule sortie d'un échec était « Reprendre la photo » : correct quand la
-   * page est floue, faux quand la lecture est morte avec le processus. Dans ce
-   * second cas les pages sont intactes sur le disque et le carnet papier est
-   * déjà reparti chez la nounou — la relance est la seule sortie honnête.
-   */
   app.post<{ Params: { id: string } }>(
     "/api/entries/:id/retry",
     async (req, reply) => {

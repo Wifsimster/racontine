@@ -69,10 +69,6 @@ function RoleSelect({
   );
 }
 
-/**
- * Copie du lien d'invitation. Le retour est un CHANGEMENT D'ICÔNE tenu 1,5 s
- * (coche groseille) : le geste est silencieux, il lui faut un accusé visible.
- */
 function CopyButton({ url }: { url: string }) {
   const [copied, setCopied] = useState(false);
   return (
@@ -86,7 +82,6 @@ function CopyButton({ url }: { url: string }) {
           setCopied(true);
           setTimeout(() => setCopied(false), 1500);
         } catch {
-          /* presse-papiers indisponible (contexte non sécurisé) */
         }
       }}
     >
@@ -95,11 +90,6 @@ function CopyButton({ url }: { url: string }) {
   );
 }
 
-/**
- * Nommer un proche dont le compte n'a pas de nom (créé par lien magique). Un
- * lien discret sous l'adresse, qui s'ouvre en champ + bouton. Le serveur
- * n'écrase jamais un nom existant : ce geste ne sert qu'à combler un vide.
- */
 function NameMember({
   email,
   onSave,
@@ -187,9 +177,6 @@ export default function Share() {
     setInvitations(res.invitations);
   }, []);
 
-  // Charge le cercle de l'enfant sélectionné. Le drapeau `ignore` évite qu'une
-  // réponse tardive (enfant précédent) n'écrase l'affichage de l'enfant courant
-  // si l'on change de sélection plus vite que le réseau ne répond.
   useEffect(() => {
     if (!selected) return;
     let ignore = false;
@@ -240,8 +227,6 @@ export default function Share() {
       </PageShell>
     );
 
-  /* Pas d'enfant dont on est administrateur : la porte n'existe pas, et on dit
-     pourquoi plutôt que d'afficher un formulaire qui refuserait à l'envoi. */
   if (!children.length)
     return (
       <PageShell>
@@ -273,7 +258,6 @@ export default function Share() {
     <PageShell>
       {header}
 
-      {/* Plusieurs carnets : on choisit celui qu'on partage. */}
       {children.length > 1 && (
         <div className="flex flex-col gap-1">
           <SectionLabel className="px-1">Le carnet</SectionLabel>
@@ -293,7 +277,6 @@ export default function Share() {
         </div>
       )}
 
-      {/* ── Inviter un proche ────────────────────────────────────────────── */}
       <form
         onSubmit={invite}
         className="flex flex-col gap-4 rounded-2xl border bg-card p-5 shadow-card"
@@ -334,7 +317,6 @@ export default function Share() {
         </Button>
       </form>
 
-      {/* ── Invitations en attente ───────────────────────────────────────── */}
       {invitations.length > 0 && (
         <section className="flex flex-col gap-1">
           <SectionLabel className="px-1">
@@ -382,16 +364,6 @@ export default function Share() {
         </section>
       )}
 
-      {/* ── Membres ──────────────────────────────────────────────────────────
-          CHAQUE MEMBRE EST UNE FEUILLE EMPILÉE : identité en haut, rôle et
-          suppression en dessous. En une seule ligne, le `<select>` imposait sa
-          largeur et le nom ou l'adresse se coupait (« marc@battiste… »).
-          Deux cas qui rendaient la carte bancale :
-          - un proche invité n'a souvent PAS de nom (compte créé par lien
-            magique) : on affiche alors son adresse en titre, au lieu d'une
-            ligne vide au-dessus de l'e-mail ;
-          - soi-même : son rôle ne se modifie pas, donc pas de `<select>` grisé
-            pleine largeur ; le rôle rejoint la ligne de l'adresse. */}
       <section className="flex flex-col gap-1">
         <SectionLabel className="px-1">
           Le cercle de {child?.name ?? "l'enfant"} ({members.length})

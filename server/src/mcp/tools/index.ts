@@ -16,31 +16,17 @@ import { setMemberRoleTool } from "./set-member-role.js";
 import { updateInstanceSettingsTool } from "./update-instance-settings.js";
 import { uploadDailyNoteTool } from "./upload-daily-note.js";
 
-/**
- * LE CATALOGUE D'OUTILS MCP. Ajouter un outil, c'est écrire son module et
- * l'ajouter à cette liste — le constructeur du serveur ne bouge pas.
- *
- * Trois familles, et la frontière compte : les outils du CARNET remplissent le
- * journal (c'est le geste du soir, celui d'un parent), ceux de l'EXPLOITATION
- * pilotent l'instance qui l'héberge (c'est le geste d'un agent d'astreinte),
- * ceux du CERCLE décident qui voit le journal d'un enfant — les plus sensibles
- * du produit, et gardés carnet par carnet. Tous portent les droits du jeton :
- * aucun n'ouvre une porte que l'application n'ouvrirait pas au même compte.
- */
 export const MCP_TOOLS: readonly McpTool[] = [
-  /* --------------------------------- Le carnet -------------------------- */
   listChildrenTool,
   uploadDailyNoteTool,
   createDailyNoteTool,
   listDailyNotesTool,
   getDailyNoteTool,
-  /* ------------------------------ L'exploitation ------------------------ */
   instanceStatusTool,
   adminConsoleTool,
   publishDailyNoteTool,
   retryDailyNoteTool,
   updateInstanceSettingsTool,
-  /* --------------------------------- Le cercle -------------------------- */
   listCircleTool,
   inviteRelativeTool,
   setMemberRoleTool,

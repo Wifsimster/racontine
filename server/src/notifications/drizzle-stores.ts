@@ -17,15 +17,11 @@ import type {
   SubscriberDirectory,
 } from "./types.js";
 
-/** Les abonnés d'un enfant, lus en base. */
 export class DrizzleSubscriberDirectory implements SubscriberDirectory {
   async subscribersOf(
     childId: string,
     excludeUserId?: string | null,
   ): Promise<Recipient[]> {
-    // La jointure sur `memberships` est la règle, pas une optimisation : un
-    // proche dont l'accès a été révoqué ne doit plus être prévenu, même si sa
-    // ligne d'abonnement subsiste.
     const rows = await db
       .select({
         userId: subscriptions.userId,
@@ -59,7 +55,6 @@ export class DrizzleSubscriberDirectory implements SubscriberDirectory {
   }
 }
 
-/** Le registre in-app des notifications, en base. */
 export class DrizzleNotificationLog implements NotificationLog {
   async record(
     event: PublicationEvent,
@@ -87,7 +82,6 @@ export class DrizzleNotificationLog implements NotificationLog {
   }
 }
 
-/** La bande de feutres d'une journée, lue en base puis calculée par le domaine. */
 export class DrizzleDayGlance implements DayGlance {
   async chipsFor(entryId: string): Promise<DayChip[]> {
     const [items, [entry]] = await Promise.all([

@@ -7,9 +7,6 @@ import {
   type ErasureSnapshot,
 } from "./erasure.js";
 
-/* Les trois refus qui protègent les AUTRES du départ de quelqu'un, et la règle
-   qui décide quels carnets s'en vont avec lui. Aucune base, aucun disque. */
-
 function carnet(over: Partial<CarnetStanding> = {}): CarnetStanding {
   return {
     childId: "child-1",
@@ -42,9 +39,6 @@ test("un compte ordinaire s'efface, et quitte simplement les cercles partagés",
 });
 
 test("un carnet dont il est le SEUL membre part avec lui", () => {
-  // Personne d'autre ne peut plus le lire ni l'effacer : le laisser derrière,
-  // ce serait garder sur le disque le journal d'un enfant que plus aucun compte
-  // n'atteint.
   const plan = planAccountErasure(
     snapshot({ carnets: [carnet({ admins: 1, members: 1 })] }),
   );
@@ -61,8 +55,6 @@ test("seul administrateur d'un carnet que d'autres suivent : refus, et le carnet
   assert.ok(!plan.ok);
   assert.equal(plan.code, "sole_admin");
   assert.deepEqual(plan.carnets, [{ id: "child-1", name: "Lou" }]);
-  // La phrase doit nommer l'enfant et dire quoi faire : « nommez un autre
-  // administrateur » est la seule sortie que la personne peut actionner seule.
   assert.match(plan.error, /Lou/);
   assert.match(plan.error, /administrateur/);
 });
@@ -91,8 +83,6 @@ test("plusieurs carnets orphelins sont tous nommés, pas seulement le premier", 
 });
 
 test("le propriétaire de l'instance ne part pas tant que d'autres comptes existent", () => {
-  // Sinon le compte le plus ancien restant hériterait de l'instance — réglages,
-  // inscriptions, caisse — sans que personne l'ait décidé ni vu.
   const plan = planAccountErasure(
     snapshot({ isOwner: true, otherAccounts: 1 }),
   );
@@ -122,9 +112,6 @@ test("un abonnement encore actif retient le propriétaire, et lui dit où résil
 });
 
 test("l'abonnement du foyer ne retient PAS un proche qui n'en est pas le payeur", () => {
-  // Le péage est celui de l'instance, porté par son propriétaire. Une
-  // grand-mère lectrice n'a rien à résilier, et ne doit pas être bloquée par la
-  // carte de quelqu'un d'autre.
   const plan = planAccountErasure(
     snapshot({ isOwner: false, activeSubscription: true }),
   );
@@ -138,8 +125,6 @@ test("l'argent d'abord : abonnement actif ET propriété se disent dans cet ordr
   assert.ok(!plan.ok);
   assert.equal(plan.code, "subscription_active");
 });
-
-/* ------------------------- La phrase à recopier -------------------------- */
 
 test("la confirmation tolère espaces, casse et accents", () => {
   assert.equal(confirms("  Léa ", "Léa"), true);
@@ -155,8 +140,6 @@ test("la confirmation refuse un autre mot — c'est tout ce qu'on lui demande", 
 });
 
 test("une attente vide ne se confirme jamais toute seule", () => {
-  // Un nom manquant en base ne doit pas rendre l'effacement confirmable par une
-  // chaîne vide : le geste sans retour exigerait alors… rien du tout.
   assert.equal(confirms("", ""), false);
   assert.equal(confirms("   ", "  "), false);
 });

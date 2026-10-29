@@ -1,24 +1,3 @@
-/* ===========================================================================
-   LES ADAPTATEURS, SUR UNE VRAIE BASE.
-
-   Les tests unitaires (`pnpm test`) branchent des doublures sur les ports : ils
-   prouvent que les SERVICES tiennent leurs règles, jamais que le SQL les tient
-   aussi. Ce script est l'autre moitié — il exerce les dépôts Drizzle contre un
-   vrai Postgres, et c'est lui qui a montré que le SQLSTATE d'une collision
-   n'arrivait pas jusqu'au code appelant (Drizzle enveloppe l'erreur du pilote,
-   `err.code` valait `undefined`, et une journée en double rendait 500 au lieu
-   de 409).
-
-   Il ne tourne PAS dans `pnpm test` : il lui faut une base, que l'intégration
-   continue n'a pas. Pour l'exécuter :
-
-     docker compose up -d db
-     pnpm --filter server db:migrate
-     pnpm --filter server test:integration
-
-   Il écrit dans la base qu'on lui donne (comptes et journées de test, nettoyés
-   en fin de course) : à réserver à une base de développement.
-   =========================================================================== */
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { db } from "../src/db/index.js";
@@ -230,7 +209,6 @@ assert.equal(
   await new DrizzleUserDirectory().findIdByEmail(`${invitee}@example.test`),
   invitee,
 );
-// Un vieux lien « lecteur » n'abaisse pas un rôle plus élevé.
 assert.equal(await memberships.setRole(child.id, invitee, "admin"), "ok");
 const stale = await invitations.create({
   childId: child.id,
@@ -248,8 +226,6 @@ assert.equal(
 );
 ok("accepter une invitation n'abaisse jamais un rôle");
 
-// Deux administrateurs qui se rétrogradent l'un l'autre au même instant : un
-// seul passe, l'enfant garde un administrateur.
 const crossed = await Promise.all([
   memberships.setRole(child.id, owner, "reader"),
   memberships.setRole(child.id, invitee, "reader"),
@@ -260,12 +236,10 @@ assert.equal(
     .length,
   1,
 );
-// On remet le propriétaire administrateur pour la suite.
 await memberships.setRole(child.id, owner, "admin");
 await memberships.setRole(child.id, invitee, "reader");
 ok("deux rétrogradations croisées laissent un administrateur");
 
-// Une invitation acceptée ne se révoque pas ; une en attente, si.
 assert.equal(await invitations.revoke(stale.id), false);
 const pending2 = await invitations.create({
   childId: child.id,
@@ -280,8 +254,6 @@ assert.equal(await memberships.isMember(child.id, invitee), false);
 assert.equal((await invitations.findById(pending2.id))?.status, "revoked");
 ok("retirer un membre retire son adhésion et ses invitations en attente");
 
-/* Le fil, page par page : le curseur doit avancer sans jamais rendre deux fois
-   la même journée — c'est tout l'intérêt d'avoir quitté le décalage. */
 const p1 = await listTimeline({ userId: owner, limit: 1 });
 assert.equal(p1.kind, "page");
 if (p1.kind === "page") {
@@ -292,16 +264,13 @@ if (p1.kind === "page") {
   if (p2.kind === "page") {
     assert.equal(p2.entries.length, 1);
     assert.notEqual(p2.entries[0].id, p1.entries[0].id);
-    // Les journées sont bien rendues de la plus récente à la plus ancienne.
     assert.ok(p2.entries[0].date <= p1.entries[0].date);
-    // Page incomplète = fin du carnet (deux journées en base).
     const p3 = await listTimeline({ userId: owner, limit: 5, cursor: p2.nextCursor });
     if (p3.kind === "page") assert.equal(p3.nextCursor, null);
   }
 }
 ok("le curseur avance d'une journée à l'autre, sans doublon ni trou");
 
-// La fenêtre : « emmène-moi avant le 1er février » ne rend que ce qui précède.
 const windowed = await listTimeline({ userId: owner, limit: 10, from: "2026-02-01" });
 if (windowed.kind === "page")
   assert.ok(windowed.entries.every((e) => e.date <= "2026-02-01"));
@@ -329,8 +298,6 @@ ok("la console d'administration ne voit que les carnets qu'on administre");
 const reclaimed = await repo.reclaimProcessing("interrompue");
 console.log("  ok — reclaimProcessing :", reclaimed, "journée(s) orpheline(s)");
 
-// Nettoyage : l'enfant emporte ses journées, ses pages et son cercle (cascade),
-// puis les deux comptes de test.
 await db.delete(children).where(eq(children.id, child.id));
 await db.delete(user).where(eq(user.id, owner));
 await db.delete(user).where(eq(user.id, invitee));

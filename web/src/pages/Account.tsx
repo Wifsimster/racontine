@@ -7,12 +7,6 @@ import McpTokens from "@/components/McpTokens";
 import MesDonnees from "@/components/MesDonnees";
 import { PageShell, PageHeader } from "@/components/PageState";
 
-/**
- * « Mon compte » — réglages propres à l'utilisateur connecté, accessibles à
- * tout compte (et pas seulement au propriétaire de l'instance) : sa clé API
- * d'extraction et ses jetons MCP. Les réglages d'instance restent dans
- * « Réglages » (réservé au propriétaire).
- */
 export default function Account() {
   const [me, setMe] = useState<Me | null>(null);
 
@@ -21,10 +15,6 @@ export default function Account() {
       .me()
       .then(setMe)
       .catch(() => {
-        /* L'identité est un ORNEMENT ici : les deux encarts ci-dessous portent
-           leur propre chargement et leur propre erreur. Un échec sur /me ne doit
-           pas masquer la clé API ni les jetons — on retombe simplement sur la
-           phrase générique. */
       });
   }, []);
 
@@ -35,8 +25,6 @@ export default function Account() {
         lede="Vos réglages personnels : la clé qui lit vos carnets et vos connexions Claude."
       />
 
-      {/* Qui est connecté·e. La ligne ne remplace pas le bandeau : elle
-          l'ancre, au cran de la légende, avec sa propre tuile d'icône. */}
       <p className="flex min-w-0 items-center gap-3 rounded-2xl border bg-card p-4 text-meta shadow-card">
         <span
           aria-hidden="true"
@@ -61,15 +49,10 @@ export default function Account() {
         )}
       </p>
 
-      {/* Clé API Anthropic propre à cet utilisateur (facturée sur son compte). */}
       <LlmKey />
 
-      {/* Jetons MCP personnels (portent les droits de cet utilisateur). */}
       <McpTokens />
 
-      {/* Emporter ses données, ou s'en aller. En dernier, et c'est voulu : on
-          ne met pas un bouton d'effacement définitif au-dessus des réglages
-          qu'on vient consulter tous les jours. */}
       <MesDonnees email={me?.email} />
     </PageShell>
   );

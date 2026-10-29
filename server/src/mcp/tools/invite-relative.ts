@@ -3,12 +3,6 @@ import { ROLES } from "../../services/sharing-service.js";
 import type { McpTool } from "../protocol.js";
 import { errorContent, jsonContent } from "../protocol.js";
 
-/**
- * Invite un proche dans le cercle d'un carnet. L'invitation est NOMINATIVE (le
- * lien ne vaut que pour l'adresse invitée) et le lien part par e-mail quand
- * l'instance sait en envoyer — il est rendu ici dans tous les cas, parce qu'un
- * homelab sans SMTP est le cas normal et non l'exception.
- */
 export const inviteRelativeTool: McpTool = {
   name: "invite_relative",
   register(server, ctx) {

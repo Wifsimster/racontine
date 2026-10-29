@@ -14,7 +14,6 @@ function toWebHeaders(req: FastifyRequest): Headers {
   return headers;
 }
 
-/** Session Better Auth pour une requête Fastify, ou null si non connecté. */
 export async function getSession(
   req: FastifyRequest,
 ): Promise<AuthSession | null> {
@@ -27,7 +26,6 @@ declare module "fastify" {
   }
 }
 
-/** preHandler : exige une session valide, sinon 401. */
 export async function requireUser(req: FastifyRequest, reply: FastifyReply) {
   const session = await getSession(req);
   if (!session) {
@@ -36,14 +34,7 @@ export async function requireUser(req: FastifyRequest, reply: FastifyReply) {
   req.user = session.user;
 }
 
-/**
- * Monte le handler Better Auth sur /api/auth/*.
- * Plugin encapsulé : son content-type parser (corps brut) ne s'applique qu'ici,
- * les autres routes gardent le parsing JSON de Fastify.
- */
 export async function authPlugin(app: FastifyInstance) {
-  // Sans ça, le parser application/json hérité du parent interceperait le corps
-  // avant notre parser brut → Better Auth recevrait un objet, pas des octets.
   app.removeAllContentTypeParsers();
   app.addContentTypeParser("*", (_req, payload, done) => {
     const chunks: Buffer[] = [];

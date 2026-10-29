@@ -65,7 +65,6 @@ test("publier une journée prévient les abonnés une seule fois", async () => {
     },
   ]);
 
-  // Republier ne renotifie pas : seule la VRAIE transition compte.
   await service.revise({ entryId: "e1", userId: "user-1", publish: true });
   await background.settle();
   assert.equal(notifier.announcements.length, 1);
@@ -78,7 +77,6 @@ test("un lecteur ne peut pas relire, et ne l'apprend pas", async () => {
     userId: "user-1",
     title: "…",
   });
-  // Refus uniforme : ni 403, ni indice qu'une journée existe.
   assert.deepEqual(result, {
     ok: false,
     httpCode: 404,
@@ -172,7 +170,6 @@ test("trancher une lecture remplace le mot partout et nourrit le glossaire", asy
   assert.equal(result.ok, true);
   const entry = await entries.findById("e1");
   assert.equal(entry?.title, "Noureil au parc");
-  // Toutes les occurrences, pas seulement le champ signalé par le modèle.
   assert.equal(entry?.story, "Noureil a joué avec Noureil.");
   assert.equal(entry?.highlight, "Un câlin");
   assert.equal(entry?.uncertainties?.[0].resolved, "Noureil");

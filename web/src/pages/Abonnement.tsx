@@ -20,23 +20,6 @@ import {
   OfferCard,
 } from "@/features/billing/parts";
 
-/* ===========================================================================
-   L'ABONNEMENT — l'écran où l'on décide, et le seul qui parle d'argent.
-
-   Il porte quatre situations, et une seule à la fois :
-
-     essai en cours   → l'offre, avec le nombre de jours restants au-dessus.
-     carnet fermé     → l'offre, précédée de ce qui s'est arrêté.
-     abonné           → le REÇU, pas une vitrine : ce qui est en cours, jusqu'à
-                        quand, et le portail pour la carte, les factures, la
-                        résiliation. On ne revend jamais à qui a déjà payé.
-     auto-hébergé     → il n'y a pas de caisse ici, et on le dit franchement.
-
-   Le retour de Stripe atterrit sur cet écran (`?paiement=ok&session=cs_…`) : on
-   rattrape l'abonnement AUSSITÔT, sans attendre le webhook. Personne ne doit
-   lire « essai terminé » trois secondes après avoir payé.
-   =========================================================================== */
-
 export default function Abonnement() {
   const { billing, loading, reload } = useBilling();
   const [params, setParams] = useSearchParams();
@@ -44,17 +27,12 @@ export default function Abonnement() {
   const session = params.get("session");
   const [syncing, setSyncing] = useState(paiement === "ok");
 
-  /* Le rattrapage. Il ne tourne qu'une fois : l'identifiant de session est
-     retiré de l'URL dans la foulée, sinon un rechargement rejouerait l'appel
-     (et le reçu) indéfiniment. */
   useEffect(() => {
     if (paiement !== "ok") return;
     let alive = true;
     const done = () => {
       if (!alive) return;
       setSyncing(false);
-      // On garde `paiement=ok` (c'est lui qui affiche le reçu) et on efface la
-      // session, qui n'a plus rien à faire dans une barre d'adresse.
       if (session) {
         params.delete("session");
         setParams(params, { replace: true });
@@ -62,8 +40,6 @@ export default function Abonnement() {
     };
     (session ? api.syncBilling(session).then(setBilling) : reload())
       .catch(() => {
-        /* Le webhook fera le travail : on n'affiche pas d'erreur à quelqu'un
-           dont le paiement vient d'aboutir. */
       })
       .finally(done);
     return () => {
@@ -100,14 +76,11 @@ export default function Abonnement() {
         <Etat billing={billing} />
       )}
 
-      {/* Qui édite, où, et les documents qui engagent — au-dessus de la
-          décision, jamais après. */}
       {billing?.enabled && <StudioCard />}
     </PageShell>
   );
 }
 
-/** Le reçu de paiement : il confirme, et il dit la suite. */
 function Receipt({ syncing }: { syncing: boolean }) {
   return (
     <div
@@ -134,7 +107,6 @@ function Receipt({ syncing }: { syncing: boolean }) {
   );
 }
 
-/** Une instance auto-hébergée n'a pas de caisse, et ça se dit sans détour. */
 function SelfHosted() {
   return (
     <section className="rounded-2xl border bg-card p-5 shadow-card">
@@ -162,7 +134,6 @@ function SelfHosted() {
   );
 }
 
-/** L'état courant : abonné (reçu) ou non (l'offre). */
 function Etat({ billing }: { billing: Billing }) {
   const { access, price } = billing;
   const abonne = access.reason === "subscribed" || access.reason === "payment-late";

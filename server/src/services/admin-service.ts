@@ -1,24 +1,5 @@
 import type { EntryStatus, MemberRole } from "../db/schema.js";
 
-/* ===========================================================================
-   LA CONSOLE D'ADMINISTRATION — ce qu'un administrateur voit d'un seul coup.
-
-   L'écran « Partager » regarde UN enfant à la fois : pour savoir si Mamie est
-   lectrice sur Lou et contributrice sur Anouk, il fallait changer d'enfant et
-   recompter de tête. Un administrateur a besoin de la vue inverse : les gens
-   d'abord, leurs rôles ensuite, et l'état des carnets qu'il administre.
-
-   Rien n'est instance-wide ici, et c'est délibéré : la console ne montre QUE
-   les enfants dont l'appelant est administrateur. Sur une instance qui abrite
-   deux foyers, l'un n'apprend pas l'adresse e-mail de l'autre en ouvrant un
-   écran d'administration.
-
-   Les règles de MUTATION (changer un rôle, retirer un proche, révoquer une
-   invitation) restent celles du partage — `sharing-service.ts`, une seule
-   implémentation, gardée par enfant. Ce service ne fait que LIRE et agréger.
-   =========================================================================== */
-
-/** Hiérarchie des rôles, pour trier les gens par droits décroissants. */
 const ROLE_RANK: Record<MemberRole, number> = {
   admin: 0,
   contributor: 1,
@@ -37,7 +18,6 @@ export type AdminMembership = {
   role: MemberRole;
   name: string;
   email: string;
-  /** Depuis quand cette personne fait partie du cercle de cet enfant. */
   since: Date;
 };
 
@@ -56,18 +36,14 @@ export type AdminInvitation = {
 };
 
 export interface AdminRepository {
-  /** Les enfants dont cet utilisateur est administrateur (rôle `admin`). */
   administeredChildren(userId: string): Promise<AdminChild[]>;
   members(childIds: string[]): Promise<AdminMembership[]>;
-  /** Journées par enfant et par statut — une ligne par couple non vide. */
   entryCounts(childIds: string[]): Promise<AdminEntryCount[]>;
   lastPublished(childIds: string[]): Promise<{ childId: string; at: Date }[]>;
   pendingInvitations(childIds: string[]): Promise<AdminInvitation[]>;
-  /** Propriétaire de l'instance (premier compte créé), pour le signaler. */
   ownerId(): Promise<string | null>;
 }
 
-/** Le carnet d'un enfant, vu de l'administration. */
 export type ConsoleChild = {
   id: string;
   name: string;
@@ -77,23 +53,14 @@ export type ConsoleChild = {
   lastPublishedAt: Date | null;
 };
 
-/** Une personne, tous ses rôles rassemblés. */
 export type ConsolePerson = {
   userId: string;
   name: string;
   email: string;
-  /** Le propriétaire de l'instance — celui qui tient les réglages. */
   isOwner: boolean;
-  /** L'appelant lui-même : un écran ne doit pas l'inviter à se retirer. */
   isSelf: boolean;
-  /** Date d'entrée dans le premier des cercles administrés. */
   since: Date;
   roles: { childId: string; childName: string; role: MemberRole }[];
-  /**
-   * Les enfants dont cette personne est le SEUL administrateur. Le serveur
-   * refuse déjà de retirer le dernier administrateur (`sharing-service.ts`) ;
-   * le dire ici évite à l'écran de proposer un geste qui sera refusé.
-   */
   soleAdminOf: string[];
 };
 
@@ -135,11 +102,6 @@ const EMPTY_COUNTS = (): Record<EntryStatus, number> & { total: number } => ({
 export class AdminService {
   constructor(private readonly repo: AdminRepository) {}
 
-  /**
-   * La console de l'appelant. 403 s'il n'administre aucun enfant : la porte se
-   * ferme sur le RÔLE, pas sur l'existence de la page — un contributeur qui
-   * tape l'adresse à la main reçoit un refus, jamais la liste des autres.
-   */
   async console(userId: string): Promise<AdminOk | AdminRejection> {
     const children = await this.repo.administeredChildren(userId);
     if (children.length === 0)
@@ -161,8 +123,6 @@ export class AdminService {
     const nameOf = new Map(children.map((c) => [c.id, c.name]));
     const lastAt = new Map(published.map((p) => [p.childId, p.at]));
 
-    /* ------------------------------ Les carnets ------------------------- */
-
     const perChild = new Map<string, Record<EntryStatus, number> & { total: number }>(
       childIds.map((id) => [id, EMPTY_COUNTS()]),
     );
@@ -182,9 +142,6 @@ export class AdminService {
       lastPublishedAt: lastAt.get(c.id) ?? null,
     }));
 
-    /* ------------------------------- Les gens --------------------------- */
-
-    // Un enfant dont un seul membre est admin : ce membre y est irremplaçable.
     const soleAdmins = new Map<string, string>();
     for (const id of childIds) {
       const admins = members.filter((m) => m.childId === id && m.role === "admin");
@@ -224,15 +181,11 @@ export class AdminService {
       };
     });
 
-    // Les droits d'abord (le rôle le plus fort que la personne détient), puis
-    // l'ordre alphabétique : un cercle se lit comme une liste de contacts.
     people.sort((a, b) => {
       const rank = (p: ConsolePerson) =>
         Math.min(...p.roles.map((r) => ROLE_RANK[r.role]));
       return rank(a) - rank(b) || a.name.localeCompare(b.name, "fr");
     });
-
-    /* --------------------------- Les invitations ------------------------ */
 
     const now = Date.now();
     const consoleInvitations: ConsoleInvitation[] = invitations

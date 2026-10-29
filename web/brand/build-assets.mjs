@@ -1,39 +1,3 @@
-/* ===========================================================================
-   REGÉNÈRE TOUT CE QUI PORTE LA MARQUE, depuis `mark.mjs` et `lettering.mjs`.
-
-     pnpm brand   (depuis la RACINE du dépôt)
-
-   Les outils de rendu — sharp, fontkit — sont des dépendances de
-   développement de la RACINE, jamais de `web`. C'est volontaire : le contexte
-   Docker de `web` fait un `pnpm install` complet, et y traîner un binaire natif
-   de 30 Mo pour une commande qu'on lance trois fois par an alourdirait chaque
-   image du produit.
-
-   Jusqu'ici les icônes étaient refaites à la main, une par une, et le seul
-   endroit où leur géométrie était écrite était un commentaire. Une marque dont
-   les rendus se refont de mémoire finit par avoir cinq versions légèrement
-   différentes d'elle-même. Une commande, une source, sept fichiers.
-
-   Ce qui sort, et pourquoi chaque rendu diffère :
-
-     favicon.svg            état COMPACT. C'est le seul rendu vectoriel, et le
-                            seul vu à 16 px : le R doit y occuper toute la
-                            tuile, sans quoi ce n'est plus une lettre.
-     pwa-192 / pwa-512      état PAGE, plein cadre arrondi.
-     pwa-maskable-512       état PAGE, PLEIN BORD (la plateforme pose son
-                            propre masque : un dessin déjà arrondi flotterait)
-                            et contracté à 72 % pour que le R et le trait de
-                            marge tiennent dans la zone sûre — le cercle de
-                            80 %, rayon 204,8 px.
-     apple-touch-icon       état PAGE, plein bord à 180 px : iOS redessine son
-                            squircle, et des coins transparents se composent
-                            sur du noir sur les vieux iOS.
-     badge-96               la SILHOUETTE, blanche sur transparent. Android ne
-                            garde que l'alpha d'une pastille de notification :
-                            l'icône en couleur y devenait un carré gris.
-     og.png                 la carte de lien, 1200x630. Voir plus bas.
-   =========================================================================== */
-
 import { writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -45,18 +9,12 @@ import { lettering } from "./lettering.mjs";
 const here = dirname(fileURLToPath(import.meta.url));
 const publicDir = resolve(here, "../public");
 
-/** Les jetons du produit dont la carte de lien a besoin (web/src/index.css). */
-const PAPER = "#FEFDFA"; // --card : la feuille
-const RULE = "#DBDEF1"; // --rule : la ligne du cahier
-const INK_TEXT = "#242846"; // --foreground : l'encre bleu-nuit
-const INK_PALE = "#5E6276"; // --muted-foreground : l'encre pâlie
-const PRIMARY = "#B8284D"; // --primary : le groseille de l'action
+const PAPER = "#FEFDFA";
+const RULE = "#DBDEF1";
+const INK_TEXT = "#242846";
+const INK_PALE = "#5E6276";
+const PRIMARY = "#B8284D";
 
-/**
- * Rend un SVG en PNG. `alpha: false` aplatit le rendu sur la tuile : un PNG
- * d'icône ne doit pas transporter de canal alpha inutile, et de vieux iOS
- * composent les coins transparents sur du NOIR.
- */
 async function png(svg, size, file, { height, alpha = false, background = TILE } = {}) {
   let pipeline = sharp(Buffer.from(svg), { density: 384 }).resize(size, height ?? size, {
     fit: "fill",
@@ -67,9 +25,6 @@ async function png(svg, size, file, { height, alpha = false, background = TILE }
   console.log(`brand: ${file.padEnd(24)} ${size}x${height ?? size}`);
 }
 
-/* ---------------------------------------------------------------------------
-   La favicon : le seul rendu qu'on livre en vectoriel.
-   --------------------------------------------------------------------------- */
 const favicon = markSVG({ variant: "compact" }).replace(
   "<title>Racontine</title>",
   `<title>Racontine</title>
@@ -81,14 +36,6 @@ const favicon = markSVG({ variant: "compact" }).replace(
 writeFileSync(resolve(publicDir, "favicon.svg"), favicon);
 console.log(`brand: ${"favicon.svg".padEnd(24)} vectoriel`);
 
-/* ---------------------------------------------------------------------------
-   LA MARQUE, POUR REACT.
-
-   L'app a besoin de la même géométrie, mais en TSX. La recopier dans un
-   composant, c'est rouvrir exactement le problème qu'on referme : une marque
-   avec deux définitions finit avec deux dessins. Le composant lit donc ce
-   fichier généré, et ce fichier sort d'ici.
-   --------------------------------------------------------------------------- */
 const rects = (list) => JSON.stringify(list);
 writeFileSync(
   resolve(here, "../src/components/marque.generated.ts"),
@@ -129,28 +76,10 @@ export const MARQUE = {
 );
 console.log(`brand: ${"marque.generated.ts".padEnd(24)} géométrie React`);
 
-/* ---------------------------------------------------------------------------
-   LA CARTE DE LIEN — 1200 x 630.
-
-   Elle n'existait pas, et son absence coûtait précisément là où le produit se
-   propage : le lien d'invitation se colle dans un SMS ou un fil WhatsApp, et
-   s'y affichait en URL nue, sans titre ni vignette, au moment exact où l'on
-   demande à quelqu'un de confier la journée de son petit-enfant.
-
-   Elle est STATIQUE, et c'est une décision : une carte qui contiendrait le
-   prénom de l'enfant serait mise en cache par les serveurs de WhatsApp, de
-   Slack et de Google. La carte dit le produit ; jamais la famille.
-
-   La composition est celle de la porte de connexion — c'est le même objet, vu
-   de l'extérieur : trait de marge à gauche, tout aligné dessus, et la réglure
-   UNIQUEMENT sous le bloc de texte. La règle du produit est que la ligne du
-   cahier ne traverse jamais les letterformes du nom ; elle vaut aussi ici.
-   --------------------------------------------------------------------------- */
 const OG = { w: 1200, h: 630 };
-const AXIS = 96; // le trait de marge, à 8 % — la marge d'un carnet
-const TEXT = 136; // l'axe du texte : 40 px à droite de la marge, comme à la connexion
+const AXIS = 96;
+const TEXT = 136;
 
-/** Pose un lettrage à une hauteur de capitale donnée, coin haut-gauche en (x, y). */
 function words(item, { x, y, cap, fill }) {
   const k = cap / 1000;
   return `<g fill="${fill}" transform="translate(${x} ${y}) scale(${k})"><g transform="${item.transform}"><path d="${item.d}"/></g></g>`;
@@ -194,16 +123,11 @@ const ogSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${OG.w} ${OG
 </svg>
 `;
 
-// Les icônes d'accueil : l'état PAGE. Coins arrondis pour les tuiles PWA,
-// plein bord là où la plateforme masque elle-même.
 await png(markSVG({ variant: "page" }), 192, "pwa-192.png", { alpha: true });
 await png(markSVG({ variant: "page" }), 512, "pwa-512.png", { alpha: true });
 await png(markSVG({ variant: "page", bleed: true, safeZone: true }), 512, "pwa-maskable-512.png");
 await png(markSVG({ variant: "page", bleed: true }), 180, "apple-touch-icon.png");
 
-// La pastille de notification : blanche sur TRANSPARENT, Android n'en garde
-// que l'alpha.
 await png(silhouetteSVG({ color: "#FFFFFF" }), 96, "badge-96.png", { alpha: true });
 
-// La carte de lien.
 await png(ogSVG, OG.w, "og.png", { height: OG.h, background: PAPER });

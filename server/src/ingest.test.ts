@@ -18,9 +18,6 @@ test("DATE_RE n'accepte que le format AAAA-MM-JJ", () => {
   assert.ok(!DATE_RE.test("2026-7-2"));
 });
 
-// Les validations de métadonnées d'`ingestCarnetImages` se font AVANT tout accès
-// base : ces cas d'erreur reviennent donc sans dépendre d'une connexion Postgres.
-
 test("ingestCarnetImages rejette une date mal formée (400) sans toucher la base", async () => {
   const res = await ingestCarnetImages({
     userId: "u1",
@@ -61,9 +58,6 @@ test("ingestCarnetImages rejette une absence de photo (400)", async () => {
     error: "aucune photo fournie",
   });
 });
-
-// Les validations date/source de `createTranscribedEntry` précèdent, elles aussi,
-// tout accès base : ces cas d'erreur ne dépendent d'aucune connexion Postgres.
 
 test("createTranscribedEntry rejette une date mal formée (400) sans toucher la base", async () => {
   const res = await createTranscribedEntry({

@@ -15,16 +15,9 @@ import {
 import { buildMcpServer } from "../mcp.js";
 import { canContributeSomewhere } from "../access.js";
 
-// Les images arrivent en base64 dans le corps JSON (une page ~2400px pèse
-// quelques Mo une fois encodée) : on relève la limite de corps pour cette route.
 const MCP_BODY_LIMIT = 32 * 1024 * 1024;
 
 export async function mcpRoutes(app: FastifyInstance) {
-  /* ---------------------- Endpoint MCP (jeton Bearer) ------------------- */
-
-  // Transport Streamable HTTP en mode stateless : une paire serveur/transport
-  // par requête, authentifiée par un jeton personnel (et non par cookie de
-  // session — l'appelant est un client MCP, pas le navigateur).
   app.route({
     method: ["POST", "GET", "DELETE"],
     url: "/api/mcp",
@@ -40,11 +33,10 @@ export async function mcpRoutes(app: FastifyInstance) {
 
       const server = buildMcpServer(user);
       const transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: undefined, // stateless
+        sessionIdGenerator: undefined,
         enableJsonResponse: true,
       });
 
-      // Nettoyage quand la réponse se termine (mode stateless : rien à conserver).
       reply.raw.on("close", () => {
         void transport.close();
         void server.close();
@@ -52,8 +44,6 @@ export async function mcpRoutes(app: FastifyInstance) {
 
       try {
         await server.connect(transport);
-        // On rend la main à la couche brute : le transport écrit lui-même la
-        // réponse sur reply.raw. Fastify ne doit plus tenter d'y répondre.
         reply.hijack();
         await transport.handleRequest(req.raw, reply.raw, req.body);
       } catch (err) {
@@ -72,14 +62,6 @@ export async function mcpRoutes(app: FastifyInstance) {
     },
   });
 
-  /* -------------- Mise en attente d'une page (octets bruts) ------------- */
-
-  // Contourne la limite du base64 inline : un client MCP capable d'exécuter un
-  // shell téléverse les octets bruts d'une page en une requête (le fichier est
-  // lu du disque par `curl`, rien ne passe par le contexte du modèle), reçoit un
-  // `id` court, puis appelle l'outil `upload_daily_note` avec `imageIds`.
-  // Le corps est le fichier brut (Content-Type: application/octet-stream) —
-  // parseur enregistré dans app.ts.
   app.post(
     "/api/mcp/uploads",
     { bodyLimit: MCP_BODY_LIMIT },
@@ -91,8 +73,6 @@ export async function mcpRoutes(app: FastifyInstance) {
           .header("WWW-Authenticate", "Bearer")
           .send({ error: "jeton MCP invalide ou absent" });
 
-      // Mettre une page en attente ne sert qu'à contribuer : un lecteur (qui
-      // ne peut rien importer) n'a pas à écrire sur le disque du foyer.
       if (!(await canContributeSomewhere(user.id)))
         return reply.code(403).send({
           error: "Ce compte ne peut ajouter de journée à aucun carnet.",
@@ -121,8 +101,6 @@ export async function mcpRoutes(app: FastifyInstance) {
       });
     },
   );
-
-  /* ---------------- Gestion des jetons (session utilisateur) ------------ */
 
   app.get(
     "/api/mcp/tokens",

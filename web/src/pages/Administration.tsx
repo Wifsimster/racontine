@@ -43,21 +43,6 @@ import {
   InlineError,
 } from "@/components/PageState";
 
-/* ===========================================================================
-   LA CONSOLE D'ADMINISTRATION — les gens d'abord, les carnets ensuite.
-
-   « Partager » regarde UN carnet à la fois : pour savoir si Mamie est lectrice
-   sur Lou et contributrice sur Anouk, il fallait changer d'enfant et recompter
-   de tête. Cet écran retourne la question — une personne, une carte, tous ses
-   rôles — et ajoute ce qu'aucun écran ne disait : combien de journées sont
-   publiées, lesquelles attendent une relecture, laquelle a échoué.
-
-   Rien d'INSTANCE ici : la console ne montre que les carnets dont on est
-   administrateur, et le serveur redemande ce périmètre à chaque lecture. Les
-   gestes, eux, sont ceux du partage — mêmes routes, mêmes refus (on ne retire
-   pas le dernier administrateur d'un enfant).
-   =========================================================================== */
-
 const ROLES: MemberRole[] = ["reader", "contributor", "admin"];
 
 function fmtDay(iso: string | null): string | null {
@@ -71,10 +56,6 @@ function fmtDay(iso: string | null): string | null {
   }).format(d);
 }
 
-/**
- * Un chiffre de la console. Le nombre est en sérif au cran du titre : c'est ce
- * qu'on vient lire, la légende ne fait que le nommer.
- */
 function Stat({ value, label }: { value: number; label: string }) {
   return (
     <div className="flex flex-col gap-0.5 rounded-2xl border bg-card px-4 py-3 shadow-card">
@@ -84,17 +65,6 @@ function Stat({ value, label }: { value: number; label: string }) {
   );
 }
 
-/**
- * Un carnet administré : qui le suit, où en sont ses journées, quand remonte
- * la dernière publication. Les états qui APPELLENT UN GESTE (brouillons à
- * relire, lectures en échec) portent une pastille ; le reste est du texte.
- *
- * C'est aussi le SEUL endroit d'où l'on peut effacer un carnet. Ce geste
- * n'est pas un réglage : il emporte des mois de journées, leurs photos, et le
- * fil que des proches suivent. Il vit donc ici, dans la console, derrière le
- * prénom de l'enfant recopié — pas dans un menu contextuel à côté de
- * « renommer ».
- */
 function ChildCard({
   child,
   onDeleted,
@@ -224,13 +194,6 @@ function ChildCard({
   );
 }
 
-/**
- * Le prénom recopié, côté écran : il allume le bouton, il n'autorise rien. La
- * comparaison qui fait foi est celle du serveur (`confirms`, dans
- * `domain/erasure.ts`) ; on en reprend ici la tolérance — espaces, casse,
- * accents — pour ne pas garder le bouton éteint devant une saisie qu'il
- * accepterait.
- */
 function sameName(typed: string, expected: string): boolean {
   const fold = (v: string) =>
     v
@@ -241,15 +204,6 @@ function sameName(typed: string, expected: string): boolean {
   return fold(expected).length > 0 && fold(typed) === fold(expected);
 }
 
-/**
- * Une personne, et TOUS ses rôles. Une ligne par carnet : le rôle s'y change,
- * et la personne s'y retire du cercle.
- *
- * Le geste est GRISÉ là où le serveur le refuserait — sur soi-même, et sur un
- * carnet dont la personne est le seul administrateur. Proposer un bouton qui
- * répond « il doit rester au moins un administrateur » serait mentir deux fois :
- * une fois en le proposant, une fois en l'expliquant après coup.
- */
 function PersonCard({
   person,
   onChange,
@@ -373,8 +327,6 @@ export default function Administration() {
       .finally(() => setLoading(false));
   }, [load]);
 
-  // Un geste échoué ne fait pas tomber l'écran : il pose sa phrase, et la
-  // console se recharge pour que ce qui s'affiche reste ce qui est vrai.
   const refresh = useCallback(async () => {
     setError(null);
     await load();
@@ -447,7 +399,6 @@ export default function Administration() {
         </InlineError>
       )}
 
-      {/* ── Les chiffres ─────────────────────────────────────────────────── */}
       <section className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <Stat value={data.totals.children} label="carnets" />
         <Stat value={data.totals.people} label="proches" />
@@ -458,7 +409,6 @@ export default function Administration() {
         />
       </section>
 
-      {/* ── Les carnets ──────────────────────────────────────────────────── */}
       <section className="flex flex-col gap-1">
         <SectionLabel className="px-1">
           Les carnets ({data.children.length})
@@ -468,10 +418,6 @@ export default function Administration() {
             <ChildCard
               key={c.id}
               child={c}
-              /* Le carnet effacé emporte aussi des rôles et des invitations :
-                 on relit la console entière plutôt que de retirer une carte
-                 de la liste et laisser le reste de l'écran parler d'un carnet
-                 qui n'existe plus. */
               onDeleted={() => {
                 void refresh().catch(() => {});
               }}
@@ -480,7 +426,6 @@ export default function Administration() {
         </ul>
       </section>
 
-      {/* ── Les invitations en attente ───────────────────────────────────── */}
       {data.invitations.length > 0 && (
         <section className="flex flex-col gap-1">
           <SectionLabel className="px-1">
@@ -527,14 +472,10 @@ export default function Administration() {
         </section>
       )}
 
-      {/* ── Les proches ──────────────────────────────────────────────────── */}
       <section className="flex flex-col gap-1">
         <SectionLabel className="px-1">
           Les proches ({data.people.length})
         </SectionLabel>
-        {/* La liste porte au moins l'administrateur qui regarde : elle n'est
-            vide que si le serveur a répondu un cercle vide, ce qui vaut d'être
-            dit plutôt que rendu par une section muette. */}
         {data.people.length === 0 ? (
           <p className="rounded-2xl border bg-card p-5 text-meta text-muted-foreground shadow-card">
             Aucun proche n'a encore de rôle sur ces carnets.

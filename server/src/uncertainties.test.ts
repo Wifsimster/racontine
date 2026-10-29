@@ -64,8 +64,6 @@ test("les lectures alternatives citées dans la glose deviennent des suggestions
 });
 
 test("une citation qui sert de repère ne devient PAS une suggestion", () => {
-  // « après «Nounour» » dit OÙ se trouve le mot douteux, pas comment le lire :
-  // proposer « Nounour » comme lecture de rechange serait une fausse piste.
   const t = tidyUncertainty(
     u({
       original:
@@ -100,8 +98,6 @@ test("le contexte fourni par le modèle n'est jamais écrasé par la glose", () 
 });
 
 test("une phrase sans mot isolable est laissée telle quelle", () => {
-  // Le signalement « pages du <date> » posé par l'ingestion : pas de citation,
-  // pas de deux-points, rien à couper — il doit survivre au nettoyage.
   const item = u({
     original: "pages du 2025-11-24",
     contexte: "Une journée du 2025-11-24 déjà publiée a été détectée.",

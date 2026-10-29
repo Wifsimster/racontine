@@ -1,24 +1,3 @@
-/* ===========================================================================
-   REGÉNÈRE `web/brand/lettering.mjs` — les quelques mots de la marque, tracés.
-
-     pnpm brand:lettering
-
-   Pourquoi vectoriser du texte, alors que l'app a les polices : parce que la
-   carte de lien (`og.png`) est une IMAGE, produite hors du navigateur. Aucune
-   webfont n'y charge, et se reposer sur une police « à peu près équivalente »
-   installée sur la machine de build, c'est accepter que la marque change de
-   dessin selon qui lance la commande.
-
-   Vectoriser depuis les MÊMES woff2 que l'app garantit l'inverse : ce qu'on
-   lit sur la carte partagée dans un SMS est exactement ce qu'on lira à l'écran
-   une seconde plus tard.
-
-   Le repère de sortie est normalisé sur une hauteur de capitale de 1000, y
-   vers le bas, origine en haut à gauche. Poser un lettrage revient donc à
-   choisir sa hauteur de capitale — la même opération que choisir un cran de
-   l'échelle typographique.
-   =========================================================================== */
-
 import { writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -33,11 +12,6 @@ const FACES = {
   nunito700: fontkit.openSync(resolve(fonts, "nunito-700.woff2")),
 };
 
-/**
- * Trace une chaîne en UN seul `d`, normalisé (capitale = 1000).
- * `trackingEm` reprend l'approche du cran correspondant de l'échelle : -0,018
- * pour le bandeau 30/36 (le logotype), +0,14 pour le surtitre 11/16.
- */
 function trace(face, text, trackingEm = 0) {
   const font = FACES[face];
   const track = trackingEm * font.unitsPerEm;
@@ -47,12 +21,11 @@ function trace(face, text, trackingEm = 0) {
   run.glyphs.forEach((glyph, i) => {
     const pos = run.positions[i];
     if (glyph.path.commands.length) {
-      // La translation est figée DANS le tracé : un seul `d`, aucune balise de plus.
       ds.push(glyph.path.translate(Math.round(x + (pos.xOffset || 0)), 0).toSVG());
     }
     x += pos.xAdvance + track;
   });
-  const advance = Math.round(x - track); // pas d'approche après la dernière lettre
+  const advance = Math.round(x - track);
   const s = 1000 / font.capHeight;
   return {
     width: Math.round(advance * s),
@@ -62,11 +35,8 @@ function trace(face, text, trackingEm = 0) {
 }
 
 const items = {
-  /** Le logotype : le nom du produit, et rien d'autre. */
   logotype: trace("fraunces600", "Racontine", -0.018),
-  /** Le surtitre du carnet, dans son approche de 0,14 em. */
   surtitre: trace("nunito700", "CARNET DE LIAISON", 0.14),
-  /** La promesse, coupée là où on la coupe à l'oral. */
   promesse1: trace("nunito400", "Votre carnet de liaison, dématérialisé"),
   promesse2: trace("nunito400", "sans rien demander à la nounou."),
 };
@@ -95,10 +65,6 @@ ${body}
 `,
 );
 
-/* Le logotype sort AUSSI en fichier autonome : c'est lui qu'on ouvre pour
-   poser le nom ailleurs que dans l'app (un export livre, un en-tête imprimé,
-   un jour un site). `currentColor` pour qu'il prenne l'encre de son support,
-   et une boîte de vue dont la hauteur EST la hauteur de capitale. */
 writeFileSync(
   resolve(here, "logotype.svg"),
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${items.logotype.width} 1000" role="img" aria-label="Racontine">

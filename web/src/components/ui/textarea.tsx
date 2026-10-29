@@ -2,11 +2,6 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import { fieldBase } from "@/components/ui/input";
 
-/**
- * Zone de texte du carnet : l'interligne est celui de la réglure
- * (`carnet-story`), donc ce qu'on écrit tombe sur les lignes du cahier — comme
- * ce qu'on lit.
- */
 function Textarea({ className, ...props }: React.ComponentProps<"textarea">) {
   return (
     <textarea

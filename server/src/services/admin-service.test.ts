@@ -9,10 +9,6 @@ import {
   type AdminRepository,
 } from "./admin-service.js";
 
-/* La console d'administration se vérifie sans Postgres : l'agrégation (rôles
-   rassemblés par personne, dernier administrateur, compteurs par carnet) est
-   du calcul, et c'est elle qui décide ce qu'un écran propose. */
-
 const NOW = new Date();
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -106,7 +102,6 @@ test("rassemble les rôles d'une même personne sur plusieurs enfants", async ()
       ["Lou", "reader"],
     ],
   );
-  // Les administrateurs d'abord : c'est la lecture utile d'un cercle.
   assert.equal(res.console.people[0]!.userId, "u-admin");
   assert.equal(res.console.totals.admins, 1);
 });
@@ -134,7 +129,6 @@ test("signale le seul administrateur d'un enfant, et lui seul", async () => {
   if (!res.ok) return;
 
   const alex = res.console.people.find((p) => p.userId === "u-admin")!;
-  // Seul admin de Lou ; sur Anouk, Camille prendrait le relais.
   assert.deepEqual(alex.soleAdminOf, ["c-lou"]);
   assert.equal(alex.isSelf, true);
   const camille = res.console.people.find((p) => p.userId === "u-coparent")!;
@@ -153,7 +147,6 @@ test("compte les journées par statut, et totalise l'instance administrée", asy
         { childId: "c-lou", status: "draft", count: 2 },
         { childId: "c-lou", status: "failed", count: 1 },
         { childId: "c-anouk", status: "published", count: 3 },
-        // Un enfant hors périmètre ne doit rien ajouter aux compteurs.
         { childId: "c-inconnu", status: "published", count: 99 },
       ],
       published: [{ childId: "c-lou", at }],

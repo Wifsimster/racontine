@@ -12,21 +12,6 @@ import {
 import { TRIAL_DAYS } from "../domain/paywall.js";
 import { WebhookSignatureError, constructEvent } from "../billing/stripe.js";
 
-/* ===========================================================================
-   L'ABONNEMENT, CÔTÉ HTTP — et seulement HTTP.
-
-   Quatre routes pour la famille (lire l'état, payer, gérer, rattraper un retour
-   de paiement) et UNE pour Stripe. La règle du péage, elle, est ailleurs :
-   `domain/paywall.ts` décide, `billing/` orchestre, ce fichier choisit des codes
-   de statut.
-
-   Ce qui n'est PAS ici, et ne doit jamais y venir : la moindre donnée bancaire.
-   Racontine ne voit ni numéro de carte, ni cryptogramme, ni adresse de
-   facturation — la page de paiement et le portail sont hébergés par Stripe, et
-   tout ce que ce fichier fabrique, ce sont deux liens.
-   =========================================================================== */
-
-/** Les dates partent en ISO : le front les relit, le JSON ne connaît pas `Date`. */
 function serializeAccess(access: {
   open: boolean;
   reason: string;
@@ -41,27 +26,11 @@ function serializeAccess(access: {
   };
 }
 
-/**
- * L'OFFRE, SANS SESSION — la seule route de l'abonnement qui réponde à
- * quelqu'un qu'on ne connaît pas encore.
- *
- * Elle existe pour l'écran d'accueil public : avant, ouvrir Racontine sans
- * session menait droit à un formulaire de connexion, c'est-à-dire à un mot de
- * passe demandé à quelqu'un qui ne sait pas encore ce qu'on lui propose ni
- * combien ça coûte. Le tarif doit donc être lisible AVANT le compte.
- *
- * Ce qu'elle rend est public par nature et par construction : le péage est-il
- * armé sur cette instance, le tarif public de Stripe, et la durée de l'essai.
- * RIEN qui dépende d'un utilisateur — ni l'état du foyer, ni qui paie, ni la
- * moindre date d'échéance : ces réponses-là restent derrière `requireUser`.
- */
 export async function billingPublicRoutes(app: FastifyInstance) {
   app.get("/api/billing/offer", async () => {
     const enabled = billingEnabled();
     return {
       enabled,
-      // Pas de Stripe, pas de prix : une instance auto-hébergée n'a pas de
-      // caisse, et l'écran d'accueil le saura sans avoir à le deviner.
       price: enabled ? await planPrice() : null,
       trialDays: TRIAL_DAYS,
     };
@@ -71,37 +40,23 @@ export async function billingPublicRoutes(app: FastifyInstance) {
 export async function billingRoutes(app: FastifyInstance) {
   app.addHook("preHandler", requireUser);
 
-  /**
-   * L'état de l'abonnement pour l'appelant. Appelée par l'écran d'accueil : elle
-   * doit donc être bon marché et ne JAMAIS faire tomber le journal — une panne
-   * de Stripe ne doit pas empêcher de lire le carnet (le tarif retombe à null,
-   * l'écran le dit).
-   */
   app.get("/api/billing", async (req) => {
     const state = await billingState(req.user!.id);
     return { ...state, access: serializeAccess(state.access) };
   });
 
-  /** Ouvre la page de paiement Stripe (propriétaire du foyer uniquement). */
   app.post("/api/billing/checkout", async (req, reply) => {
     const link = await startCheckout(req.user!.id);
     if (!link.ok) return reply.code(link.httpCode).send({ error: link.error });
     return { url: link.url };
   });
 
-  /** Ouvre le portail Stripe : carte, factures, résiliation. */
   app.post("/api/billing/portal", async (req, reply) => {
     const link = await openPortal(req.user!.id);
     if (!link.ok) return reply.code(link.httpCode).send({ error: link.error });
     return { url: link.url };
   });
 
-  /**
-   * RATTRAPAGE AU RETOUR DE PAIEMENT. Le webhook est la vérité, mais il arrive
-   * parfois quelques secondes après le parent : sans cette route, l'écran
-   * d'arrivée dirait « essai terminé » à quelqu'un qui vient de payer. Le front
-   * la rappelle avec l'identifiant de session rendu par Stripe.
-   */
   app.post<{ Body: { session?: unknown } }>(
     "/api/billing/sync",
     async (req, reply) => {
@@ -115,19 +70,6 @@ export async function billingRoutes(app: FastifyInstance) {
   );
 }
 
-/**
- * LA ROUTE DE STRIPE — encapsulée, parce qu'elle a besoin du CORPS BRUT.
- *
- * La signature se calcule sur les octets reçus : un corps déjà analysé puis
- * re-sérialisé (`JSON.stringify(req.body)`) change un espace ou un ordre de clé,
- * et plus aucune signature ne correspond. Le parseur brut ne vaut donc que pour
- * ce plugin — les autres routes gardent le JSON de Fastify.
- *
- * Elle est publique par nature (Stripe n'a pas de session), et c'est
- * exactement pourquoi la signature n'est pas négociable : sans elle, l'URL
- * suffirait à n'importe qui pour s'offrir un abonnement à vie en postant
- * `{"status":"active"}`.
- */
 export async function billingWebhookRoutes(app: FastifyInstance) {
   app.removeAllContentTypeParsers();
   app.addContentTypeParser(
@@ -169,10 +111,6 @@ export async function billingWebhookRoutes(app: FastifyInstance) {
       );
       return { received: true };
     } catch (err) {
-      /* On répond 500 EXPRÈS : Stripe rejoue alors l'événement (pendant trois
-         jours, en espaçant). Répondre 200 sur un échec perdrait définitivement
-         une résiliation ou un renouvellement — et le foyer le découvrirait au
-         plus mauvais moment, des deux côtés. */
       req.log.error(
         { err: err instanceof Error ? err.message : String(err), event: event.type },
         "webhook Stripe non appliqué",
@@ -182,7 +120,6 @@ export async function billingWebhookRoutes(app: FastifyInstance) {
   });
 }
 
-/** Horodatage de l'événement Stripe (`created`), s'il est lisible. */
 function eventCreatedAt(raw: Buffer): Date | null {
   try {
     const parsed = JSON.parse(raw.toString("utf8")) as { created?: unknown };

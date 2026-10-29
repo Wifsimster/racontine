@@ -2,10 +2,6 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { dayChips } from "./day-glance.js";
 
-/* La bande d'une journée est reprise mot pour mot par l'e-mail de publication :
-   une même journée ne peut pas se résumer différemment selon qu'on la lit dans
-   l'app ou dans sa boîte. */
-
 const meal = { type: "meal" as const, data: { moment: "midi", contenu: "purée" } };
 const nap = (debut?: string, fin?: string) => ({
   type: "nap" as const,
@@ -43,17 +39,13 @@ test("une sieste sans heures lisibles se compte, faute de se mesurer", () => {
 });
 
 test("une humeur longue est coupée sur un mot, jamais au milieu d'un mot", () => {
-  // Une humeur composée garde son premier morceau.
   assert.deepEqual(dayChips({ items: [], mood: "joyeuse et très bavarde" }), [
     { label: "joyeuse", tone: "mood" },
   ]);
-  // Une phrase est coupée à l'espace précédent, avec une ellipse ÉCRITE.
   assert.deepEqual(
     dayChips({ items: [], mood: "absolument extraordinairement ravie" }),
     [{ label: "absolument\u2026", tone: "mood" }],
   );
-  // Et si le premier mot ne tient pas à lui seul, la pastille disparaît : une
-  // humeur qu'on ne lit pas en deux secondes n'a rien à faire dans la bande.
   assert.deepEqual(
     dayChips({ items: [], mood: "extraordinairement ravie" }),
     [],

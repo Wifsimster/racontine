@@ -18,9 +18,6 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
-/* Les pages photographiées : la bande de vignettes d'une carte, et la
-   visionneuse plein écran qui s'ouvre au clic. */
-
 export function PageStrip({
   pages,
   dateText,
@@ -51,9 +48,6 @@ export function PageStrip({
             type="button"
             onClick={(e) => onOpen(i, e.currentTarget)}
             className={cn(
-              // Ratios DÉCLARÉS : 3/2 pour une page seule (une bande, comme un
-              // scan), carré dès qu’il y en a plusieurs — une page de carnet
-              // est presque carrée, un cadre 4/3 lui coupait l’en-tête.
               "seam block w-full overflow-hidden rounded-xl transition-transform dur-press ease-carnet active:scale-[0.98]",
               single ? "aspect-[3/2]" : "aspect-square",
             )}
@@ -69,8 +63,6 @@ export function PageStrip({
       ))}
       {rest > 0 && (
         <li>
-          {/* Le « +N » est une tuile PLEINE, pas un voile posé sur une photo :
-              du blanc sur une image inconnue n’est jamais un contraste mesuré. */}
           <button
             type="button"
             onClick={(e) => onOpen(shown.length, e.currentTarget)}
@@ -88,19 +80,6 @@ export function PageStrip({
   );
 }
 
-/**
- * Le lecteur de pages : plein écran, sur le papier (pas un voile translucide —
- * un texte blanc sur une photo pâle voilée n’atteint pas 4,5:1 et on ne peut
- * pas le mesurer). Échap ferme, les flèches feuillettent, le focus revient sur
- * la vignette d’où l’on vient.
- *
- * Il est monté en PORTAIL sur `<body>`, et ce n’est pas un détail : la page est
- * rendue dans un `<main>` qui porte une animation d’opacité (`page-enter`), donc
- * un contexte d’empilement. Un `z-60` posé à l’intérieur de `main` reste sous
- * l’en-tête `z-50` de la coquille, qui en est le frère — le lecteur s’ouvrait
- * DERRIÈRE la barre du haut, sa propre barre (« Page 1 / 2 », le bouton
- * Fermer) invisible dessous.
- */
 export function PageViewer({
   pages,
   index,
@@ -110,7 +89,6 @@ export function PageViewer({
 }: {
   pages: AttachmentRef[];
   index: number;
-  /** La date ISO de la journée : le titre long pour l’annonce, court à l’écran. */
   date: string;
   onIndex: (i: number) => void;
   onClose: () => void;
@@ -122,29 +100,17 @@ export function PageViewer({
   const dateText = fullDate(date);
   const shortDate = dayMonth(date);
 
-  /* ── L’agrandissement, la fonction qui manquait ───────────────────────────
-     C’est la seule image du produit qu’il FAUT pouvoir agrandir : une page
-     manuscrite servie sur 358 px de large, dont on veut relire un mot que la
-     transcription a peut-être manqué. À l’échelle « ajustée » la page tient
-     dans l’écran (la largeur est limitante, 313 px de hauteur restent vides) ;
-     agrandie, elle prend TOUTE la hauteur — ×1,7, soit 609 px de large sur un
-     viewport de 390 — et l’on défile sur un seul axe : rien n’est coupé en haut
-     ni en bas, ce qui compte quand on cherche une ligne précise. Le geste est disponible deux fois — la page elle-même est un
-     bouton, et la barre porte le même contrôle nommé — parce qu’au doigt on
-     touche l’image et au clavier on tabule jusqu’au bouton. */
   const [zoom, setZoom] = useState(false);
   useEffect(() => setZoom(false), [index]);
   useEffect(() => {
     const box = boxRef.current;
     if (!box) return;
-    // On agrandit depuis le CENTRE de la page, pas depuis son coin gauche.
     box.scrollLeft = zoom ? (box.scrollWidth - box.clientWidth) / 2 : 0;
     box.scrollTop = 0;
   }, [zoom, index]);
 
   useEffect(() => {
     closeRef.current?.focus();
-    // Le carnet dessous ne défile pas pendant qu’on lit une page.
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
@@ -158,9 +124,6 @@ export function PageViewer({
         e.preventDefault();
         onClose();
       }
-      // `aria-modal` promet que le reste de la page est hors d’atteinte : on
-      // tient la promesse au clavier aussi, en bouclant la tabulation dans le
-      // lecteur au lieu de laisser le focus filer derrière le voile.
       if (e.key === "Tab" && rootRef.current) {
         const f = Array.from(
           rootRef.current.querySelectorAll<HTMLElement>("button"),
@@ -246,11 +209,6 @@ export function PageViewer({
               : "size-full flex-col gap-3 cursor-zoom-in",
           )}
         >
-          {/* Le liseré : sur du papier crème, une page crème posée sur le fond
-              clair perdait son bord (mesuré à 1,1:1 — la couture seule ne suffit
-              pas en clair, alors qu’en sombre la page se détache toute seule).
-              Le filet de champ est le trait le plus affirmé du système, et il
-              est re-choisi dans les deux thèmes. */}
           <img
             src={pages[index]?.url}
             alt={`Page ${index + 1} du carnet du ${dateText}`}
@@ -261,9 +219,6 @@ export function PageViewer({
                 : "min-h-0 max-h-full max-w-full object-contain",
             )}
           />
-          {/* Le geste est écrit, juste sous la page : à l’état ajusté c’est la
-              LARGEUR qui limite, il reste donc de la hauteur, et elle sert à
-              dire comment lire de plus près plutôt qu’à rester vide. */}
           {!zoom && (
             <span className="shrink-0 text-meta text-muted-foreground">
               Touchez la page pour l’agrandir

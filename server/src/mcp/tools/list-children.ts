@@ -1,7 +1,6 @@
 import type { McpTool } from "../protocol.js";
 import { jsonContent } from "../protocol.js";
 
-/** Les enfants auxquels ce compte peut contribuer. */
 export const listChildrenTool: McpTool = {
   name: "list_children",
   register(server, ctx) {

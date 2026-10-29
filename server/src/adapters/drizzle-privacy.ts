@@ -28,43 +28,12 @@ import type {
   StoredFile,
 } from "../ports.js";
 
-/* ===========================================================================
-   EMPORTER ET EFFACER, EN POSTGRES.
-
-   Deux choses à ne pas perdre de vue en lisant ce fichier :
-
-   1. L'EFFACEMENT S'APPUIE SUR LES CASCADES, et c'est délibéré. Le schéma
-      déclare déjà `on delete cascade` de `user` vers sessions, comptes,
-      adhésions, abonnements, notifications, appareils push, jetons MCP,
-      fichiers en attente et réglages LLM ; et de `children` vers journées,
-      moments, pages, cercle, invitations et glossaire. Réécrire ici la liste
-      des tables, ce serait en tenir une DEUXIÈME — celle qui, le jour où l'on
-      ajoutera une table, oubliera de la nettoyer sans que rien ne le signale.
-      La règle du dépôt est donc : une seule ligne effacée, la base fait le
-      reste. Ce qui nécessite un geste explicite, ce sont les FICHIERS — eux
-      n'ont pas de clé étrangère — et c'est le service qui s'en charge, dans
-      l'ordre qu'il explique.
-
-   2. L'EXPORT NE VOIT PAS PLUS QUE L'ÉCRAN. La portée se décide une fois, à
-      partir des adhésions : un lecteur n'emporte que le journal publié, comme
-      il ne voit que lui dans l'application. Le droit d'accès porte sur SES
-      données — pas sur les brouillons du foyer qui l'a invité.
-   =========================================================================== */
-
-/**
- * Statuts Stripe qui prélèveront ENCORE quelque chose. `canceled`, `incomplete_expired`
- * et une résiliation déjà programmée n'en font pas partie : il n'y a plus rien à
- * arrêter, et bloquer là-dessus retiendrait quelqu'un qui a déjà fait le geste.
- */
 const BILLING_ALIVE = ["active", "trialing", "past_due", "unpaid", "incomplete"];
 
-/** ISO ou null — le JSON ne connaît pas `Date`, et un export se relit ailleurs. */
 const iso = (d: Date | null | undefined): string | null =>
   d ? d.toISOString() : null;
 
 export class DrizzlePrivacyRepository implements PrivacyRepository {
-  /* ----------------------------- Emporter ------------------------------- */
-
   async exportFor(userId: string): Promise<ExportArchive | null> {
     const [account] = await db
       .select({
@@ -92,10 +61,6 @@ export class DrizzlePrivacyRepository implements PrivacyRepository {
       .orderBy(asc(children.name));
 
     const childIds = circles.map((c) => c.childId);
-    /* La même règle que la timeline et que l'outil MCP : contributeur et admin
-       voient les brouillons, le lecteur non. Elle est ici appliquée au SQL,
-       pas après coup — un filtre en mémoire sur des lignes déjà chargées aurait
-       déjà fait sortir de la base ce qu'il prétend cacher. */
     const draftable = circles
       .filter((c) => roleAtLeast(c.role, "contributor"))
       .map((c) => c.childId);
@@ -234,7 +199,6 @@ export class DrizzlePrivacyRepository implements PrivacyRepository {
             width: p.width,
             height: p.height,
             url: attachmentUrls({ id: p.id, rotation: p.rotation }).url,
-            // Rempli par le service, qui seul sait ce qui entre dans le zip.
             file: null,
           })),
         }),
@@ -271,8 +235,6 @@ export class DrizzlePrivacyRepository implements PrivacyRepository {
         lastUsedAt: iso(t.lastUsedAt),
         createdAt: t.createdAt.toISOString(),
       })),
-      // La clé elle-même reste chiffrée en base et n'en sort pas : on ne rend
-      // que son existence et son indice d'affichage.
       llmKey: {
         configured: Boolean(llm[0]?.enc),
         hint: llm[0]?.hint ?? null,
@@ -280,8 +242,6 @@ export class DrizzlePrivacyRepository implements PrivacyRepository {
       pushDevices: devices[0]?.n ?? 0,
     };
   }
-
-  /* ------------------------------ Partir -------------------------------- */
 
   async erasureSnapshot(userId: string): Promise<ErasureSnapshot | null> {
     const [me] = await db
@@ -359,12 +319,6 @@ export class DrizzlePrivacyRepository implements PrivacyRepository {
     return standing ?? null;
   }
 
-  /**
-   * Le poids du compte dans chaque cercle : combien de membres, combien
-   * d'administrateurs. Un seul passage pour tous les carnets — la règle du
-   * dernier administrateur se décide sur des NOMBRES, et les compter un par un
-   * ferait autant d'allers-retours que de carnets suivis.
-   */
   private async standings(
     childIds: string[],
     mine: Map<string, { role: CarnetStanding["role"]; childName: string }>,
@@ -387,7 +341,6 @@ export class DrizzlePrivacyRepository implements PrivacyRepository {
         childId,
         childName: own.childName,
         role: own.role,
-        // L'adhésion de l'appelant existe forcément : au pire, elle est seule.
         members: row?.members ?? 1,
         admins: row?.admins ?? (own.role === "admin" ? 1 : 0),
       };
@@ -437,8 +390,6 @@ export class DrizzlePrivacyRepository implements PrivacyRepository {
         .where(
           and(eq(memberships.userId, userId), eq(memberships.role, "admin")),
         )
-        // Toujours dans le même ordre : deux effacements simultanés ne
-        // s'attendent pas l'un l'autre en croix (interblocage).
         .orderBy(asc(memberships.childId));
       for (const { childId } of administered) {
         await lockCircle(tx, childId);
@@ -460,7 +411,6 @@ export class DrizzlePrivacyRepository implements PrivacyRepository {
   }
 }
 
-/** Regroupe des lignes par clé, en gardant l'ordre du SQL. */
 function groupBy<T, K>(rows: T[], key: (row: T) => K): Map<K, T[]> {
   const out = new Map<K, T[]>();
   for (const row of rows) {

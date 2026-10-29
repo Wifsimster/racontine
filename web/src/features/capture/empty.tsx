@@ -3,9 +3,6 @@ import { Bell, BookOpenText, Crop, Layers, Sparkles, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tip } from "./inputs";
 
-/* Deux écrans de remplacement : le compte qui ne tient aucun carnet, et le
-   compte neuf qui n'a pas encore d'enfant. */
-
 export function CaptureDenied() {
   return (
     <div className="shell-width flex min-h-[calc(100svh-3.5rem)] flex-col items-center justify-center gap-5 px-4 py-8 text-center">
@@ -52,12 +49,6 @@ export function CaptureDenied() {
     </div>
   );
 }
-
-/* --------------------------------------------------------------------------
-   L'état vide VEND le geste suivant : une vignette, une promesse en une
-   phrase, trois conseils de prise de vue. Rien ici n'est un haussement
-   d'épaules — c'est le premier écran du soir.
-   -------------------------------------------------------------------------- */
 
 export function CaptureEmpty() {
   return (

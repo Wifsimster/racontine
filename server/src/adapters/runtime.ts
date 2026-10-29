@@ -1,10 +1,5 @@
 import type { BackgroundRunner, Logger } from "../ports.js";
 
-/**
- * Travail d'arrière-plan en production : on lâche la promesse et on rend la
- * main tout de suite. Le `catch` n'est pas décoratif — une promesse rejetée
- * sans gestionnaire abat le processus Node.
- */
 export class FireAndForgetRunner implements BackgroundRunner {
   constructor(private readonly logger: Logger) {}
 
@@ -17,7 +12,6 @@ export class FireAndForgetRunner implements BackgroundRunner {
   }
 }
 
-/** Journal d'exploitation par défaut : la sortie standard du conteneur. */
 export class ConsoleLogger implements Logger {
   info(message: string, meta?: Record<string, unknown>): void {
     console.log(message, meta ?? "");

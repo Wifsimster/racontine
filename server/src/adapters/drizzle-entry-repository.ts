@@ -32,16 +32,6 @@ import type {
 
 type Db = typeof defaultDb;
 
-/**
- * Le dépôt des journées, en Postgres (Drizzle).
- *
- * Tout le SQL des journées est ICI : les services au-dessus ne connaissent plus
- * que le port. Les garanties de concurrence que le service attend — « crée si
- * absente », « ne bascule que si encore en lecture » — sont tenues par des
- * `ON CONFLICT DO NOTHING` et des `UPDATE … WHERE status = …`, c'est-à-dire par
- * la base elle-même : deux requêtes simultanées ne peuvent pas toutes deux
- * gagner.
- */
 export class DrizzleEntryRepository implements EntryRepository {
   constructor(private readonly db: Db = defaultDb) {}
 
@@ -120,9 +110,6 @@ export class DrizzleEntryRepository implements EntryRepository {
     items: ItemRow[],
   ): Promise<boolean> {
     return this.db.transaction(async (tx) => {
-      // On n'écrase le contenu que si l'entrée est ENCORE en lecture : sinon une
-      // relecture humaine faite pendant l'extraction serait silencieusement
-      // écrasée par la sortie du modèle.
       const moved = await tx
         .update(entries)
         .set({
@@ -209,7 +196,6 @@ export class DrizzleEntryRepository implements EntryRepository {
   }
 }
 
-/** Les pages photographiées, en Postgres (Drizzle). */
 export class DrizzleAttachmentRepository implements AttachmentRepository {
   constructor(private readonly db: Db = defaultDb) {}
 
@@ -271,16 +257,6 @@ export class DrizzleAttachmentRepository implements AttachmentRepository {
   }
 }
 
-/**
- * Le code SQLSTATE d'une erreur, où qu'il se trouve dans la chaîne des causes.
- *
- * Drizzle n'expose PAS l'erreur du pilote telle quelle : il l'enveloppe dans un
- * `DrizzleQueryError` dont le SQLSTATE vit sur `cause`. Le code appelant, lui,
- * regardait `err.code` — qui vaut `undefined` sur l'enveloppe. Conséquence
- * mesurée sur une vraie base : deux journées en collision (même enfant, même
- * date, même lieu) rendaient **500** au lieu de 409, et une date impossible
- * (2026-13-40) **500** au lieu de 400. On descend donc la chaîne.
- */
 export function sqlStateOf(err: unknown): string {
   let current: unknown = err;
   for (let depth = 0; current && depth < 5; depth++) {
@@ -291,12 +267,6 @@ export function sqlStateOf(err: unknown): string {
   return "";
 }
 
-/**
- * Traduit une erreur Postgres en erreur de DOMAINE. Sans cette traduction, la
- * règle « deux journées ne peuvent pas partager enfant + date + lieu » n'existait
- * que sous la forme d'un `code === "23505"` comparé dans un gestionnaire HTTP :
- * la couche métier lisait des codes SQL.
- */
 function translatePgError(err: unknown): never {
   const code = sqlStateOf(err);
   if (code === "23505")
@@ -308,7 +278,6 @@ function translatePgError(err: unknown): never {
   throw err;
 }
 
-/** Les écritures de relecture, en Postgres. */
 export class DrizzleEntryRevisionRepository
   implements EntryRevisionRepository
 {
@@ -322,9 +291,6 @@ export class DrizzleEntryRevisionRepository
   ): Promise<{ firstPublish: boolean }> {
     try {
       return await this.db.transaction(async (tx) => {
-        // Verrou sur la ligne : la lecture qui se termine (`applyReadingIfProcessing`)
-        // et l'ingestion qui rouvre la journée (`markProcessingUnlessPublished`) attendent la
-        // fin de cette relecture au lieu de s'y entrelacer.
         const [current] = await tx
           .select({ status: entries.status })
           .from(entries)
@@ -350,9 +316,6 @@ export class DrizzleEntryRevisionRepository
 
         if (!publish) return { firstPublish: false };
 
-        // Ne notifier qu'à la PREMIÈRE publication. La transition est détectée
-        // de façon atomique (UPDATE … WHERE status <> 'published' … RETURNING) :
-        // deux requêtes concurrentes ne peuvent pas toutes deux « gagner ».
         const flipped = await tx
           .update(entries)
           .set({
@@ -407,7 +370,6 @@ export class DrizzleEntryRevisionRepository
   }
 }
 
-/** Création d'un enfant et de son cercle, en Postgres. */
 export class DrizzleChildRepository implements ChildRepository {
   constructor(private readonly db: Db = defaultDb) {}
 
@@ -416,7 +378,6 @@ export class DrizzleChildRepository implements ChildRepository {
     birthdate: string | null;
     ownerUserId: string;
   }) {
-    // Le créateur devient admin de l'enfant et suit d'office sa timeline.
     return this.db.transaction(async (tx) => {
       const [child] = await tx
         .insert(children)

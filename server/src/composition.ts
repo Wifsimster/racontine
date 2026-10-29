@@ -50,16 +50,6 @@ import { PrivacyService } from "./services/privacy-service.js";
 import { SharingService } from "./services/sharing-service.js";
 import { TranscribedNoteService } from "./services/transcribed-note-service.js";
 
-/* ===========================================================================
-   LA RACINE DE COMPOSITION — le SEUL endroit qui sait qui est branché sur quoi.
-
-   Ailleurs, plus personne ne choisit son fournisseur : les services reçoivent
-   des ports, les adaptateurs implémentent ces ports, et c'est ici — et
-   seulement ici — que les deux se rencontrent. Changer de stockage d'images, de
-   moteur de lecture ou de base de données se fait en changeant une ligne de ce
-   fichier, sans ouvrir un seul service.
-   =========================================================================== */
-
 const logger = new ConsoleLogger();
 const background = new FireAndForgetRunner(logger);
 const entries = new DrizzleEntryRepository();
@@ -69,18 +59,7 @@ const images = new FileSystemImageStore();
 const access = new MembershipAccessPolicy();
 const apiKeys = new EncryptedApiKeyStore();
 const children = new DrizzleChildDirectory();
-/**
- * Le péage, branché en UN point : les deux chemins qui créent une journée (la
- * route web et les deux outils MCP) passent par les services ci-dessous, donc
- * par cette même fonction. Il n'y a pas de troisième porte — et s'il en naissait
- * une, elle devrait demander ici aussi.
- */
 const paywall = { blockedReason };
-/**
- * Les canaux de notification, dans l'ordre où on les tente. UNE ligne par
- * moyen de joindre les proches : c'est ici, et nulle part ailleurs, qu'on en
- * ajoute un.
- */
 export const subscriberNotifier = new SubscriberNotifier({
   subscribers: new DrizzleSubscriberDirectory(),
   log: new DrizzleNotificationLog(),
@@ -89,7 +68,6 @@ export const subscriberNotifier = new SubscriberNotifier({
   logger,
 });
 
-/** Lecture des carnets (modèle vision) en arrière-plan. */
 export const carnetReading = new CarnetReadingService({
   entries,
   access,
@@ -102,7 +80,6 @@ export const carnetReading = new CarnetReadingService({
   logger,
 });
 
-/** Arrivée d'un carnet photographié (route web et outil MCP). */
 export const ingestService = new IngestService({
   entries,
   attachments,
@@ -113,10 +90,8 @@ export const ingestService = new IngestService({
   reading: carnetReading,
 });
 
-/** Création d'un enfant et de son cercle. */
 export const childrenService = new ChildrenService(new DrizzleChildRepository());
 
-/** Relecture humaine : champs, moments, publication, lectures tranchées. */
 export const entryEditing = new EntryEditingService({
   entries,
   revisions,
@@ -128,7 +103,6 @@ export const entryEditing = new EntryEditingService({
   logger,
 });
 
-/** Les pages photographiées : les servir, les tourner, les retirer. */
 export const pages = new PageService({
   pages: new DrizzlePageRepository(),
   images,
@@ -136,12 +110,6 @@ export const pages = new PageService({
   logger,
 });
 
-/**
- * Emporter ses données, effacer un carnet, s'en aller. Branché sur le MÊME
- * stockage d'images que l'ingestion : ce qui a été écrit par `images.store`
- * doit pouvoir être effacé par `images.delete`, et deux stockages différents
- * aux deux bouts, c'est la garantie qu'un jour l'effacement ne trouvera rien.
- */
 export const privacy = new PrivacyService({
   privacy: new DrizzlePrivacyRepository(),
   images,
@@ -149,7 +117,6 @@ export const privacy = new PrivacyService({
   logger,
 });
 
-/** Création d'une journée déjà transcrite (outil MCP). */
 export const transcribedNotes = new TranscribedNoteService({
   entries,
   access,
@@ -159,14 +126,8 @@ export const transcribedNotes = new TranscribedNoteService({
   background,
 });
 
-/**
- * La console d'administration : les carnets qu'on administre, les gens qui y
- * tiennent un rôle, les invitations en attente. Lecture seule — les gestes
- * restent ceux du partage, ci-dessous.
- */
 export const adminConsole = new AdminService(new DrizzleAdminRepository());
 
-/** Le cercle d'un enfant : invitations, rôles, dernier administrateur. */
 export const sharing = new SharingService({
   memberships: new DrizzleMembershipRepository(),
   invitations: new DrizzleInvitationRepository(),
@@ -178,18 +139,6 @@ export const sharing = new SharingService({
   now: () => new Date(),
 });
 
-/**
- * Ce qu'un outil MCP reçoit, en plus de l'utilisateur de son jeton : les mêmes
- * services que les routes web (une seule règle métier, deux protocoles) et les
- * lectures dont ses outils ont besoin.
- *
- * Les champs suivants sont ceux de l'EXPLOITATION — ce qui permet à un agent de
- * tenir l'instance en production : la console d'administration, la publication
- * d'un brouillon, la relance d'une lecture morte, les réglages à chaud,
- * l'inventaire de ce qui coince — et ceux du CERCLE : inviter un proche,
- * changer son rôle, le retirer. Aucun n'est un service neuf : ce sont,
- * littéralement, ceux des écrans Administration, Réglages et Partager.
- */
 export const mcpTooling = {
   ingest: ingestService,
   notes: transcribedNotes,

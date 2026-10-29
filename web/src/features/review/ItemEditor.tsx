@@ -11,10 +11,6 @@ import type { DraftItem } from "./draft";
 import { ITEM_TYPES_IN_ORDER, itemKind } from "@/lib/items";
 import { GrowingTextarea } from "./moments";
 
-/* Les moments de la journée, en CORRECTION : un bloc par type de moment,
-   piloté par le registre `lib/items` — un sixième type s'y ajoutera sans
-   qu'on rouvre ce fichier. */
-
 export function ItemEditor({
   items,
   onField,
@@ -36,8 +32,6 @@ export function ItemEditor({
         return (
           <section key={type} className="flex flex-col gap-2">
             <div className="flex items-center justify-between gap-3">
-              {/* Tuile GRISE, pas le feutre de la catégorie : sur cet écran,
-                  la couleur ne dit que la confiance (voir lib/ui.ts). */}
               <h3 className="flex items-center gap-2 text-ui font-bold">
                 <span className="grid size-7 shrink-0 place-items-center rounded-md bg-muted text-muted-foreground">
                   <Icon className="size-4" aria-hidden="true" />

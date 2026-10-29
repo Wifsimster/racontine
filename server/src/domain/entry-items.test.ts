@@ -60,8 +60,6 @@ test("écrire puis relire une journée transcrite rend exactement les mêmes lis
     health: ["38,2 °C au réveil"],
   };
 
-  // L'aller et le retour sont bâtis sur le même registre : ils ne peuvent pas
-  // diverger, même le jour où un sixième type de moment apparaît.
   const lists = itemsToNoteLists(itemsFromNote(note));
   assert.deepEqual(lists.meals, note.meals);
   assert.deepEqual(lists.naps, note.naps);

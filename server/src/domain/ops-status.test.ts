@@ -80,7 +80,6 @@ test("une lecture en cours trop vieille est comptée comme bloquée", () => {
   assert.equal(r.runningReadings, 1);
   assert.equal(r.healthy, false);
   assert.match(r.summary, /1 lecture bloquée/);
-  // La lecture jeune n'est pas un incident : elle travaille encore.
   assert.match(r.summary, /En attente : 1 lecture en cours\./);
 });
 
@@ -101,8 +100,8 @@ test("une invitation périmée se distingue d'une invitation en attente", () => 
     carnets: [carnet()],
     stuck: [],
     invitations: [
-      { expiresAt: ago(1) }, // expirée
-      { expiresAt: NOW }, // à la seconde près : expirée aussi
+      { expiresAt: ago(1) },
+      { expiresAt: NOW },
       { expiresAt: new Date(NOW.getTime() + 86_400_000) },
     ],
     now: NOW,

@@ -1,6 +1,5 @@
 import type { Uncertainty } from "../db/schema.js";
 
-/** Les champs de la valorisation où un mot lu peut apparaître. */
 export type ValorizedFields = {
   title: string | null;
   story: string | null;
@@ -8,14 +7,6 @@ export type ValorizedFields = {
   transcription: string | null;
 };
 
-/**
- * Applique une lecture tranchée : le mot douteux est remplacé par la valeur
- * choisie PARTOUT où il apparaît réellement dans la valorisation.
- *
- * Le champ signalé par le modèle (`champ`) est indicatif et souvent imprécis —
- * on ne s'y fie pas pour décider où remplacer. Seuls les champs réellement
- * touchés sont renvoyés : un `UPDATE` ne réécrit ainsi que ce qui change.
- */
 export function applyResolvedReading(
   fields: ValorizedFields,
   original: string,
@@ -23,9 +14,6 @@ export function applyResolvedReading(
 ): Partial<ValorizedFields> {
   const patch: Partial<ValorizedFields> = {};
   if (!original) return patch;
-  // Le mot ENTIER seulement : trancher « mis » en « mit » ne doit pas changer
-  // « mise » en « mite » ailleurs dans le récit — un texte qui part chez les
-  // proches. Une lettre ou un chiffre collé au mot fait de lui un autre mot.
   const escaped = original.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const whole = new RegExp(
     `(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`,
@@ -45,7 +33,6 @@ export function applyResolvedReading(
   return patch;
 }
 
-/** Marque l'incertitude `index` comme tranchée, sans toucher aux autres. */
 export function resolveUncertaintyAt(
   uncertainties: readonly Uncertainty[],
   index: number,

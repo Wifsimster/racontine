@@ -36,7 +36,6 @@ test("normalizeJournees découpe plusieurs journées distinctes par pages", () =
 });
 
 test("normalizeJournees rattache les pages non réclamées à la dernière journée", () => {
-  // Le modèle « oublie » la page 3 : elle ne doit pas être perdue.
   const raw = {
     journees: [
       day({ pages: [1], titre: "Jour 1" }),
@@ -75,9 +74,6 @@ test("normalizeJournees tolère une entrée malformée (champ manquant)", () => 
 });
 
 test("normalizeJournees sépare le mot lu de sa glose dans les incertitudes", () => {
-  // Le modèle écrit régulièrement le mot ET son explication dans `original` :
-  // c'est `original` qui sera remplacé dans le récit à la relecture, il ne peut
-  // donc pas porter la phrase entière. Voir uncertainties.ts.
   const raw = {
     journees: [
       day({

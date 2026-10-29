@@ -12,19 +12,13 @@ import type {
 import { resolveContributionTarget } from "./contribution-target.js";
 
 export type CreateNoteInput = TranscribedNote & {
-  /** Utilisateur au nom duquel on crée (droits vérifiés par enfant). */
   userId: string;
-  /** Facultatif si l'utilisateur ne suit qu'un seul enfant. */
   childId?: string;
-  /** AAAA-MM-JJ. Défaut : aujourd'hui. Rejeté (400) si mal formé. */
   date?: string;
-  /** Lieu de la journée. Défaut : nounou. Rejeté (400) si inconnu. */
   source?: string;
-  /** Publier directement plutôt que de laisser en brouillon (défaut : brouillon). */
   publish?: boolean;
 };
 
-/** Résultat de la création d'une journée déjà transcrite. */
 export type CreateNoteResult =
   | { ok: true; id: string; status: "draft" | "published" }
   | { ok: false; httpCode: number; error: string; id?: string };
@@ -35,24 +29,9 @@ export type TranscribedNoteDeps = {
   children: ChildDirectory;
   paywall: Paywall;
   notifier: PublicationNotifier;
-  /** Lance un effet de bord sans retarder la réponse (notification). */
   background: { run(label: string, task: () => Promise<void>): void };
 };
 
-/**
- * UNE JOURNÉE DÉJÀ ÉCRITE, sans photo ni lecture automatique.
- *
- * Contrepartie de l'ingestion pour les clients qui disposent déjà du récit
- * (transcription manuelle, autre OCR, saisie assistée…) : aucune clé d'API
- * n'est requise. Mêmes règles d'accès et de validation que l'ingestion — elles
- * sont littéralement le même code (`normalizeEntryMetadata`,
- * `resolveContributionTarget`), ce qui interdit aux deux chemins de diverger.
- *
- * Ne fusionne PAS avec une journée existante (contrairement à l'ajout de
- * pages) : un contenu déjà transcrit remplacerait silencieusement ce qui est
- * là. En cas de conflit, 409 avec l'id existant — la modification passe par
- * l'app.
- */
 export class TranscribedNoteService {
   constructor(private readonly deps: TranscribedNoteDeps) {}
 
@@ -61,10 +40,6 @@ export class TranscribedNoteService {
     if (!meta.ok) return meta;
     const { date, source } = meta.value;
 
-    /* Une journée déjà transcrite ne coûte ni photo ni appel au modèle — mais
-       c'est toujours une NOUVELLE journée dans le carnet, donc le même péage.
-       Sans cette ligne, l'outil MCP serait une porte dérobée autour de
-       l'abonnement, et le premier à la trouver serait un utilisateur. */
     const blocked = await this.deps.paywall.blockedReason();
     if (blocked) return { ok: false, httpCode: 402, error: blocked };
 
@@ -101,8 +76,6 @@ export class TranscribedNoteService {
       };
     }
 
-    // Publication directe : prévenir les abonnés en arrière-plan (comme le PATCH
-    // web). Effet de bord isolé — n'impacte ni la réponse ni la création.
     if (publish) {
       this.deps.background.run("Notification de publication", async () => {
         const childName = await this.deps.children.nameOf(childId);

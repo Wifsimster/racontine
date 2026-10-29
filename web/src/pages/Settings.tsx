@@ -28,17 +28,6 @@ import {
   InlineError,
 } from "@/components/PageState";
 
-/**
- * Une ligne de réglage : le libellé et son aide, puis le contrôle.
- *
- * ELLE S'EMPILE SOUS 480 px, et c'est la correction qui compte. En côte à côte,
- * un `Select` portant « claude-sonnet-4-5-20250929 » impose sa largeur
- * intrinsèque et écrase la colonne de gauche : l'aide « Modèle Claude vision
- * utilisé pour lire les carnets… » tombait sur NEUF lignes d'un ou deux mots, et
- * « Nom de l'instance » se coupait en « Nom de / l'instance ». Sur un téléphone,
- * le contrôle passe donc SOUS son libellé et prend toute la largeur ; le côte à
- * côte revient à partir de `sm`, où il y a la place.
- */
 function Row({
   icon: Icon,
   title,
@@ -51,7 +40,6 @@ function Row({
   title: string;
   hint?: string;
   htmlFor?: string;
-  /** Contrôle étroit (un interrupteur) : il reste à droite, même sur téléphone. */
   inline?: boolean;
   children: React.ReactNode;
 }) {
@@ -82,11 +70,6 @@ function Row({
   );
 }
 
-/**
- * Un service d'infrastructure, piloté par l'environnement (lecture seule).
- * L'état double la couleur par un MOT (« configuré » / « absent ») : il reste
- * lisible en niveaux de gris.
- */
 function StatusPill({ ok, label }: { ok: boolean; label: string }) {
   return (
     <div className="flex items-center gap-2 rounded-xl border bg-background px-3 py-3">
@@ -104,7 +87,6 @@ function StatusPill({ ok, label }: { ok: boolean; label: string }) {
   );
 }
 
-/** Une feuille de réglages : un intertitre, puis des lignes séparées par un filet. */
 function Section({
   label,
   children,
@@ -124,9 +106,6 @@ function Section({
 
 export default function Settings() {
   const [settings, setSettings] = useState<AppSettings | null>(null);
-  // Instantané des réglages chargés : on ne PATCHe que les champs réellement
-  // modifiés, sinon on figerait en base les valeurs héritées de l'environnement
-  // (elles cesseraient de suivre les variables d'env). Voir settings.ts.
   const [initial, setInitial] = useState<AppSettings | null>(null);
   const [meta, setMeta] = useState<SettingsMeta | null>(null);
   const [loading, setLoading] = useState(true);
@@ -168,8 +147,6 @@ export default function Settings() {
     setSaving(true);
     setError(null);
     try {
-      // N'envoyer que les champs modifiés : un champ laissé tel quel reste nul
-      // en base et continue de suivre le défaut d'environnement.
       const changed: Partial<AppSettings> = {};
       const assign = <K extends keyof AppSettings>(k: K) => {
         changed[k] = settings[k];
@@ -188,8 +165,6 @@ export default function Settings() {
     }
   }
 
-  /* Le bandeau reste dans les quatre états : le titre d'un écran ne dépend pas
-     de ses données. */
   const header = (
     <PageHeader
       title="Réglages"
@@ -347,7 +322,6 @@ export default function Settings() {
         </Row>
       </Section>
 
-      {/* Infrastructure : lecture seule, pilotée par l'environnement. */}
       <section className="flex flex-col gap-1">
         <SectionLabel className="px-1">Infrastructure</SectionLabel>
         <div className="flex flex-col gap-3 rounded-2xl border bg-card p-5 shadow-card">
@@ -388,11 +362,7 @@ export default function Settings() {
         </InlineError>
       )}
 
-      {/* La barre d'enregistrement : papier translucide (`bg-surface-bar`, alpha
-          déjà composé en sRGB — jamais `bg-background/95`), et sa marge basse
-          absorbe la barre gestuelle iOS. */}
       <div className="sticky bottom-0 -mx-4 flex items-center justify-end gap-3 border-t bg-surface-bar px-4 pt-3 pb-safe-4 backdrop-blur-md">
-        {/* `role="status"` : l'accusé de réception s'entend aussi. */}
         {saved && (
           <p
             role="status"

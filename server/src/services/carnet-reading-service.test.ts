@@ -16,10 +16,6 @@ import {
 } from "../testing/fakes.js";
 import { CarnetReadingService } from "./carnet-reading-service.js";
 
-/* Ce fichier lit des carnets ENTIERS sans Postgres, sans disque et sans appel
-   facturé : tout passe par les ports. Avant le découpage, aucun de ces cas
-   n'était atteignable en test. */
-
 function build(
   opts: {
     days?: Parameters<typeof carnetDay>[0][] | Error;
@@ -75,12 +71,10 @@ test("une journée unique passe de la lecture au brouillon, moments compris", as
   const entry = await entries.findById("e1");
   assert.equal(entry?.status, "draft");
   assert.equal(entry?.title, "Peinture et papillons");
-  // L'ordre des moments suit le registre : repas, siestes, activités…
   assert.deepEqual(
     entries.itemsOf("e1").map((i) => i.type),
     ["meal", "activity"],
   );
-  // Une note de santé blanche ne crée pas de moment.
   assert.equal(
     entries.itemsOf("e1").some((i) => i.type === "health"),
     false,
@@ -109,7 +103,6 @@ test("un carnet couvrant trois jours crée une journée par date, reliées par u
     days: [
       { pages: [1], date: "2026-02-01", titre: "Lundi" },
       { pages: [2], date: "2026-02-02", titre: "Mardi" },
-      // Date illisible : la journée suivante hérite de « veille + 1 ».
       { pages: [3], date: null, titre: "Mercredi" },
     ],
   });
@@ -127,7 +120,6 @@ test("un carnet couvrant trois jours crée une journée par date, reliées par u
       ["2026-02-03", "Mercredi", "batch-fixe"],
     ],
   );
-  // Les pages 2 et 3 ont suivi leur journée.
   assert.deepEqual(await attachments.pathsFor("e1"), ["p1.jpg"]);
   assert.deepEqual(await attachments.pathsFor(all[1].id), ["p2.jpg"]);
   assert.deepEqual(await attachments.pathsFor(all[2].id), ["p3.jpg"]);
@@ -152,14 +144,12 @@ test("une journée déjà publiée n'est jamais écrasée par un découpage", as
   await service.read("e1", ["p1.jpg", "p2.jpg"], "user-1");
 
   assert.equal((await entries.findById("e2"))?.title, "Déjà lue par les proches");
-  // Les pages restent sur l'entrée d'origine, avec un signalement à relire.
   assert.deepEqual(await attachments.pathsFor("e1"), ["p1.jpg", "p2.jpg"]);
   const signal = (await entries.findById("e1"))?.uncertainties?.at(-1);
   assert.match(signal?.contexte ?? "", /déjà publiée/);
 });
 
 test("une relecture humaine concurrente n'est pas écrasée par la sortie du modèle", async () => {
-  // L'entrée a été publiée pendant l'extraction : plus « processing ».
   const { service, entries } = build({
     entries: [entryRecord({ id: "e1", status: "published", title: "Écrit à la main" })],
     days: [{ titre: "Écrit par le modèle" }],
@@ -293,7 +283,6 @@ test("seule la dernière lecture lancée écrit : une page ajoutée n'est pas pe
   const { service, entries, background } = build({
     pages: { e1: ["p1.jpg"] },
   });
-  // Le lecteur rend d'abord la lecture partielle, puis la complète.
   let call = 0;
   (service as unknown as { deps: { reader: unknown } }).deps.reader = {
     read: async () => [

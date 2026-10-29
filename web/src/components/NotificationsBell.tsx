@@ -31,18 +31,15 @@ export default function NotificationsBell() {
       setItems(res.notifications);
       setUnread(res.unread);
     } catch {
-      /* silencieux : la cloche n'est pas critique */
     }
   }
 
   useEffect(() => {
     refresh();
-    // Rafraîchissement léger toutes les 60 s pour voir arriver les notifs.
     const t = setInterval(refresh, 60000);
     return () => clearInterval(t);
   }, []);
 
-  // Ferme le panneau au clic à l'extérieur.
   useEffect(() => {
     if (!open) return;
     function onDown(e: MouseEvent) {
@@ -54,10 +51,6 @@ export default function NotificationsBell() {
     return () => document.removeEventListener("mousedown", onDown);
   }, [open]);
 
-  // Positionne le panneau en fixe, calé sur la cloche mais borné à la fenêtre.
-  // La cloche n'est pas au bord droit de l'écran : un simple `right-0` ancré au
-  // bouton faisait déborder le panneau (320 px) hors de l'écran à gauche sur
-  // mobile. On calcule donc une position clampée dans le viewport.
   useLayoutEffect(() => {
     if (!open) return;
     function updatePos() {
@@ -66,8 +59,6 @@ export default function NotificationsBell() {
       const rect = btn.getBoundingClientRect();
       const margin = 8;
       const panelWidth = Math.min(320, window.innerWidth - 2 * margin);
-      // Distance depuis le bord droit du viewport pour aligner le panneau sur
-      // le bord droit de la cloche, bornée pour ne pas sortir à gauche ni à droite.
       let right = window.innerWidth - rect.right;
       const maxRight = window.innerWidth - panelWidth - margin;
       right = Math.max(margin, Math.min(right, maxRight));
@@ -90,9 +81,6 @@ export default function NotificationsBell() {
         ),
       );
       setUnread((u) => Math.max(0, u - 1));
-      // En cas d'échec, on annule la mise à jour optimiste : sans ça, le
-      // rafraîchissement périodique (60 s) ferait « remonter » le badge de façon
-      // déroutante alors que le serveur a toujours la notif comme non lue.
       api.markNotificationRead(n.id).catch(() => {
         setItems((prev) =>
           prev.map((x) => (x.id === n.id ? { ...x, readAt: n.readAt } : x)),
@@ -149,8 +137,6 @@ export default function NotificationsBell() {
           </div>
           <div className="max-h-96 overflow-y-auto">
             {items.length === 0 ? (
-              /* État vide dessiné : on nomme ce qui arrivera ici, on ne se
-                 contente pas d'un « Aucune notification ». */
               <div className="px-6 py-8 text-center">
                 <span className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
                   <Bell className="size-5" aria-hidden="true" />

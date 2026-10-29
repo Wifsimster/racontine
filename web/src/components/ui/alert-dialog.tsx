@@ -5,21 +5,6 @@ import { type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 
-/**
- * Confirmation. Un seul usage : on va détruire quelque chose.
- *
- * · Le voile (`--overlay-strong`) est l'encre du carnet en clair et un
- *   bleu-nuit très sombre en mode sombre — un voile fait de la couleur de
- *   PREMIER PLAN délaverait la page la nuit au lieu de la reculer. Il floute
- *   très légèrement ce qu'il recouvre — la page reste reconnaissable derrière.
- * · La feuille de dialogue reprend le rayon (24), l'ombre (`shadow-lift`) et
- *   le sérif du titre : c'est la même matière que le reste du produit.
- * · Les deux boutons font 44 px et, sur mobile, sont empilés avec l'action
- *   confirmatrice EN BAS (sous le pouce) mais lue en dernier — `flex-col-reverse`
- *   garde l'ordre DOM « annuler puis confirmer » pour le clavier.
- * · La feuille est centrée (jamais collée en bas) : sur un téléphone installé
- *   en PWA, une feuille ancrée au bord passe sous la barre gestuelle.
- */
 function AlertDialog({
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Root>) {

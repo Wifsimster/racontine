@@ -39,14 +39,7 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
       },
     });
   } catch (e) {
-    // Un abandon DEMANDÉ n'est pas une panne : il remonte tel quel pour que
-    // l'appelant puisse le reconnaître (`err.name === "AbortError"`) et écrire
-    // la bonne phrase. Le confondre avec une coupure réseau ferait dire
-    // « vérifiez votre réseau » à quelqu'un qui vient d'appuyer sur « arrêter ».
     if (e instanceof DOMException && e.name === "AbortError") throw e;
-    // fetch ne rejette (TypeError « Failed to fetch ») que si aucune réponse
-    // n'est arrivée : réseau coupé, requête trop volumineuse rejetée par le
-    // proxy, etc. On remonte un message lisible plutôt que l'erreur brute.
     throw new Error(
       "Connexion interrompue. Vérifiez votre réseau et réessayez.",
     );
@@ -55,16 +48,9 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
     let message = `Erreur ${res.status}`;
     try {
       const body = await res.json();
-      // Nos routes répondent `{ error }`. Les erreurs fabriquées par Fastify
-      // lui-même (limite de débit, corps trop gros, route inconnue) répondent
-      // `{ statusCode, error, message }`, où `error` ne porte que la phrase
-      // HTTP anglaise (« Too Many Requests ») et `message` la vraie phrase.
-      // Sans cette seconde lecture, l'utilisateur voyait l'étiquette anglaise
-      // du protocole au lieu de ce qu'on a écrit pour lui.
       if (typeof body?.message === "string" && body.message) message = body.message;
       else if (typeof body?.error === "string" && body.error) message = body.error;
     } catch {
-      /* pas de corps JSON */
     }
     throw new Error(message);
   }
@@ -93,12 +79,6 @@ export const api = {
     });
   },
 
-  /**
-   * Une page du fil. Trois cadrages, qui se combinent :
-   *   · `childId` — un seul carnet (le serveur l'acceptait déjà) ;
-   *   · `from`    — la date d'où l'on regarde (le saut de mois) ;
-   *   · `cursor`  — la suite, après la dernière journée reçue.
-   */
   timeline: (
     opts: {
       childId?: string | null;
@@ -116,7 +96,6 @@ export const api = {
     return req<TimelinePage>(`/api/entries${qs ? `?${qs}` : ""}`);
   },
 
-  /** Les mois du carnet et leur nombre de journées — la table des matières. */
   timelineMonths: (childId?: string | null) =>
     req<{ months: JournalMonth[] }>(
       `/api/entries/months${childId ? `?childId=${encodeURIComponent(childId)}` : ""}`,
@@ -124,17 +103,9 @@ export const api = {
 
   getEntry: (id: string) => req<Entry>(`/api/entries/${id}`),
 
-  /** Journées sœurs d'un même envoi couvrant plusieurs jours, triées par date. */
   getEntryBatch: (batchId: string) =>
     req<{ entries: BatchEntrySummary[] }>(`/api/entries/batch/${batchId}`),
 
-  /**
-   * `signal` ne change ni la route ni le corps : il donne seulement à l'écran de
-   * relecture le moyen d'ARRÊTER D'ATTENDRE une publication qui ne revient pas
-   * (cf. `Review.tsx`, `PublishProgress`). Une requête abandonnée peut avoir été
-   * appliquée côté serveur : c'est pourquoi l'écran dit « arrêter d'attendre »
-   * et non « annuler ».
-   */
   updateEntry: (
     id: string,
     patch: Partial<{
@@ -159,11 +130,6 @@ export const api = {
   deleteEntry: (id: string) =>
     req<void>(`/api/entries/${id}`, { method: "DELETE" }),
 
-  /**
-   * Relance la lecture d'une journée en échec, sur les pages DÉJÀ téléversées.
-   * Le serveur repasse la journée en `processing` et rend la main aussitôt :
-   * l'appelant se remet à sonder, comme après un import.
-   */
   retryEntryRead: (id: string) =>
     req<{ id: string; status: string }>(`/api/entries/${id}/retry`, {
       method: "POST",
@@ -175,12 +141,6 @@ export const api = {
       body: JSON.stringify({ value }),
     }),
 
-  /**
-   * Tourne une page d'un quart de tour horaire, POUR DE BON : le serveur
-   * réécrit la photo et sa miniature, et rend la page telle qu'elle est
-   * désormais — nouvelle URL comprise, sans quoi le navigateur resservirait
-   * l'ancienne orientation depuis son cache.
-   */
   rotateAttachment: (id: string, quarter = 1) =>
     req<AttachmentRef>(`/api/attachments/${id}/rotate`, {
       method: "POST",
@@ -189,8 +149,6 @@ export const api = {
 
   deleteAttachment: (id: string) =>
     req<void>(`/api/attachments/${id}`, { method: "DELETE" }),
-
-  /* ------------------------------ Partage ------------------------------- */
 
   listMembers: (childId: string) =>
     req<{ members: Member[]; invitations: PendingInvitation[] }>(
@@ -212,7 +170,6 @@ export const api = {
       body: JSON.stringify({ role }),
     }),
 
-  /** Nomme un proche sans nom (409 s'il en a déjà un : jamais d'écrasement). */
   setMemberName: (childId: string, userId: string, name: string) =>
     req<{ name: string }>(`/api/children/${childId}/members/${userId}/name`, {
       method: "PUT",
@@ -233,8 +190,6 @@ export const api = {
       { method: "POST" },
     ),
 
-  /* -------------------------- Abonnements ----------------------------- */
-
   getSubscription: (childId: string) =>
     req<SubscriptionStatus>(`/api/children/${childId}/subscription`),
 
@@ -252,8 +207,6 @@ export const api = {
       `/api/children/${childId}/subscribers`,
     ),
 
-  /* ------------------------- Notifications ---------------------------- */
-
   listNotifications: (limit = 30) =>
     req<{ notifications: Notification[]; unread: number }>(
       `/api/notifications?limit=${limit}`,
@@ -264,8 +217,6 @@ export const api = {
 
   markAllNotificationsRead: () =>
     req<void>("/api/notifications/read-all", { method: "POST" }),
-
-  /* ---------------------------- Web Push ------------------------------ */
 
   getPushPublicKey: () =>
     req<{ publicKey: string | null }>("/api/push/public-key"),
@@ -285,11 +236,7 @@ export const api = {
       body: JSON.stringify({ endpoint }),
     }),
 
-  /* --------------------------- Réglages ------------------------------- */
-
   me: () => req<Me>("/api/me"),
-
-  /* --------------------- Clé API LLM (par utilisateur) ---------------- */
 
   getLlmKey: () => req<UserLlm>("/api/me/llm"),
 
@@ -311,45 +258,23 @@ export const api = {
       body: JSON.stringify(patch),
     }),
 
-  /* ------------------------- Administration --------------------------- */
-
-  /**
-   * La console d'un administrateur : ses carnets, les gens qui y tiennent un
-   * rôle, les invitations en attente. Les GESTES, eux, restent ceux du partage
-   * (`setMemberRole`, `removeMember`, `revokeInvitation`) : une seule règle
-   * côté serveur, gardée enfant par enfant.
-   */
   adminConsole: () => req<AdminConsole>("/api/admin/console"),
-
-  /* --------------------------- Abonnement ----------------------------- */
 
   billing: () => req<Billing>("/api/billing"),
 
-  /**
-   * L'offre, SANS session : le tarif et l'essai, pour l'écran d'accueil de
-   * quelqu'un qui n'a pas encore de compte.
-   */
   billingOffer: () => req<BillingOffer>("/api/billing/offer"),
 
-  /** Ouvre la page de paiement Stripe (propriétaire du foyer). */
   startCheckout: () =>
     req<{ url: string }>("/api/billing/checkout", { method: "POST" }),
 
-  /** Portail Stripe : carte, factures, résiliation. */
   openBillingPortal: () =>
     req<{ url: string }>("/api/billing/portal", { method: "POST" }),
 
-  /**
-   * Rattrape le paiement au retour de Stripe, sans attendre le webhook : c'est
-   * ce qui évite d'afficher « essai terminé » trois secondes après un paiement.
-   */
   syncBilling: (session: string) =>
     req<Billing & { synced: boolean }>("/api/billing/sync", {
       method: "POST",
       body: JSON.stringify({ session }),
     }),
-
-  /* ---------------------------- Jetons MCP ---------------------------- */
 
   listMcpTokens: () => req<{ tokens: McpToken[] }>("/api/mcp/tokens"),
 
@@ -362,28 +287,16 @@ export const api = {
   revokeMcpToken: (id: string) =>
     req<void>(`/api/mcp/tokens/${id}`, { method: "DELETE" }),
 
-  /* ------------------ Emporter ses données, partir -------------------- */
-
-  /**
-   * L'archive du compte (zip : journal JSON + photos). Pas de `fetch` ici : un
-   * carnet d'un an pèse quelques centaines de mégaoctets de photos, qu'un blob
-   * garderait en mémoire — de quoi faire tomber l'onglet sur un téléphone. Un
-   * lien `download` laisse le navigateur écrire le flux sur le disque, avec le
-   * nom donné par `Content-Disposition` ; la session est un cookie, il suit.
-   */
   exportUrl: "/api/me/export",
 
-  /** Ce que l'effacement du compte emporterait — sans rien effacer. */
   erasurePreview: () => req<ErasurePreview>("/api/me/erasure"),
 
-  /** Efface le compte. `confirmation` est l'adresse e-mail, recopiée. */
   deleteMyAccount: (confirmation: string) =>
     req<{ deleted: true; carnets: { id: string; name: string }[] }>("/api/me", {
       method: "DELETE",
       body: JSON.stringify({ confirmation }),
     }),
 
-  /** Efface le carnet d'un enfant. `confirmation` est son prénom, recopié. */
   deleteChild: (childId: string, confirmation: string) =>
     req<{ deleted: true; name: string }>(`/api/children/${childId}`, {
       method: "DELETE",

@@ -8,9 +8,6 @@ import { hasChildRole } from "../access.js";
 export async function subscriptionsRoutes(app: FastifyInstance) {
   app.addHook("preHandler", requireUser);
 
-  /* --------------------------- Abonnements ------------------------------ */
-
-  /** Statut d'abonnement de l'utilisateur courant pour un enfant. */
   app.get<{ Params: { childId: string } }>(
     "/api/children/:childId/subscription",
     async (req) => {
@@ -31,7 +28,6 @@ export async function subscriptionsRoutes(app: FastifyInstance) {
     },
   );
 
-  /** S'abonner (ou mettre à jour la préférence e-mail). Idempotent. */
   app.put<{
     Params: { childId: string };
     Body: { emailEnabled?: boolean };
@@ -39,8 +35,6 @@ export async function subscriptionsRoutes(app: FastifyInstance) {
     const { childId } = req.params;
     const emailEnabled = req.body?.emailEnabled ?? true;
 
-    // S'abonner exige d'être membre du cercle de l'enfant (n'importe quel rôle).
-    // On ne divulgue pas l'existence d'un enfant non partagé : 404 uniforme.
     if (!(await hasChildRole(req.user!.id, childId, "reader")))
       return reply.code(404).send({ error: "enfant introuvable" });
 
@@ -55,7 +49,6 @@ export async function subscriptionsRoutes(app: FastifyInstance) {
     return { subscribed: true, emailEnabled };
   });
 
-  /** Se désabonner. */
   app.delete<{ Params: { childId: string } }>(
     "/api/children/:childId/subscription",
     async (req, reply) => {
@@ -71,12 +64,9 @@ export async function subscriptionsRoutes(app: FastifyInstance) {
     },
   );
 
-  /** Liste des proches abonnés à la timeline d'un enfant (admin uniquement). */
   app.get<{ Params: { childId: string } }>(
     "/api/children/:childId/subscribers",
     async (req, reply) => {
-      // Expose nom + e-mail des abonnés : réservé à l'admin de l'enfant, comme
-      // la liste des membres (sharing.ts). 404 uniforme si pas admin/inconnu.
       if (!(await hasChildRole(req.user!.id, req.params.childId, "admin")))
         return reply.code(404).send({ error: "enfant introuvable" });
 
@@ -96,9 +86,6 @@ export async function subscriptionsRoutes(app: FastifyInstance) {
     },
   );
 
-  /* -------------------------- Notifications ----------------------------- */
-
-  /** Notifications in-app de l'utilisateur courant + nombre de non-lues. */
   app.get<{ Querystring: { limit?: string } }>(
     "/api/notifications",
     async (req) => {
@@ -124,7 +111,6 @@ export async function subscriptionsRoutes(app: FastifyInstance) {
     },
   );
 
-  /** Marque une notification comme lue. */
   app.post<{ Params: { id: string } }>(
     "/api/notifications/:id/read",
     async (req, reply) => {
@@ -141,7 +127,6 @@ export async function subscriptionsRoutes(app: FastifyInstance) {
     },
   );
 
-  /** Marque toutes les notifications comme lues. */
   app.post("/api/notifications/read-all", async (req, reply) => {
     await db
       .update(notifications)

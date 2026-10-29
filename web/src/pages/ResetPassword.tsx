@@ -19,43 +19,8 @@ import {
   DoorSheetTitle,
 } from "@/components/Door";
 
-/* ===========================================================================
-   CHOISIR UN NOUVEAU MOT DE PASSE — la troisième porte.
-
-   On arrive ici par le lien reçu dans l'e-mail « Réinitialiser votre mot de
-   passe ». Ce lien ne mène pas directement à cette page : il passe d'abord par
-   le serveur (`/api/auth/reset-password/<jeton>`), qui vérifie le jeton et
-   redirige ici avec `?token=…` — ou avec `?error=INVALID_TOKEN` si le jeton a
-   expiré, a déjà servi, ou n'a jamais existé. Cette page n'a donc que trois
-   états, et ils sont dessinés tous les trois :
-
-     1. LE FORMULAIRE. Un seul champ, pas deux. Une confirmation « retapez le
-        mot de passe » ne vérifie que la constance d'une faute de frappe, et
-        elle double le travail sur un clavier de téléphone ; le bouton
-        « afficher » vérifie ce qui est VRAIMENT écrit, et il le vérifie avant
-        l'envoi. Le champ est en `new-password` : les gestionnaires de mots de
-        passe proposent d'en générer un, et surtout d'enregistrer le nouveau.
-     2. LE LIEN NE VAUT PLUS. Ce n'est pas une erreur de l'utilisateur : c'est
-        une heure qui est passée. On le dit sans faute à personne, et on donne
-        la sortie — redemander un lien depuis la connexion.
-     3. C'EST FAIT. Toutes les sessions ont été coupées côté serveur
-        (`revokeSessionsOnPasswordReset`) : on ne fait donc pas semblant
-        d'ouvrir le journal, on renvoie à la connexion, avec le mot de passe
-        tout neuf. Le nommer explicitement évite le doute de l'écran suivant.
-
-   La porte hérite du carnet (`Door.tsx`) : même réglure, même colonne de
-   26 rem, même feuille posée sur le trait de marge que la connexion et
-   l'invitation. Aucun objet nouveau n'est inventé ici.
-   =========================================================================== */
-
-/** Le minimum imposé par Better Auth (`minPasswordLength`), annoncé AVANT la saisie. */
 const MIN_LENGTH = 8;
 
-/**
- * Le serveur ne parle pas français, et ses deux refus ne se soignent pas de la
- * même façon : un jeton mort change d'écran (le formulaire ne sert plus à
- * rien), un mot de passe trop court se corrige sur place.
- */
 function isDeadToken(message: string): boolean {
   return /invalid.?token|expired|jeton/i.test(message);
 }
@@ -63,9 +28,6 @@ function isDeadToken(message: string): boolean {
 export default function ResetPassword() {
   const [params] = useSearchParams();
   const token = params.get("token") ?? "";
-  /* Le serveur redirige ici avec `?error=INVALID_TOKEN` quand il a refusé le
-     jeton. Sans jeton du tout, on est arrivé par un lien tronqué (les clients
-     de messagerie coupent parfois une URL longue) : même écran, même sortie. */
   const dead = !token || !!params.get("error");
 
   const [password, setPassword] = useState("");
@@ -92,10 +54,6 @@ export default function ResetPassword() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (busy) return;
-    /* Le minimum est vérifié ICI aussi, et pas seulement par le serveur : un
-       aller-retour réseau pour apprendre qu'il manque deux caractères, c'est
-       une seconde perdue et un message en anglais. Le formulaire est
-       `noValidate` : c'est NOTRE phrase qui s'affiche, pas une bulle native. */
     if (password.length < MIN_LENGTH) {
       setError(
         `Le mot de passe doit faire ${MIN_LENGTH} caractères au moins.`,
@@ -129,10 +87,6 @@ export default function ResetPassword() {
     }
   }
 
-  /* LE BANDEAU NE CONTREDIT JAMAIS LA FEUILLE. « Choisissez un nouveau mot de
-     passe » écrit au-dessus de « ce lien ne vaut plus », c'est une page qui se
-     dément en deux lignes ; quand il n'y a plus rien à choisir, le haut de page
-     redevient celui du produit — la même phrase que la porte d'invitation. */
   const lede = done
     ? "Votre mot de passe est changé : le carnet vous attend."
     : dead || expired
@@ -146,7 +100,6 @@ export default function ResetPassword() {
     </DoorPage>
   );
 
-  /* 3 — C'est fait. */
   if (done) {
     return frame(
       <DoorSheet role="status">
@@ -170,7 +123,6 @@ export default function ResetPassword() {
     );
   }
 
-  /* 2 — Le lien ne vaut plus : ce n'est la faute de personne, et il y a une sortie. */
   if (dead || expired) {
     return frame(
       <DoorSheet>
@@ -202,7 +154,6 @@ export default function ResetPassword() {
     );
   }
 
-  /* 1 — Le formulaire. */
   return frame(
     <DoorSheet>
       <form
@@ -219,9 +170,6 @@ export default function ResetPassword() {
 
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="new-password">Votre nouveau mot de passe</Label>
-          {/* Le champ et le bouton « afficher » sont UN objet : le bouton est
-              posé dans le champ, à droite, sur 44 px de cible. `pr-14` réserve
-              sa place pour que le texte saisi ne passe jamais dessous. */}
           <div className="relative">
             <Input
               id="new-password"
@@ -245,8 +193,6 @@ export default function ResetPassword() {
               variant="ghost"
               size="sm"
               className="absolute inset-y-0 right-0 my-auto px-3 font-normal text-muted-foreground hover:bg-transparent hover:text-foreground"
-              /* `aria-pressed` plutôt qu'un libellé qui change de sens : le
-                 bouton dit toujours ce qu'il FAIT, son état dit où l'on en est. */
               aria-pressed={shown}
               onClick={() => {
                 setShown((v) => !v);

@@ -3,21 +3,6 @@ import { requireUser } from "../plugins/auth.js";
 import { requireChildAdminAccess } from "../access.js";
 import { sharing } from "../composition.js";
 
-/* ===========================================================================
-   LA COUCHE HTTP DU PARTAGE.
-
-   Les règles du cercle — « il doit rester au moins un administrateur », « une
-   invitation ne sert qu'une fois », « elle est nominative » — vivaient ici,
-   entre deux requêtes SQL. Elles sont dans `services/sharing-service.ts`, où
-   elles se vérifient sans base ni requête HTTP ; ces gestionnaires ne font plus
-   que garder la porte et traduire le résultat.
-   =========================================================================== */
-
-/**
- * Garde : l'appelant doit être admin de l'enfant, sinon 403 (404 si absent).
- * La RÈGLE est dans `access.ts`, partagée avec les outils MCP du cercle ; ici
- * on ne fait que la traduire en réponse HTTP.
- */
 async function requireChildAdmin(
   req: FastifyRequest,
   reply: FastifyReply,
@@ -32,9 +17,6 @@ async function requireChildAdmin(
 }
 
 export async function sharingRoutes(app: FastifyInstance) {
-  /* ------------------------- Membres & invitations ---------------------- */
-
-  // Cercle d'un enfant : membres + invitations en attente (admin uniquement).
   app.get<{ Params: { childId: string } }>(
     "/api/children/:childId/members",
     { preHandler: requireUser },
@@ -44,7 +26,6 @@ export async function sharingRoutes(app: FastifyInstance) {
     },
   );
 
-  // Inviter un proche (admin).
   app.post<{
     Params: { childId: string };
     Body: { email?: string; role?: string };
@@ -73,15 +54,12 @@ export async function sharingRoutes(app: FastifyInstance) {
     },
   );
 
-  // Révoquer une invitation en attente (admin de l'enfant concerné).
   app.delete<{ Params: { id: string } }>(
     "/api/invitations/:id",
     { preHandler: requireUser },
     async (req, reply) => {
       const inv = await sharing.findInvitation(req.params.id);
       if (!inv) return reply.code(204).send();
-      // L'autorisation se vérifie AVANT de révoquer — et il faut d'abord
-      // retrouver l'invitation pour savoir de quel enfant elle relève.
       if (!(await requireChildAdmin(req, reply, inv.childId))) return;
       if (
         inv.status === "accepted" ||
@@ -95,7 +73,6 @@ export async function sharingRoutes(app: FastifyInstance) {
     },
   );
 
-  // Changer le rôle d'un membre (admin). Interdit de retirer le dernier admin.
   app.patch<{
     Params: { childId: string; userId: string };
     Body: { role?: string };
@@ -115,7 +92,6 @@ export async function sharingRoutes(app: FastifyInstance) {
     },
   );
 
-  // Nommer un proche qui n'a pas de nom (admin). Jamais d'écrasement.
   app.put<{
     Params: { childId: string; userId: string };
     Body: { name?: string };
@@ -135,7 +111,6 @@ export async function sharingRoutes(app: FastifyInstance) {
     },
   );
 
-  // Retirer un membre (admin). Interdit de retirer le dernier admin.
   app.delete<{ Params: { childId: string; userId: string } }>(
     "/api/children/:childId/members/:userId",
     { preHandler: requireUser },
@@ -151,9 +126,6 @@ export async function sharingRoutes(app: FastifyInstance) {
     },
   );
 
-  /* ----------------------- Réception d'une invitation ------------------- */
-
-  // Aperçu public (le jeton est la capacité) : ce que le proche va accepter.
   app.get<{ Params: { token: string } }>(
     "/api/invitations/token/:token",
     async (req, reply) => {
@@ -164,7 +136,6 @@ export async function sharingRoutes(app: FastifyInstance) {
     },
   );
 
-  // Accepter : crée l'adhésion pour l'utilisateur connecté (auth requise).
   app.post<{ Params: { token: string } }>(
     "/api/invitations/token/:token/accept",
     { preHandler: requireUser },

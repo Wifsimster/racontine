@@ -19,7 +19,7 @@ test("decodeBase64Image décode un base64 nu", () => {
 });
 
 test("decodeBase64Image accepte un préfixe data: URI", () => {
-  const raw = Buffer.from([0xff, 0xd8, 0xff, 0xe0]); // en-tête JPEG
+  const raw = Buffer.from([0xff, 0xd8, 0xff, 0xe0]);
   const buf = decodeBase64Image(`data:image/jpeg;base64,${raw.toString("base64")}`);
   assert.ok(buf);
   assert.deepEqual([...buf], [...raw]);

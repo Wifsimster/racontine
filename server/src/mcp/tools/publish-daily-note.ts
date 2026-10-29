@@ -2,12 +2,6 @@ import { z } from "zod";
 import type { McpTool } from "../protocol.js";
 import { errorContent, jsonContent } from "../protocol.js";
 
-/**
- * Publie un brouillon déjà relu. La règle est celle de la relecture humaine
- * (`EntryEditingService`) — contrôle d'accès, transition de publication et
- * notification des proches comprises : publier depuis un agent et publier
- * depuis l'écran de relecture, c'est le même chemin.
- */
 export const publishDailyNoteTool: McpTool = {
   name: "publish_daily_note",
   register(server, ctx) {
@@ -33,8 +27,6 @@ export const publishDailyNoteTool: McpTool = {
         });
         if (!result.ok) return errorContent(result.error);
 
-        // On rend la journée telle qu'elle vient d'être publiée : l'agent voit
-        // ce que les proches vont lire, sans second appel.
         const published = await ctx.queries.findNote(ctx.user.id, entryId);
         return jsonContent({
           id: entryId,

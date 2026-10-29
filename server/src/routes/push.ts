@@ -6,8 +6,6 @@ import { pushSubscriptions } from "../db/schema.js";
 import { requireUser } from "../plugins/auth.js";
 import { isPushServiceEndpoint, vapidPublicKey } from "../push.js";
 
-// Un abonnement PushSubscription tel que sérialisé par le navigateur
-// (`subscription.toJSON()`). On ne retient que ce dont web-push a besoin.
 const subscribeSchema = z.object({
   endpoint: z
     .string()
@@ -26,20 +24,10 @@ const unsubscribeSchema = z.object({
 export async function pushRoutes(app: FastifyInstance) {
   app.addHook("preHandler", requireUser);
 
-  /**
-   * Clé publique VAPID (ou null si le push est désactivé côté serveur). Le
-   * client s'en sert comme `applicationServerKey` pour s'abonner ; elle n'est
-   * pas secrète.
-   */
   app.get("/api/push/public-key", async () => {
     return { publicKey: vapidPublicKey() };
   });
 
-  /**
-   * Enregistre (ou réattribue) l'abonnement push de l'appareil courant.
-   * Idempotent : l'endpoint est unique — on met à jour les clés et le
-   * propriétaire s'il est déjà connu (un appareil partagé change de compte).
-   */
   app.post("/api/push/subscribe", async (req, reply) => {
     const parsed = subscribeSchema.safeParse(req.body);
     if (!parsed.success)
@@ -62,7 +50,6 @@ export async function pushRoutes(app: FastifyInstance) {
     return reply.code(204).send();
   });
 
-  /** Supprime l'abonnement push de l'appareil courant (par endpoint). */
   app.post("/api/push/unsubscribe", async (req, reply) => {
     const parsed = unsubscribeSchema.safeParse(req.body);
     if (!parsed.success)

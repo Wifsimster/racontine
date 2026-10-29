@@ -50,63 +50,12 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { DayStepper } from "@/components/DayStepper";
 import { CaptureSteps, type Step } from "@/components/CaptureSteps";
-/* ===========================================================================
-   LA RELECTURE — l'écran de la confiance.
-
-   Une machine a lu une page manuscrite ; un humain doit pouvoir dire « oui »
-   en quelques secondes. Trois décisions tiennent tout l'écran :
-
-   1. LA CONFIANCE EST LA SEULE DIMENSION COLORÉE. Ambre = « à vérifier »,
-      vert = « confirmé », groseille = l'action, et RIEN d'autre n'a de
-      couleur : les cinq feutres de catégorie (repas, sieste…) passent
-      volontairement en gris ici (voir lib/ui.ts). Deux systèmes de couleur sur
-      le même écran, et plus aucun ne veut dire quelque chose.
-   2. CE QUI DEMANDE UN HUMAIN EST AU-DESSUS DE LA LIGNE DE FLOTTAISON. Avant,
-      le premier écran ne montrait qu'un stepper et une photo de carnet plein
-      cadre : il fallait scroller pour découvrir qu'il y avait quoi que ce soit
-      à corriger. Désormais la photo est une SOURCE (repliée sur mobile,
-      colonne collante sur grand écran) et les lectures incertaines viennent
-      juste après l'en-tête.
-   3. ON VOIT CE QU'ON S'APPRÊTE À PUBLIER. C'était le défaut de fond de la
-      version précédente : les cinq moments structurés — les repas, les
-      siestes, les activités, c'est-à-dire la SUBSTANCE d'un carnet de liaison —
-      dormaient dans un dépli « secondaire » à 1 800 px du haut du document. On
-      pouvait appuyer sur « Publier la journée » sans avoir jamais vu ni le
-      déjeuner ni la sieste. Ils sont maintenant en clair, juste sous les
-      lectures à vérifier, en LISTE DE COUP D'ŒIL non modifiable : une ligne de
-      56 px par moment, libellé + valeur + état (« à vérifier » / « confirmé »).
-      Le dépli reste, mais il ne sert plus qu'à CORRIGER.
-   4. LA SOURCE ET LA JOURNÉE SONT MISES EN REGARD. Le panneau de gauche a deux
-      onglets — la page photographiée et la transcription mot à mot — face à la
-      journée réécrite à droite : on peut confronter ce qui est écrit sur le
-      papier et ce qui sera publié, sans quitter l'écran.
-   5. UNE SEULE INCERTITUDE EST OUVERTE À LA FOIS. Deux cartes dépliées de
-      210 px mangeaient toute la hauteur utile ; et une fois la première
-      tranchée, la deuxième s'ouvre d'elle-même. Les autres se replient en
-      lignes de 56 px qui disent quand même le mot lu et où il se trouve.
-
-   LA BARRE D'ACTION NE PORTE QU'UNE DÉCISION, et elle est OPAQUE. À 0,88
-   d'alpha, dix nœuds de texte se lisaient encore à travers elle sans être
-   cliquables : un fantôme légible est un mensonge. Elle est passée de 157 px à
-   101 px (une ligne de conséquence + le bouton), ce qui ramène le chrome de
-   25,4 % à 18,7 % de l'écran — sous le plafond de 22 %. « Enregistrer le
-   brouillon » descend en bas de la colonne : c'est une action d'appoint, pas
-   une décision.
-
-   Les quatre états sont dessinés (I7) : squelette à la forme de la réponse,
-   lecture en cours (progression réelle : page N sur M), échec de lecture et
-   échec d'accès — chacun avec sa cause, son remède, ses sorties et le code
-   brut sur demande. Rien n'affiche jamais une exception nue.
-   =========================================================================== */
 
 const SOURCES: EntrySource[] = ["nounou", "mam", "creche", "maison"];
 
 export default function Review() {
   const { id = "" } = useParams();
   const nav = useNavigate();
-  /* L'état de la DONNÉE (chargement, sondage, rôles, lot, brouillon et son
-     empreinte) vit dans son propre hook ; ce composant garde ce qui est de
-     l'écran. Les noms sont déstructurés tels quels : le rendu ne change pas. */
   const {
     entry,
     setEntry,
@@ -139,12 +88,7 @@ export default function Review() {
   } = useReviewEntry(id);
   const [saving, setSaving] = useState<"draft" | "publish" | null>(null);
   const [error, setError] = useState<string | null>(null);
-  /* Deux natures d'échec, deux dessins. « save » : le serveur a refusé ou n'a
-     pas répondu — c'est rouge, et rien n'est perdu. « stopped » : NOUS avons
-     arrêté d'attendre, donc l'état de la journée est INCONNU — c'est ambre, la
-     teinte que ce produit réserve à « à vérifier », et le texte le dit. */
   const [errorKind, setErrorKind] = useState<"save" | "stopped">("save");
-  /** Secondes écoulées depuis le tap de publication. Cf. `PublishProgress`. */
   const [publishSeconds, setPublishSeconds] = useState(0);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmRemoveAttachment, setConfirmRemoveAttachment] = useState<
@@ -154,55 +98,28 @@ export default function Review() {
     null,
   );
   const [resolvingIndex, setResolvingIndex] = useState<number | null>(null);
-  /** La source est repliée sur mobile (l'écran appartient à la correction) et
-      dépliée dès `md` où elle tient dans sa propre colonne. */
   const [sourceOpen, setSourceOpen] = useState(false);
   const [sourceTab, setSourceTab] = useState<"pages" | "texte">("pages");
-  /** Rotations EN COURS D'ENREGISTREMENT, par pièce jointe : le quart de tour
-      est montré tout de suite, le serveur réécrit la photo derrière. Retombe à
-      zéro dès que la page tournée revient (cf. `rotateAttachment`). */
   const [rotating, setRotating] = useState<Record<string, number>>({});
-  /* Les rotations en attente sont attachées à la journée qu'on relit, pas au
-     composant : d'une journée d'un lot à la suivante, la route est la même et
-     l'état survivait — la page 1 de la journée suivante arrivait tournée du
-     quart de tour donné à la précédente. */
   useEffect(() => setRotating({}), [id]);
-  /** Le dépli de correction est piloté par l'état : `group-open:` ne génère
-      aucune règle dans ce Tailwind, le chevron ne tournait jamais. */
   const [itemsOpen, setItemsOpen] = useState(false);
-  /** Incertitude dépliée. `null` = « la première non tranchée », ce qui fait
-      que la suivante s'ouvre d'elle-même dès qu'on a tranché celle-ci. */
   const [openUncertainty, setOpenUncertainty] = useState<number | null>(null);
-  /** Dernière incertitude tranchée : on s'assure que la confirmation verte est
-      RÉELLEMENT visible (elle atterrissait derrière la barre d'action). */
   const [justResolved, setJustResolved] = useState<number | null>(null);
-  /** Champ à faire remonter et à donner au clavier (revenir sur un choix). */
   const [focusField, setFocusField] = useState<UncertaintyField | null>(null);
-  /** Relance de lecture en cours : le bouton porte l'attente, pas une roue. */
   const [retrying, setRetrying] = useState(false);
   const barRef = useRef<HTMLDivElement>(null);
-  /** Le PATCH de publication en cours, pour pouvoir cesser de l'attendre. */
   const publishAbort = useRef<AbortController | null>(null);
-  /** La lecture à trancher n'a pris le focus qu'une fois par journée ouverte. */
   const focusedReading = useRef<string | null>(null);
-  /** Notre propre navigation (publier, supprimer) : le garde-fou se tait. */
   const leaving = useRef(false);
 
 
 
 
-  /* Le compteur de la publication. Une seconde de granularité : c'est la seule
-     information DÉTERMINÉE qu'on possède sur une requête dont le serveur ne
-     rapporte pas l'avancement, et elle suffit à transformer « ça tourne » en
-     « ça fait 12 secondes ». Il ne tourne QUE pendant la publication. */
   useEffect(() => {
     if (saving !== "publish") {
       setPublishSeconds(0);
       return;
     }
-    // `performance.now()` et non `Date.now()` : une horloge MONOTONE, insensible
-    // à un changement d'heure système pendant l'attente (et non figeable par un
-    // harnais de mesure, ce qui rend le chiffre vérifiable de l'extérieur).
     const start = performance.now();
     const t = setInterval(
       () => setPublishSeconds(Math.round((performance.now() - start) / 1000)),
@@ -218,11 +135,6 @@ export default function Review() {
   );
   const pending = uncertainties.filter((u) => !u.resolved).length;
 
-  /** Les mots encore douteux, en motifs : une ligne de la journée qui en
-      contient un porte « à vérifier », les autres « confirmé ». La casse est
-      ignorée — le carnet écrit « Gratin de courgettes », la machine a signalé
-      « gratin de courgettes » — et le mot doit être trouvé EN TANT QUE MOT
-      (cf. `wordMatcher`). */
   const flaggedValues = useMemo(
     () =>
       uncertainties
@@ -232,11 +144,6 @@ export default function Review() {
     [uncertainties],
   );
 
-  /** Où le mot douteux a été lu, dans l'ordre de ce qui aide à le RETROUVER
-      SUR LA PHOTO : la transcription d'abord (c'est le carnet mot pour mot),
-      puis le champ que le modèle désigne, puis le reste. Le champ désigné passe
-      en second à dessein — « dans le récit » situe le mot dans une reformulation
-      de la machine, la transcription le situe sur le papier. */
   const phraseFor = useCallback(
     (u: Uncertainty): string | null => {
       const named =
@@ -256,8 +163,6 @@ export default function Review() {
     [transcription, story, highlight, title],
   );
 
-  /** L'incertitude dépliée : celle qu'on a choisie si elle est encore à
-      trancher, sinon la première qui reste. */
   const openIndex = useMemo(() => {
     const left = uncertainties
       .map((u, i) => ({ u, i }))
@@ -268,20 +173,10 @@ export default function Review() {
       : (left[0] ?? null);
   }, [uncertainties, openUncertainty]);
 
-  /* ── CE QUI DEMANDE UN HUMAIN PREND LE FOCUS ──────────────────────────────
-     Mesuré à l'arrivée sur cet écran : `document.activeElement === <body>`. La
-     carte à trancher était pourtant déjà dépliée, en haut, ambre — mais un
-     clavier arrivait sur RIEN, et un lecteur d'écran annonçait le titre de la
-     page puis se taisait. Le focus va donc sur la lecture à trancher, une seule
-     fois par journée ouverte (`focusedReading` porte l'id de la journée, pour
-     que la journée suivante d'un lot le reçoive à son tour), et jamais si le
-     travail est déjà commencé : voler le focus à quelqu'un qui écrit est pire
-     que de ne pas le donner. */
   useEffect(() => {
     if (!entry || entry.status === "processing") return;
     if (focusedReading.current === entry.id) return;
     if (openIndex === null) {
-      // Rien à trancher : personne n'est appelé, on ne déplace rien.
       focusedReading.current = entry.id;
       return;
     }
@@ -289,7 +184,6 @@ export default function Review() {
     if (!el) return;
     const active = document.activeElement;
     if (active && active !== document.body && el.contains(active) === false) {
-      // Quelqu'un a déjà la main quelque part : on ne la lui prend pas.
       focusedReading.current = entry.id;
       return;
     }
@@ -297,10 +191,6 @@ export default function Review() {
     el.focus();
   }, [entry, openIndex]);
 
-  /** Rend `true` si le serveur a bien pris l'enregistrement. Ce booléen n'est
-   *  pas décoratif : le garde-fou de sortie s'en sert pour ne PAS quitter quand
-   *  l'enregistrement a échoué — sinon « Enregistrer, puis quitter » perdrait le
-   *  travail exactement dans le cas qu'il est censé protéger. */
   const save = useCallback(
     async (publish: boolean): Promise<boolean> => {
       setSaving(publish ? "publish" : "draft");
@@ -314,12 +204,7 @@ export default function Review() {
           ctrl?.signal,
         );
         if (publish) {
-          // On sort de l'écran : le garde-fou « travail non enregistré » ne doit
-          // pas se déclencher sur notre propre navigation.
           leaving.current = true;
-          // Journée publiée dans un lot multi-jours : enchaîne directement sur
-          // la prochaine journée du carnet à valider plutôt que de revenir au
-          // journal, pour valider le lot journée par journée.
           const batchId = entry?.batchId;
           const next = batchId
             ? await api
@@ -327,20 +212,8 @@ export default function Review() {
                 .then((r) => r.entries.find((d) => d.status !== "published"))
                 .catch(() => undefined)
             : undefined;
-          /* `replace` : sans lui, le bouton RETOUR du téléphone reposait le
-             parent dans l'ÉDITEUR de la journée qu'il venait de publier —
-             titrée « Relire la journée », badgée « publiée » et « à vérifier ».
-             Rien de destructeur, mais on croit avoir défait ce qu'on vient de
-             faire. La journée publiée se relit désormais par le journal, comme
-             tout le reste. */
           if (next) nav(`/entries/${next.id}`, { replace: true });
           else
-            /* LE REÇU. `nav("/")` renvoyait au journal sans un mot : rien ne
-               disait que la journée était partie, ni que les proches étaient
-               prévenus. On emporte donc de quoi l'écrire là-bas — le titre tel
-               qu'on vient de le relire, et si c'est une PREMIÈRE publication ou
-               une correction remise en ligne (le mot change : « publiée » /
-               « republiée »). Cf. `Timeline.tsx`, composant `Receipt`. */
             nav("/", {
               replace: true,
               state: {
@@ -358,10 +231,6 @@ export default function Review() {
         }
         return true;
       } catch (err) {
-        /* L'ABANDON DEMANDÉ dit la vérité, et toute la vérité : on a cessé
-           d'attendre, mais le serveur a peut-être appliqué la publication. Le
-           mensonge confortable (« publication annulée ») ferait croire que la
-           journée n'est pas partie alors qu'elle peut l'être. */
         const stopped = err instanceof DOMException && err.name === "AbortError";
         setErrorKind(stopped ? "stopped" : "save");
         setError(
@@ -381,21 +250,6 @@ export default function Review() {
     [id, entry?.batchId, nav, hydrate, items, title, story, highlight, mood, transcription, source, date],
   );
 
-  /* ── LE TRAVAIL NE SE PERD PLUS ───────────────────────────────────────────
-     Cet écran est le seul du produit où l'on ÉCRIT. Un récit repris à la main,
-     un temps fort reformulé, trois moments corrigés : tout cela vivait dans
-     l'état React et dans rien d'autre. Un rechargement, un retour au journal,
-     un tap sur le nom de l'instance en haut, et c'était perdu sans un mot —
-     alors que la journée, elle, reste un brouillon côté serveur.
-
-     Deux garde-fous, et seulement quand il y a VRAIMENT quelque chose à perdre
-     (`dirty` compare des empreintes normalisées, cf. `fingerprint`) : une
-     confirmation qui se déclenche à vide est une confirmation qu'on apprend à
-     ignorer. Aucun des deux ne se déclenche sur nos propres sorties (publier,
-     supprimer, passer à la journée suivante du lot). */
-
-  // 1. Rechargement, fermeture de l'onglet : la boîte native du navigateur est
-  //    ici la SEULE chose qui puisse s'interposer.
   useEffect(() => {
     if (!dirty) return;
     const warn = (e: BeforeUnloadEvent) => {
@@ -406,10 +260,6 @@ export default function Review() {
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty]);
 
-  // 2. Navigation interne (le journal, les réglages, le menu) : notre propre
-  //    dialogue, en français, avec la sortie qui manquait — « enregistrer PUIS
-  //    quitter ». Un garde-fou qui ne propose que « perdre » ou « rester » est
-  //    un garde-fou qui fait perdre du travail une fois sur deux.
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
       dirty &&
@@ -417,17 +267,9 @@ export default function Review() {
       currentLocation.pathname !== nextLocation.pathname,
   );
 
-  /* Peut-on écrire dans CETTE journée ? Rôle encore inconnu → oui : on ne
-     bloque pas le geste du soir sur une requête secondaire, et le serveur reste
-     l'arbitre (son refus est dessiné). */
   const canEditEntry =
     !entry || roles === null ? true : canWrite(roles.get(entry.childId));
 
-  // Le chemin clavier existe et il est MONTRÉ (barre d'indices sous les
-  // actions) : ⌘/Ctrl + ⏎ publie sans viser un bouton. Il suit la même règle que
-  // le bouton : pas de raccourci vers une publication qu'on n'a pas le droit de
-  // faire — sinon un lecteur déclenche un 403 invisible depuis un écran qui ne
-  // montre aucun bouton de publication.
   useEffect(() => {
     if (!canEditEntry) return;
     function onKey(e: KeyboardEvent) {
@@ -439,11 +281,6 @@ export default function Review() {
     return () => window.removeEventListener("keydown", onKey);
   }, [save, canEditEntry]);
 
-  // Persiste d'abord le brouillon en cours (les champs de valorisation ont pu
-  // être retouchés à la main sans être encore enregistrés), puis applique la
-  // correction choisie : elle remplace le mot incertain dans les champs
-  // enregistrés et alimente le glossaire de l'enfant pour les prochaines
-  // lectures (voir corrections.ts côté serveur).
   async function resolveUncertainty(index: number, value: string) {
     setResolvingIndex(index);
     setError(null);
@@ -451,8 +288,6 @@ export default function Review() {
       await api.updateEntry(id, currentPatch());
       const e = await api.resolveUncertainty(id, index, value);
       hydrate(e);
-      // On rend la main au calcul « la première non tranchée » : la lecture
-      // suivante s'ouvre toute seule, sans un tap de plus.
       setOpenUncertainty(null);
       setJustResolved(index);
     } catch (err) {
@@ -462,15 +297,6 @@ export default function Review() {
     }
   }
 
-  /* APRÈS UN CHOIX, ON MONTRE CE QUI RESTE À FAIRE — et s'il ne reste rien, on
-     montre la confirmation.
-     Avant, la confirmation verte de son propre geste atterrissait 44 px
-     DERRIÈRE la barre d'action : on ne la voyait jamais. La corriger en
-     défilant systématiquement dessus serait aussi faux : ce qui compte après
-     avoir tranché une lecture, c'est la suivante. Donc : cible = la prochaine
-     lecture à trancher si elle existe, sinon le reçu vert ; et on ne défile que
-     si la cible n'est pas déjà dans la bande lisible (sous l'en-tête, au-dessus
-     de la barre) — jamais en douceur si l'on a demandé moins de mouvement. */
   useEffect(() => {
     if (justResolved === null) return;
     const el = document.getElementById(
@@ -479,7 +305,7 @@ export default function Review() {
     setJustResolved(null);
     if (!el) return;
     const r = el.getBoundingClientRect();
-    const top = 64; // l'en-tête de l'application
+    const top = 64;
     const bottom = window.innerHeight - (barRef.current?.offsetHeight ?? 104) - 8;
     if (r.top >= top && r.bottom <= bottom) return;
     el.scrollIntoView({
@@ -490,11 +316,6 @@ export default function Review() {
     });
   }, [justResolved, uncertainties, openIndex]);
 
-  /* « Revenir sur ce choix » : le serveur refuse de re-trancher une lecture
-     (409), et c'est juste — mais le mot, lui, reste modifiable à la main. On
-     emmène donc l'utilisateur sur le champ où la substitution a eu lieu, on
-     l'ouvre si besoin (la transcription vit derrière un onglet, replié sur
-     mobile) et on lui donne le clavier. C'est l'annulation qui manquait. */
   useEffect(() => {
     if (!focusField) return;
     const target =
@@ -509,8 +330,6 @@ export default function Review() {
       focusField === "transcription_integrale" &&
       (!sourceOpen || sourceTab !== "texte")
     ) {
-      // Deux passes : on ouvre d'abord le panneau, l'effet se rejoue quand la
-      // zone de texte est montée (sinon on cherchait un élément inexistant).
       setSourceOpen(true);
       setSourceTab("texte");
       return;
@@ -533,13 +352,6 @@ export default function Review() {
     nav("/");
   }
 
-  /* Relancer la lecture sur les pages DÉJÀ téléversées.
-     « Reprendre la photo » était la seule sortie d'un échec : c'est la bonne
-     quand la page est floue, c'est la mauvaise quand la lecture est morte avec
-     le serveur (un redémarrage). Dans ce cas les pages sont intactes et le
-     carnet papier est reparti chez la nounou — on ne peut PAS rephotographier.
-     Après la relance, la journée repasse en `processing` : `reloadKey` relance
-     `fetchEntry`, qui se remet à sonder tout seul jusqu'au brouillon. */
   async function retryRead() {
     setRetrying(true);
     setError(null);
@@ -557,13 +369,6 @@ export default function Review() {
     }
   }
 
-  /* TOURNER UNE PAGE, ET QUE ÇA RESTE.
-     Le quart de tour part au serveur, qui réécrit la photo et sa miniature : la
-     page est droite pour de bon, ici comme sur la timeline, et à la prochaine
-     ouverture. En attendant sa réponse, on montre la rotation tout de suite —
-     le geste doit répondre à la main, pas au réseau. La photo réécrite n'est
-     mise à l'écran qu'une fois chargée, sinon la page semblerait se redresser
-     puis retomber de travers le temps du téléchargement. */
   async function rotateAttachment(attachmentId: string) {
     setRotating((prev) => ({
       ...prev,
@@ -588,10 +393,6 @@ export default function Review() {
         err instanceof Error ? err.message : "Échec de la rotation de la page",
       );
     } finally {
-      // Un quart de tour de moins à montrer nous-mêmes : soit la photo la porte
-      // désormais, soit la rotation a échoué et la page revient comme elle
-      // était. Décrémenter (plutôt que remettre à zéro) garde le compte juste
-      // si un deuxième quart de tour est déjà parti.
       setRotating((prev) => {
         const pending = (prev[attachmentId] ?? 1) - 1;
         const next = { ...prev };
@@ -660,10 +461,6 @@ export default function Review() {
     );
   }
 
-  /* Un LECTEUR reçoit la journée, pas le formulaire. Tant que le rôle n'est pas
-     connu (`roles === null`), on ne refuse pas — mais on ne publie pas non plus
-     à l'aveugle : le serveur reste l'arbitre, et l'erreur qu'il renvoie est
-     dessinée. */
   if (!canEditEntry) {
     return <ReadOnlyDay entry={entry} />;
   }
@@ -677,15 +474,6 @@ export default function Review() {
   const published = entry.status === "published";
   const hasStepper = !!batchDays && batchDays.length > 1;
 
-  /* ── LES QUATRE TEMPS, JUSQU'AU BOUT ──────────────────────────────────────
-     Le rail « photo → lecture → relecture → partage » n'était monté que sur
-     l'écran de capture, c'est-à-dire au PAS 1 — et il disparaissait aux pas 2 et
-     3, exactement là où la question « est-ce que j'y suis presque ? » se pose.
-     Il est ici aussi (et sur l'attente de lecture, et sur le squelette, et sur
-     l'échec de lecture) : la photo est prise, la lecture est faite, la relecture
-     est le temps courant. Sur une journée DÉJÀ publiée qu'on revient corriger,
-     le partage est franchi lui aussi — le rail dit la vérité de la journée, pas
-     une chorégraphie figée. */
   const steps: Step[] = [
     { key: "photo", label: "Photo", state: "done" },
     { key: "read", label: "Lecture", state: "done" },
@@ -698,30 +486,7 @@ export default function Review() {
   ];
 
   return (
-    /* max-w-5xl et non 3xl : à 1 280 px, la colonne du récit plafonnait à
-       339 px, soit 41 caractères par ligne — sous la bande de lecture de
-       45–75 ch. La même page à 1 024 px donne 507 px de colonne, ~58 ch. */
     <div className="mx-auto w-full max-w-5xl p-4 pb-32">
-      {/* Le rail des quatre temps, au même endroit et au même cran que sur la
-          capture : c'est la seule chose de l'écran qui ne change pas d'un pas à
-          l'autre, et c'est précisément son travail.
-
-          UN SEUL OBJET DE PROGRESSION PAR ÉCRAN. Sur un carnet photographié sur
-          plusieurs jours, le stepper de lot (« Journée 3 sur 3 · 2/3 publiées »)
-          dit la même chose EN PLUS PRÉCIS, avec la même grammaire visuelle
-          (ronds, filet, coches). Les empiler mesurait 146 px de chrome avant le
-          titre et poussait la première lecture à trancher SOUS la barre d'action
-          (bas de carte à 731 px pour une barre à 717) — exactement la faute que
-          cet écran a corrigée au tour précédent. Avec un lot, le rail cède la
-          place ; sans lot, il est là.
-
-          LE RAIL PREND TOUTE LA COLONNE (`w-full`, plus de `max-w-sm`). Bridé à
-          384 px dans une colonne de 992 px, il se tassait dans le coin haut
-          gauche : quatre ronds serrés sur le premier tiers, puis 600 px de vide
-          jusqu'au compteur « 5 à vérifier » — le regard lisait un fragment,
-          pas un parcours. Étendu, chaque temps tombe au quart de la colonne et
-          les filets deviennent lisibles comme un chemin. C'est la même largeur
-          que sur la capture, où le rail a toujours suivi la colonne. */}
       {!hasStepper && <CaptureSteps steps={steps} className="mb-4 w-full" />}
 
       {hasStepper && (
@@ -734,23 +499,11 @@ export default function Review() {
         </div>
       )}
 
-      {/* ── L'en-tête : de qui, quand, et ce qui reste à faire ───────────────
-          Titre et pastille sur UNE ligne, une seule ligne de méta en dessous :
-          le prénom passe dans la méta pour que le titre reste court et laisse
-          la place à la pastille — 32 px gagnés, et c'est exactement ce qu'il
-          fallait pour que la première lecture à vérifier soit au-dessus de la
-          ligne de flottaison. */}
       <header className="mb-4 flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="font-serif text-title font-semibold">
             Relire la journée
           </h1>
-          {/* La date en clair est ICI, et nulle part ailleurs : le lot ne
-              l'écrit plus (il ne garde que « mer 11 mars » sous la puce
-              courante, qui est un repère de file, pas une date de journée).
-              Chaque segment emporte SON séparateur et ne se casse pas : à
-              320 px, la ligne repartait sur « · Nounou », un point médian
-              orphelin en tête de ligne. */}
           <p className="text-meta text-muted-foreground">
             {[
               entry.child?.name,
@@ -769,8 +522,6 @@ export default function Review() {
               ))}
           </p>
         </div>
-        {/* mt-0.5 (2 px) : nudge optique, la pastille de 24 px se centre sur la
-            première ligne de 28 px du titre. */}
         {pending > 0 ? (
           <Badge variant="warning" className="mt-0.5">
             <TriangleAlert aria-hidden="true" />
@@ -784,23 +535,11 @@ export default function Review() {
         )}
       </header>
 
-      {/* 1fr / 1.4fr et non 1/1.1 : la colonne du récit doit rester dans la
-          bande de lecture de 45–75 caractères. Mesuré (17 px Nunito, chasse
-          moyenne 8,32 px) : 46 ch à 768, 57 ch à 1 280. À 390 px, 45 ch
-          exigerait 374 px de texte pour 358 px d'écran — la bande est
-          physiquement hors d'atteinte au pouce sans descendre le récit sous
-          17 px, et le récit est ce qui sera publié : il se relit à la taille
-          où il se lira. */}
       <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] md:gap-6">
-        {/* ── La source : la page photographiée et le mot à mot ───────────── */}
         <section
           aria-label="La source"
           className="flex flex-col gap-3 md:sticky md:top-4 md:self-start"
         >
-          {/* Sur mobile, la source est UNE LIGNE de 50 px qui montre déjà les
-              pages en vignettes : on la déplie quand on veut confronter. Elle
-              tenait sur deux lignes (66 px) pour dire la même chose — et sur cet
-              écran, 16 px valent un quart de ligne de journée. */}
           <button
             type="button"
             onClick={() => setSourceOpen((v) => !v)}
@@ -847,8 +586,6 @@ export default function Review() {
             id="rv-source"
             className={cn("flex-col gap-3", sourceOpen ? "flex" : "hidden md:flex")}
           >
-            {/* Sur grand écran, la ligne dépliante n'existe pas : ce qui a été
-                trouvé doit être dit ici. */}
             <p className="hidden items-baseline justify-between gap-3 md:flex">
               <span className="surtitre text-muted-foreground">
                 Ce qui est écrit
@@ -862,9 +599,6 @@ export default function Review() {
               </span>
             </p>
 
-            {/* Deux onglets : le papier, puis ce que la machine y a lu.
-                Vrai motif ARIA : `tabindex` roulant + flèches gauche/droite,
-                pas juste les rôles posés dessus. */}
             <div
               role="tablist"
               aria-label="Ce qui est écrit"
@@ -912,9 +646,6 @@ export default function Review() {
                     total={entry.attachments.length}
                     quarter={rotating[a.id] ?? 0}
                     rotating={(rotating[a.id] ?? 0) > 0}
-                    /* Tourner écrit sur la photo source : un lecteur n'a pas ce
-                       droit, et le serveur le lui refuserait. Pas de bouton
-                       plutôt qu'un bouton qui échoue. */
                     onRotate={canEditEntry ? () => rotateAttachment(a.id) : null}
                     removing={removingAttachment === a.id}
                     onRemove={
@@ -954,22 +685,12 @@ export default function Review() {
           </div>
         </section>
 
-        {/* ── La journée : ce qui sera publié ─────────────────────────────── */}
         <div className="flex flex-col gap-5">
-          {/* Les lectures incertaines : le seul travail que la machine ne peut
-              pas finir, donc la première chose sous l'en-tête. */}
           {pending > 0 && (
             <section aria-labelledby="verif" className="flex flex-col gap-2">
-              {/* Un seul compteur sur l'écran : la pastille de l'en-tête. Le
-                  surtitre nomme la section, il ne la chiffre pas une deuxième
-                  fois (à 320 px, les deux se cassaient chacun sur deux lignes). */}
               <h2 id="verif" className="surtitre text-muted-foreground">
                 Ce que Racontine a lu
               </h2>
-              {/* Seules les lectures À TRANCHER sont ici — les tranchées sont
-                  passées sous la journée, avec les états qu'elles expliquent.
-                  L'INDEX D'ORIGINE est conservé : c'est lui que le serveur
-                  attend pour résoudre la bonne incertitude. */}
               {uncertainties
                 .map((u, i) => ({ u, i }))
                 .filter(({ u }) => !u.resolved)
@@ -980,10 +701,6 @@ export default function Review() {
                       id={`rv-u-${i}`}
                       item={u}
                       phrase={phraseFor(u)}
-                      /* Pendant une publication, trancher une lecture partirait
-                         en même temps que le PATCH de la journée : deux écritures
-                         sur la même journée, et un résultat qui dépend de l'ordre
-                         d'arrivée. La carte attend son tour. */
                       disabled={resolvingIndex !== null || saving !== null}
                       resolving={resolvingIndex === i}
                       onResolve={(value) => resolveUncertainty(i, value)}
@@ -1001,26 +718,9 @@ export default function Review() {
             </section>
           )}
 
-          {/* ── LA JOURNÉE EN UN COUP D'ŒIL ───────────────────────────────────
-              Ce qui part chez les proches, en clair, avant le bouton. Ni
-              formulaire ni carte : cinq lignes de 56 px, un filet entre elles.
-              L'état à droite est la SEULE couleur (confiance), et il garde son
-              glyphe pour rester lisible en noir et blanc. La tuile d'icône est
-              grise à dessein : les feutres de catégorie appartiennent au
-              journal, pas à cet écran (lib/ui.ts). */}
           <MomentsGlance items={items} flagged={flaggedValues} />
 
-          {/* Les lectures déjà tranchées, juste sous la journée : elles
-              EXPLIQUENT les pastilles « confirmé » de la liste au-dessus (quel
-              mot a été lu, quel mot sera publié). Elles ne demandent plus rien
-              à personne, donc elles ne sont plus au-dessus de la ligne de
-              flottaison — mais chaque ligne reste une sortie vers le champ
-              corrigé, parce qu'un choix validé doit pouvoir être repris. */}
           {uncertainties.some((u) => u.resolved) && (
-            /* `aria-label` et non un titre `sr-only` : la classe `sr-only`
-               s'implémente avec des marges de -1 px, donc un titre invisible
-               ajoutait quatre valeurs hors grille et un nœud « rogné » au
-               relevé — pour un intitulé que personne ne voit. */
             <section aria-label="Lectures validées" className="flex flex-col gap-2">
               {uncertainties
                 .map((u, i) => ({ u, i }))
@@ -1036,8 +736,6 @@ export default function Review() {
             </section>
           )}
 
-          {/* Le dépli ne sert plus qu'à CORRIGER : la lecture, elle, est
-              au-dessus et n'a plus besoin d'un geste. */}
           <details
             open={itemsOpen}
             onToggle={(e) => setItemsOpen(e.currentTarget.open)}
@@ -1072,8 +770,6 @@ export default function Review() {
             </div>
           </details>
 
-          {/* Titre — une zone de texte et non un champ d'une ligne : un titre
-              de journée dépasse 40 caractères et se lisait coupé en plein mot. */}
           <div className="flex flex-col gap-2">
             <Label htmlFor="rv-title">Titre de la journée</Label>
             <GrowingTextarea
@@ -1090,7 +786,6 @@ export default function Review() {
             />
           </div>
 
-          {/* Récit — le cœur, écrit sur les lignes du cahier. */}
           <div className="flex flex-col gap-2">
             <Label htmlFor="rv-story">Le récit de la journée</Label>
             <GrowingTextarea
@@ -1105,12 +800,9 @@ export default function Review() {
 
           <div className="flex flex-col gap-2">
             <Label htmlFor="rv-highlight">
-              {/* gap-2 (8 px) : écart icône <-> libellé porté par `Label`. */}
               <Star className="size-4 text-muted-foreground" aria-hidden="true" />
               Temps fort du jour
             </Label>
-            {/* Une phrase entière : un champ d'une ligne la coupait en plein
-                mot (« … du couloir jusqu'à la »). */}
             <GrowingTextarea
               id="rv-highlight"
               minLines={1}
@@ -1120,7 +812,6 @@ export default function Review() {
             />
           </div>
 
-          {/* Contexte compact */}
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-2">
               <Label htmlFor="rv-date">Date</Label>
@@ -1168,8 +859,6 @@ export default function Review() {
                   : "border-destructive bg-destructive-soft",
               )}
             >
-              {/* mt-0.5 (2 px) : nudge optique, l'icône de 16 px se centre sur
-                  la ligne de 20 px du libellé. */}
               <TriangleAlert
                 aria-hidden="true"
                 className={cn(
@@ -1188,9 +877,6 @@ export default function Review() {
                     ? error
                     : `${error} — rien n'est perdu : vos corrections sont toujours à l'écran.`}
                 </p>
-                {/* La sortie que l'incertitude exige : aller VOIR. On ne l'offre
-                    que dans ce cas — sur un échec net, la bonne action est de
-                    réessayer, et elle est déjà dans la barre. */}
                 {errorKind === "stopped" && (
                   <Button asChild variant="outline" size="sm" className="mt-3">
                     <Link to="/">
@@ -1203,10 +889,6 @@ export default function Review() {
             </div>
           )}
 
-          {/* « Enregistrer le brouillon » vit ICI et non dans la barre : c'est
-              une action d'appoint (et de toute façon le brouillon est déjà
-              enregistré à chaque lecture tranchée). La barre ne porte qu'une
-              décision, ce qui la ramène de 157 px à 101 px. */}
           <Button
             variant="outline"
             className="w-full"
@@ -1244,9 +926,6 @@ export default function Review() {
           if (blocker.state === "blocked") blocker.proceed();
         }}
         onSaveThenLeave={async () => {
-          // On ne quitte QUE si l'enregistrement est passé. Sinon le dialogue
-          // reste ouvert et l'erreur s'affiche derrière, sur la journée : le
-          // travail est toujours à l'écran.
           if (!(await save(false))) return;
           leaving.current = true;
           if (blocker.state === "blocked") blocker.proceed();

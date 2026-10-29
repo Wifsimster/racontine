@@ -1,25 +1,3 @@
-/* ===========================================================================
-   EMPORTER ET EFFACER, SUR UNE VRAIE BASE.
-
-   Les tests unitaires prouvent les RÈGLES (qui peut partir, ce qui part avec
-   lui) contre des doublures. Ils ne peuvent rien dire de ce qui, ici, fait tout
-   le travail : les cascades du schéma, la portée du lecteur écrite en SQL, et
-   le compte d'administrateurs par carnet. Un effacement qui laisserait une
-   table derrière lui passerait les 27 tests unitaires sans broncher.
-
-   Ce script exerce donc l'adaptateur contre un vrai Postgres, et vérifie la
-   seule chose qui compte pour un droit à l'effacement : APRÈS, PLUS RIEN.
-
-   Il ne tourne PAS dans `pnpm test` : il lui faut une base, que l'intégration
-   continue n'a pas. Pour l'exécuter :
-
-     docker compose up -d db
-     pnpm --filter server db:migrate
-     pnpm --filter server test:privacy
-
-   Il écrit dans la base qu'on lui donne (comptes et carnets de test, nettoyés
-   en fin de course) : à réserver à une base de développement.
-   =========================================================================== */
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { asc, eq, inArray, sql } from "drizzle-orm";
@@ -57,8 +35,6 @@ async function makeUser(name: string): Promise<string> {
   return id;
 }
 
-/* ------------------------------ Le décor ---------------------------------- */
-
 const parent = await makeUser("Parent");
 const mamie = await makeUser("Mamie");
 
@@ -71,7 +47,6 @@ const [anouk] = await db
   .values({ name: "Anouk", birthdate: "2022-01-05" })
   .returning();
 
-// Lou : le parent administre, Mamie lit. Anouk : le parent seul.
 await db.insert(memberships).values([
   { userId: parent, childId: lou!.id, role: "admin" },
   { userId: mamie, childId: lou!.id, role: "reader" },
@@ -164,8 +139,6 @@ await db.insert(mcpUploads).values({
   expiresAt: new Date(Date.now() + 60_000),
 });
 
-/* ------------------------------ Emporter ---------------------------------- */
-
 const mine = await repo.exportFor(parent);
 assert.ok(mine);
 assert.equal(mine.format, "racontine.export.v1");
@@ -177,11 +150,9 @@ const louExport = mine.carnets.find((c) => c.name === "Lou")!;
 assert.equal(louExport.entries.length, 2);
 assert.equal(louExport.entries[0]!.items.length, 1);
 assert.equal(louExport.entries[0]!.pages.length, 1);
-// La rotation voyage dans l'URL : sans `?v=`, le lien rendrait la page d'avant.
 assert.match(louExport.entries[0]!.pages[0]!.url, /\?size=full&v=1$/);
 ok("un administrateur emporte ses carnets, brouillons compris");
 
-// Le chemin de rangement ne sort que par `pageFilesOf`, jamais dans l'archive.
 const pageId = louExport.entries[0]!.pages[0]!.id;
 const pageFiles = await repo.pageFilesOf([pageId]);
 assert.equal(pageFiles.length, 1);
@@ -220,8 +191,6 @@ ok("aucun secret ne sort : ni clé chiffrée, ni hash de jeton, ni clé de push"
 assert.equal(await repo.exportFor("u-inexistant"), null);
 ok("un compte disparu n'a pas d'archive");
 
-/* -------------------------- L'état avant de partir ------------------------ */
-
 const snapshot = await repo.erasureSnapshot(parent);
 assert.ok(snapshot);
 assert.equal(snapshot.carnets.length, 2);
@@ -233,11 +202,6 @@ assert.equal(anoukStanding.members, 1);
 assert.equal(anoukStanding.admins, 1);
 ok("le compte des membres et des administrateurs se fait carnet par carnet");
 
-/* Les deux entrées des refus les plus lourds : « qui est propriétaire » et
-   « combien d'autres comptes restent ». Elles ne se déduisent d'aucune colonne —
-   le propriétaire est le compte le PLUS ANCIEN, calculé à la lecture — et une
-   erreur ici ferait, au choix, partir un propriétaire en transmettant l'instance
-   en silence, ou retenir pour toujours quelqu'un qui n'est propriétaire de rien. */
 const first = (await db
   .select({ id: user.id })
   .from(user)
@@ -248,7 +212,6 @@ assert.equal(snapshot.isOwner, first === parent);
 assert.equal(snapshot.otherAccounts, (total!.n ?? 0) - 1);
 const hersSnapshot = await repo.erasureSnapshot(mamie);
 assert.equal(hersSnapshot!.isOwner, first === mamie);
-// Aucune ligne d'abonnement sur une instance sans caisse : rien ne retient personne.
 assert.equal(snapshot.activeSubscription, false);
 ok("propriété de l'instance et comptes restants se lisent, pas se devinent");
 
@@ -258,15 +221,12 @@ assert.equal(standing?.members, 2);
 assert.equal(await repo.standingOn(mamie, anouk!.id), null);
 ok("hors du cercle, un carnet n'a pas d'existence");
 
-/* -------------------------------- Effacer --------------------------------- */
-
 const files = await repo.filesOfChildren([lou!.id]);
 assert.equal(files.length, 2);
 assert.deepEqual(
   files.map((f) => f.originalPath).sort(),
   ["2026/02/p1.jpg", "2026/02/p2.jpg"],
 );
-// La miniature manquante reste null : c'est au service de décider quoi en faire.
 assert.equal(files.find((f) => f.originalPath === "2026/02/p2.jpg")?.thumbPath, null);
 ok("les fichiers d'un carnet se retrouvent tous, miniature absente comprise");
 
@@ -301,11 +261,8 @@ const afterAccount = await Promise.all([
 for (const rows of afterAccount) assert.deepEqual(rows, []);
 ok("effacer un compte emporte jetons, fichiers en attente, appareils, clé et adhésions");
 
-// Ce qui ne lui appartenait pas reste : le carnet d'Anouk n'a jamais été à elle.
 assert.equal((await db.select().from(children).where(eq(children.id, anouk!.id))).length, 1);
 ok("ce qui appartient aux autres survit à un départ");
-
-/* ------------------------------ Nettoyage --------------------------------- */
 
 await db.delete(children).where(eq(children.id, anouk!.id));
 await db.delete(user).where(eq(user.id, parent));

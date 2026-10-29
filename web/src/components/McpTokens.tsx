@@ -25,7 +25,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { InlineError } from "@/components/PageState";
 
-/** Petit bouton « copier » avec accusé de copie temporaire. */
 function CopyButton({ value, label }: { value: string; label: string }) {
   const [copied, setCopied] = useState(false);
   return (
@@ -39,7 +38,6 @@ function CopyButton({ value, label }: { value: string; label: string }) {
           setCopied(true);
           setTimeout(() => setCopied(false), 1500);
         } catch {
-          /* le presse-papier peut être indisponible (contexte non sécurisé) */
         }
       }}
       aria-label={label}
@@ -63,21 +61,14 @@ function fmtDate(iso: string | null): string {
   }
 }
 
-/**
- * Gestion des jetons MCP : créer un jeton pour connecter une session Claude
- * (cloud, Desktop, Claude Code) qui pourra téléverser des photos de carnet.
- */
 export default function McpTokens({ webBaseUrl }: { webBaseUrl?: string }) {
   const [tokens, setTokens] = useState<McpToken[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [creating, setCreating] = useState(false);
-  // Secret en clair, affiché une seule fois juste après création.
   const [secret, setSecret] = useState<string | null>(null);
   const [toRevoke, setToRevoke] = useState<McpToken | null>(null);
 
-  // Base publique fournie par les réglages (propriétaire) ou, à défaut,
-  // l'origine courante — l'app est servie depuis la même URL que l'API.
   const base = webBaseUrl ?? window.location.origin;
   const endpoint = `${base.replace(/\/$/, "")}/api/mcp`;
 
@@ -133,7 +124,6 @@ export default function McpTokens({ webBaseUrl }: { webBaseUrl?: string }) {
           glisser-déposer. Créez un jeton, puis ajoutez ce serveur MCP à Claude.
         </p>
 
-        {/* Adresse du serveur MCP */}
         <div className="flex flex-col gap-1.5">
           <Label>Adresse du serveur MCP</Label>
           <div className="flex items-center gap-2">
@@ -149,7 +139,6 @@ export default function McpTokens({ webBaseUrl }: { webBaseUrl?: string }) {
           </p>
         </div>
 
-        {/* Secret fraîchement créé */}
         {secret && (
           <div role="status" className="flex flex-col gap-2 rounded-xl bg-warning-bg p-3">
             <p className="flex items-center gap-2 text-ui font-bold text-warning">
@@ -178,7 +167,6 @@ export default function McpTokens({ webBaseUrl }: { webBaseUrl?: string }) {
           </div>
         )}
 
-        {/* Création d'un jeton */}
         <div className="flex items-end gap-2">
           <div className="flex flex-1 flex-col gap-1.5">
             <Label htmlFor="mcpTokenName">
@@ -208,7 +196,6 @@ export default function McpTokens({ webBaseUrl }: { webBaseUrl?: string }) {
           </InlineError>
         )}
 
-        {/* Liste des jetons */}
         {tokens === null ? (
           <div
             role="status"

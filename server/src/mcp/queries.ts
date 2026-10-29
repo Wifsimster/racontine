@@ -13,10 +13,8 @@ import { roleAtLeast } from "../access.js";
 import type { ItemType } from "../domain/entry-items.js";
 import { timelineScope } from "../domain/visibility.js";
 
-/** Un enfant auquel le compte peut contribuer. */
 export type ContributableChild = { id: string; name: string; role: MemberRole };
 
-/** Résumé d'une journée, tel que la liste MCP le rend. */
 export type NoteSummary = {
   id: string;
   childId: string;
@@ -29,7 +27,6 @@ export type NoteSummary = {
   highlight: string | null;
 };
 
-/** Journée complète, telle que la lecture MCP la rend. */
 export type NoteDetail = {
   entry: {
     id: string;
@@ -50,24 +47,17 @@ export type NoteDetail = {
   items: { type: ItemType; data: EntryItemData }[];
 };
 
-/**
- * Les LECTURES dont les outils MCP ont besoin. Un port à part entière : les
- * outils décrivent ce qu'ils veulent voir, pas comment l'aller chercher.
- */
 export interface EntryQueries {
   contributableChildren(userId: string): Promise<ContributableChild[]>;
-  /** null si l'enfant demandé n'est pas accessible (message uniforme côté outil). */
   listNotes(params: {
     userId: string;
     childId?: string;
     status?: EntryStatus;
     limit: number;
   }): Promise<NoteSummary[] | null>;
-  /** null si la journée n'existe pas ou n'est pas visible par cet utilisateur. */
   findNote(userId: string, entryId: string): Promise<NoteDetail | null>;
 }
 
-/** Les mêmes lectures, en Postgres. */
 export class DrizzleEntryQueries implements EntryQueries {
   async contributableChildren(userId: string): Promise<ContributableChild[]> {
     const rows = await db
@@ -90,7 +80,6 @@ export class DrizzleEntryQueries implements EntryQueries {
       .from(memberships)
       .where(eq(memberships.userId, params.userId));
 
-    // Même règle de visibilité que la timeline web — le même code, littéralement.
     const scope = timelineScope(mems, params.childId);
     if (scope.kind === "denied") return null;
     if (scope.kind === "empty") return [];
@@ -135,9 +124,6 @@ export class DrizzleEntryQueries implements EntryQueries {
     });
     if (!entry) return null;
 
-    // Visibilité : lecteur → journal publié seulement. Absence et refus rendent
-    // la même chose (null) : on ne révèle pas l'existence d'une journée non
-    // partagée.
     const [membership] = await db
       .select({ childId: memberships.childId, role: memberships.role })
       .from(memberships)

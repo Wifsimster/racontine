@@ -10,9 +10,6 @@ import type {
   SubscriberDirectory,
 } from "./types.js";
 
-/* Un canal de notification s'ajoute sans toucher à l'orchestrateur : ces tests
-   en branchent des inventés de toutes pièces. */
-
 class FakeDirectory implements SubscriberDirectory {
   readonly asked: (string | null | undefined)[] = [];
   constructor(private readonly recipients: Recipient[]) {}
@@ -122,7 +119,7 @@ test("un canal en panne n'emporte ni les autres canaux ni les autres abonnés", 
 
   assert.deepEqual(healthy.sent, ["u-mamie", "u-parrain"]);
   assert.deepEqual(log.recorded, ["u-mamie", "u-parrain"]);
-  assert.equal(logger.errors.length, 2); // un par abonné
+  assert.equal(logger.errors.length, 2);
 });
 
 test("un canal qui rend un accusé de remise horodate la notification", async () => {

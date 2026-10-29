@@ -1,22 +1,12 @@
-
-/* CE QUI A ÉCHOUÉ, ET CE QU'ON PEUT Y FAIRE : la traduction d'un refus du
-   serveur en une phrase utile, et les champs que chaque porte demande. */
-
 export type Door = "password" | "magic" | "signup" | "forgot";
 export type FieldId = "name" | "email" | "password";
 
-/** Un problème EXPLIQUÉ : la cause (le message serveur), le remède, une issue. */
 export type Problem = {
-  /** Le message brut du serveur — jamais une exception, jamais un code nu. */
   cause: string;
-  /** Ce que la personne peut faire, en une phrase. */
   remedy: string;
-  /** Quel champ est en cause : lui seul reçoit le bord rouge + `aria-invalid`.
-   *  Signaler les deux champs quand un seul est vide, c'est faire chercher. */
   field: "email" | "password" | "both" | null;
 };
 
-/** L'identifiant de la tuile d'erreur : les champs fautifs la citent. */
 export const PROBLEM_ID = "probleme-connexion";
 
 export const NETWORK: Problem = {
@@ -55,12 +45,10 @@ export function problemFor(raw: string | undefined, door: Door): Problem {
   };
 }
 
-/** Ce champ-là est-il désigné par le problème en cours ? */
 export function flags(problem: Problem | null, id: "email" | "password") {
   return !!problem && (problem.field === id || problem.field === "both");
 }
 
-/** Les champs d'une porte, dans l'ordre de saisie. */
 export const FIELDS: Record<Door, FieldId[]> = {
   password: ["email", "password"],
   magic: ["email"],
@@ -68,8 +56,6 @@ export const FIELDS: Record<Door, FieldId[]> = {
   forgot: ["email"],
 };
 
-/** Cette porte demande-t-elle un mot de passe ? Les deux autres n'ont qu'une
- *  adresse — et c'est le seul endroit où la question se pose. */
 export function hasPassword(door: Door): boolean {
   return FIELDS[door].includes("password");
 }

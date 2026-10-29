@@ -3,7 +3,6 @@ import { db } from "../db/index.js";
 import { attachments, entries } from "../db/schema.js";
 import type { PageRecord, PageRepository } from "../ports.js";
 
-/** Les pages photographiées, en Postgres. */
 export class DrizzlePageRepository implements PageRepository {
   async findWithEntry(attachmentId: string): Promise<PageRecord | null> {
     const [row] = await db

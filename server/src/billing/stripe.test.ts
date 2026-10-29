@@ -11,8 +11,6 @@ import {
   snapshotOf,
 } from "./stripe.js";
 
-/* --------------------------------- Encodage ------------------------------ */
-
 test("l'encodage imbriqué est celui que Stripe attend", () => {
   const encoded = formEncode({
     mode: "subscription",
@@ -27,11 +25,8 @@ test("l'encodage imbriqué est celui que Stripe attend", () => {
 });
 
 test("un champ absent est OMIS, jamais envoyé vide", () => {
-  // `customer=` (vide) vaut une 400 chez Stripe : ce n'est pas « pas de client ».
   assert.equal(formEncode({ customer: undefined, customer_email: null, a: 1 }), "a=1");
 });
-
-/* ------------------------------ Appels d'API ----------------------------- */
 
 function fakeFetch(
   handler: (url: string, init: RequestInit) => { status?: number; body: unknown },
@@ -87,15 +82,7 @@ test("un client Stripe déjà connu remplace l'e-mail (Stripe refuse les deux)",
   assert.doesNotMatch(calls[0].body!, /customer_email/);
 });
 
-/* ------------------------------- Le portail ------------------------------ */
-
 test("le portail s'ouvre sur la configuration de Racontine quand elle est connue", async () => {
-  /* UN COMPTE STRIPE N'A QU'UNE configuration de portail PAR DÉFAUT, pour tout
-     le compte. Sur un compte qui porte plusieurs produits, s'en remettre à elle
-     envoie une famille sur le portail d'une autre application, titre compris —
-     et rien n'échoue, rien n'est journalisé. D'où ce test : le jour où
-     `configuration` disparaîtrait du corps, la panne serait invisible partout
-     ailleurs. */
   const { impl, calls } = fakeFetch(() => ({
     body: { url: "https://billing.stripe.com/p/session/x" },
   }));
@@ -115,9 +102,6 @@ test("le portail s'ouvre sur la configuration de Racontine quand elle est connue
 });
 
 test("sans configuration connue, le champ est OMIS et non envoyé vide", async () => {
-  /* Une instance dédiée n'a rien à épingler : le défaut du compte est le bon.
-     Mais `configuration=` (vide) n'est pas « pas de configuration » pour
-     Stripe — c'est une configuration nommée par le vide, et une 400. */
   const { impl, calls } = fakeFetch(() => ({ body: { url: "https://x" } }));
   const stripe = new StripeClient({ apiKey: "sk_test_x", fetchImpl: impl });
 
@@ -169,12 +153,9 @@ test("le prix affiché est celui de Stripe, jamais une constante du code", async
   });
 });
 
-/* ------------------------- Lecture d'un abonnement ----------------------- */
-
 test("la fin de période se lit sur l'abonnement OU sur ses lignes", () => {
   const t = 1_789_000_000;
   assert.deepEqual(periodEndOf({ current_period_end: t }), new Date(t * 1000));
-  // Version d'API récente : la date a migré sur les lignes.
   assert.deepEqual(
     periodEndOf({ items: { data: [{ current_period_end: t }] } }),
     new Date(t * 1000),
@@ -189,8 +170,6 @@ test("l'instantané d'abonnement garde le client, qu'il soit id ou objet", () =>
     "cus_2",
   );
 });
-
-/* ------------------------------- Webhooks -------------------------------- */
 
 const SECRET = "whsec_test";
 
@@ -229,8 +208,6 @@ test("une signature d'un autre secret est refusée", () => {
 });
 
 test("un événement rejoué hors tolérance est refusé", () => {
-  // Sans cette vérification, une requête légitime capturée aujourd'hui rouvre
-  // un abonnement résilié dans six mois.
   const payload = "{}";
   const vieux = new Date(Date.now() - 3_600_000);
   assert.throws(() => constructEvent(payload, sign(payload, SECRET, vieux), SECRET), WebhookSignatureError);
