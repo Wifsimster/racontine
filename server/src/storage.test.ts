@@ -5,13 +5,10 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import sharp from "sharp";
 
-// `config` lit UPLOADS_DIR à l'import : le dossier de test doit être connu
-// AVANT que `storage.ts` (et le module de config) n'entrent en mémoire.
 const uploads = await mkdtemp(path.join(tmpdir(), "racontine-uploads-"));
 process.env.UPLOADS_DIR = uploads;
 const { rotateStoredImage } = await import("./storage.js");
 
-/** Écrit un JPEG uni de w×h dans le dossier d'uploads, et rend son chemin. */
 async function put(name: string, w: number, h: number): Promise<string> {
   const buf = await sharp({
     create: { width: w, height: h, channels: 3, background: "#888" },
@@ -38,7 +35,6 @@ test("un quart de tour échange largeur et hauteur, page ET miniature", async ()
 
   assert.deepEqual(out, { width: 300, height: 400 });
   assert.deepEqual(await size(original), { w: 300, h: 400 });
-  // La miniature suit : la timeline montre la même page que la relecture.
   assert.deepEqual(await size(thumb), { w: 30, h: 40 });
 });
 
@@ -57,7 +53,6 @@ test("les quarts de tour se comptent modulo 4, dans les deux sens", async () => 
     await rotateStoredImage({ originalPath: a, thumbPath: null }, 4),
     { width: 400, height: 300 },
   );
-  // -1 (sens inverse) vaut 3 quarts de tour : la page bascule quand même.
   const b = await put("inverse.jpg", 400, 300);
   assert.deepEqual(
     await rotateStoredImage({ originalPath: b, thumbPath: null }, -1),
@@ -74,7 +69,6 @@ test("une page indécodable laisse les fichiers intacts", async () => {
   await assert.rejects(
     rotateStoredImage({ originalPath: "cassee.jpg", thumbPath: thumb }, 1),
   );
-  // La miniature n'a pas été réécrite alors que la page, elle, a échoué.
   assert.deepEqual(await size(thumb), { w: 40, h: 30 });
 });
 

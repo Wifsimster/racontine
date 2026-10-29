@@ -23,8 +23,6 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
-/* Les états du journal : squelette, vide, erreur, et l'accusé d'envoi. */
-
 export function JournalSkeleton() {
   const [slow, setSlow] = useState(false);
   useEffect(() => {
@@ -38,9 +36,6 @@ export function JournalSkeleton() {
         <p role="status" className="surtitre text-muted-foreground">
           {slow ? "Le carnet met du temps à venir" : "Racontine ouvre le carnet"}
         </p>
-        {/* Le point respire au MÊME rythme que les squelettes (la balayeuse de
-            1200 ms déclarée dans index.css), au lieu d’introduire une seconde
-            boucle d’animation pour dire la même chose. */}
         <span aria-hidden="true" className="skeleton size-2 rounded-full" />
       </div>
       {[0, 1].map((i) => (
@@ -60,7 +55,6 @@ export function JournalSkeleton() {
             <div className="skeleton h-7 w-28" />
             <div className="skeleton h-7 w-20" />
           </div>
-          {/* Trois lignes au pas du cahier : le récit tel qu’il arrivera. */}
           <div className="mt-4 flex flex-col gap-3">
             <div className="skeleton h-4 w-full" />
             <div className="skeleton h-4 w-full" />
@@ -72,7 +66,6 @@ export function JournalSkeleton() {
               <div className="skeleton aspect-square" />
             </div>
           )}
-          {/* La ligne de dépli : elle fait partie de la forme de la réponse. */}
           <div className="mt-4 flex items-center gap-3 border-t pt-4">
             <div className="skeleton h-4 w-40" />
             <div className="skeleton ml-auto h-4 w-16" />
@@ -83,25 +76,13 @@ export function JournalSkeleton() {
   );
 }
 
-/**
- * Le vide MONTRE ce que l’app fabrique : une journée en pointillés, avec sa
- * marge, son titre à venir et ses feutres. Un rond et deux phrases ne vendent
- * rien — et c’est le premier écran d’un nouveau compte.
- */
 export function JournalEmpty({
   canCapture,
   carnetOuvert = true,
 }: {
   canCapture: boolean;
-  /** Le carnet accepte-t-il une nouvelle journée ? Défaut : oui — l'inconnu ne
-   *  ferme rien, exactement comme dans `Timeline`. */
   carnetOuvert?: boolean;
 }) {
-  /* LE VIDE D’UN LECTEUR N’EST PAS LE MÊME VIDE. Mamie n’a pas de carnet de
-     papier à photographier : lui vendre le geste (« Photographiez la page du
-     soir », « Inviter un proche ») serait lui promettre deux écrans qui la
-     refuseront. Ce qu’elle attend, elle, c’est la première journée — et la seule
-     chose honnête est de le dire, avec ce qui arrivera quand elle sera là. */
   if (!canCapture)
     return (
       <section className="rise-enter flex flex-col items-center gap-6 pt-2">
@@ -154,7 +135,6 @@ export function JournalEmpty({
       >
         <span className="pointer-events-none absolute inset-y-0 left-5 w-[1.5px] bg-[var(--rule-margin)]" />
         <div className="flex items-baseline justify-between gap-3">
-          {/* Pas de prénom inventé ici : un compte neuf n’a pas de Louise. */}
           <p className="surtitre text-muted-foreground">aujourd’hui</p>
           <p className="surtitre text-muted-foreground">nounou</p>
         </div>
@@ -174,9 +154,6 @@ export function JournalEmpty({
             joyeuse
           </span>
         </div>
-        {/* La zone réglée porte une vraie phrase, pas de fausses lignes de
-            crayon : elle explique ce qui viendra s’écrire là, et elle montre
-            en même temps le récit posé sur les lignes du cahier. */}
         <div className="paper-ruled paper-ruled--plain -mr-5 -ml-7 mt-4 pr-5 pl-7">
           <p className="carnet-story text-muted-foreground">
             Le récit de la journée, écrit à partir de votre photo : ce qu’il a
@@ -186,8 +163,6 @@ export function JournalEmpty({
       </div>
 
       <div className="flex flex-col items-center gap-3 text-center">
-        {/* `h2` et non `h1` : le bandeau « Le journal » est toujours là
-            au-dessus, et il ne dit plus deux fois le même mot. */}
         <h2 className="font-serif text-title font-semibold text-balance">
           Votre journal commence par une photo
         </h2>
@@ -207,14 +182,6 @@ export function JournalEmpty({
         </Tip>
       </ul>
 
-      {/* L'ACTION DU VIDE — et elle doit ABOUTIR. Quand le carnet est fermé à
-          l'écriture, « Photographier le carnet » mène tout droit à l'écran de
-          pause : un bouton groseille qui conduit à un refus est une promesse
-          rompue, et c'est la règle que le bouton flottant du journal applique
-          déjà (`Timeline`). Le cas se rencontre pour de bon : un foyer dont
-          l'essai s'achève avant la première journée voyait, sur un journal
-          encore vide, l'app lui proposer le seul geste qu'elle venait de lui
-          retirer. Le geste cède donc la place à ce qui le rouvre. */}
       <div className="flex w-full flex-col gap-3">
         {carnetOuvert ? (
           <Button asChild size="lg">
@@ -242,21 +209,11 @@ export function JournalEmpty({
   );
 }
 
-/**
- * LE VIDE D'UN CADRAGE — pas le vide du carnet.
- *
- * Filtrer sur un enfant ou sauter à un mois peut ne rien donner, et ce vide-là
- * n'a rien à voir avec un carnet neuf : il ne faut ni vendre la première photo
- * ni laisser croire que le journal est perdu. Il dit ce qui cadre, et il rend
- * la sortie — c'est le seul écran de l'app dont on ressort en DÉFAISANT ce
- * qu'on vient de faire.
- */
 export function JournalFiltered({
   onReset,
   label,
 }: {
   onReset: () => void;
-  /** Ce qui a été demandé, en clair : « le carnet de Lou », « mars 2026 ». */
   label: string;
 }) {
   return (
@@ -301,13 +258,6 @@ export function Tip({
   );
 }
 
-/**
- * Le petit code posé sur la ligne « Détail technique » : ce qu’on SAIT, jamais
- * plus. Un statut HTTP s’il est dans le message (`api.ts` remonte « Erreur 500 »
- * quand le serveur ne renvoie pas de phrase), sinon la nature de la panne, sinon
- * la requête qui a échoué — c’est la seule chose vraie qui reste, et elle suffit
- * à ouvrir un journal de serveur au bon endroit.
- */
 export function technicalCode(message: string): string {
   const http = message.match(/\b([45]\d{2})\b/);
   if (http) return `HTTP ${http[1]}`;
@@ -315,27 +265,18 @@ export function technicalCode(message: string): string {
   return "GET /api/entries";
 }
 
-/**
- * L’erreur nomme la CAUSE, le REMÈDE, et laisse deux sorties. Elle ne dit
- * surtout pas « le journal est vide » : les journées sont là, c’est l’accès
- * qui a échoué, et confondre les deux est le pire mensonge possible ici.
- */
 export function JournalError({
   message,
   canCapture,
   onRetry,
 }: {
   message: string;
-  /** Un lecteur n’a pas de seconde sortie « photographier » : elle le refuserait. */
   canCapture: boolean;
   onRetry: () => void;
 }) {
   const [detail, setDetail] = useState(false);
   return (
     <section
-      /* La hauteur retirée est celle du chrome + du bandeau (11 rem mesurés) :
-         le bloc se centre dans ce qui RESTE de l’écran, au lieu de se centrer
-         dans 60 % de l’écran et de laisser 280 px de papier vide dessous. */
       className="rise-enter flex min-h-[calc(100svh-11rem)] flex-col items-center justify-center gap-5 text-center"
     >
       <span className="grid size-16 place-items-center rounded-3xl bg-destructive-soft text-destructive">
@@ -345,9 +286,6 @@ export function JournalError({
         <h2 className="font-serif text-title font-semibold text-balance">
           Le journal ne répond pas
         </h2>
-        {/* Plus de tiret cadratin en tête de ligne : « Réessayez — si cela
-            persiste » se coupait entre les deux, et une ligne qui commence par
-            un cadratin se lit comme un dialogue de roman. Deux phrases. */}
         <p className="max-w-[34ch] text-ui text-pretty text-muted-foreground">
           Vos journées sont intactes : c’est la connexion au carnet qui a
           échoué. Réessayez ; si cela persiste, le serveur Racontine est
@@ -355,8 +293,6 @@ export function JournalError({
         </p>
       </div>
       <div className="flex w-full flex-col gap-3">
-        {/* Pas d’état « en cours » sur ce bouton : la nouvelle tentative rend
-            aussitôt le squelette, qui dit mieux que lui ce qui se passe. */}
         <Button onClick={onRetry}>
           <RotateCcw aria-hidden="true" />
           Réessayer
@@ -370,9 +306,6 @@ export function JournalError({
           </Button>
         )}
       </div>
-      {/* Le code brut est ANNONCÉ sur la ligne, pas seulement derrière elle :
-          un développeur reconnaît « 500 » sans ouvrir, et un parent voit qu’il
-          y a une pièce technique sans avoir à la lire. La ligne reste à 44 px. */}
       <details
         className="w-full text-left"
         onToggle={(e) => setDetail(e.currentTarget.open)}
@@ -401,29 +334,6 @@ export function JournalError({
   );
 }
 
-/* --------------------------------------------------------------------------
-   LE REÇU — ce qui manquait à la fin de chaque parcours.
-
-   Mesuré sur les trois parcours : publier une journée, la republier après
-   correction, rejoindre un carnet sur invitation aboutissaient tous les trois
-   au MÊME écran muet. `nav("/")`, et débrouillez-vous : rien ne disait que la
-   journée était partie, que les proches étaient prévenus, ni qu’on venait
-   d’entrer dans un cercle. C’est un cul-de-sac après succès — le pire endroit
-   pour en mettre un, parce que c’est le moment où l’on vérifie qu’on a bien
-   fait ce qu’on croyait faire.
-
-   Le reçu est donc porté par l’écran d’arrivée, pas par une bulle flottante :
-     · il est ANNONCÉ (`role="status"`), donc lu par un lecteur d’écran ;
-     · il nomme la CONSÉQUENCE (les proches sont prévenus), pas seulement le
-       fait ;
-     · il donne la SUITE (voir la journée), jamais un simple « OK » ;
-     · il se referme d’un tap de 44 px, et l’état d’historique est effacé pour
-       qu’un rechargement ne le fasse pas réapparaître.
-   Il ne clignote pas et ne disparaît pas tout seul : un reçu qui s’évapore au
-   bout de trois secondes est un reçu qu’on n’a pas eu le temps de lire.
-   -------------------------------------------------------------------------- */
-
-/** Ce qu’un écran précédent a laissé dans l’état de navigation. */
 export type Flash =
   | {
       kind: "published";
@@ -482,9 +392,6 @@ export function Receipt({
   return (
     <div
       role="status"
-      /* Vert = acquis, comme partout ailleurs dans le produit (les pages
-         gardées de la capture, le pas franchi de la barre d’envoi). Le reçu
-         n’invente aucune teinte. */
       className="rise-enter flex items-start gap-3 rounded-2xl border border-success bg-success-bg px-4 py-3"
     >
       <span
@@ -498,13 +405,6 @@ export function Receipt({
         )}
       </span>
       <div className="min-w-0 flex-1">
-        {/* PAS DE TITRE DE JOURNÉE ICI, et c'est mesuré : la première version
-            reprenait « Le jour des haricots verts » en 22/28 sérif, si bien que
-            le titre s'écrivait DEUX FOIS à 100 px d'écart (une fois dans le
-            reçu, une fois sur la carte juste dessous) et que le reçu faisait
-            390 px — il repoussait sous la ligne de flottaison la seule chose
-            qu'on venait vérifier, la journée elle-même. Le reçu confirme, la
-            carte nomme. 130 px, deux lignes et une suite. */}
         <p className="text-ui font-bold text-success">{title}</p>
         <p className="mt-0.5 text-meta text-success">{body}</p>
         {published && (
@@ -512,8 +412,6 @@ export function Receipt({
             variant="link"
             size="sm"
             className="-ml-3 mt-1 text-success"
-            /* Le titre part dans le libellé accessible : « Voir la journée »
-               seul ne dit pas laquelle, et le reçu ne l'écrit plus en gros. */
             aria-label={
               flash.title ? `Voir la journée « ${flash.title} »` : undefined
             }

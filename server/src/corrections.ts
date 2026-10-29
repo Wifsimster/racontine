@@ -4,13 +4,6 @@ import { wordCorrections, type UncertaintyField } from "./db/schema.js";
 
 export type GlossaryEntry = { original: string; corrected: string };
 
-/**
- * Vocabulaire déjà validé pour un enfant — le plus récent en premier,
- * dédupliqué par mot original (insensible à la casse). Réinjecté au VLM à la
- * prochaine lecture (voir `vlm.ts`) pour que les mots déjà confirmés (surnoms,
- * mots d'enfant, écriture d'un intervenant donné…) soient reconnus sans
- * repasser par une relecture humaine.
- */
 export async function getChildGlossary(
   childId: string,
   limit = 30,
@@ -37,10 +30,6 @@ export async function getChildGlossary(
   return out;
 }
 
-/**
- * Enregistre une correction validée par un proche lors de la relecture d'une
- * incertitude — alimente le glossaire de l'enfant pour les lectures futures.
- */
 export async function recordCorrection(row: {
   childId: string;
   original: string;

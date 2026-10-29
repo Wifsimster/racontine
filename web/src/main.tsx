@@ -18,12 +18,7 @@ import Administration from "./pages/Administration";
 
 const router = createBrowserRouter([
   { path: "/login", element: <Login /> },
-  /* Choix d'un nouveau mot de passe : hors session, comme les deux autres
-     portes. On y arrive par la redirection du serveur, qui a déjà vérifié le
-     jeton et le repasse en query (`?token=…`) — ou signale son refus
-     (`?error=INVALID_TOKEN`). */
   { path: "/reset-password", element: <ResetPassword /> },
-  // Réception d'invitation : accessible sans session (le token est la capacité).
   { path: "/invite/:token", element: <Invite /> },
   {
     path: "/",

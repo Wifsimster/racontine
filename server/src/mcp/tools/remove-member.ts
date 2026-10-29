@@ -2,11 +2,6 @@ import { z } from "zod";
 import type { McpTool } from "../protocol.js";
 import { errorContent, jsonContent } from "../protocol.js";
 
-/**
- * Retire un proche du cercle d'un carnet — son adhésion ET son abonnement,
- * sans quoi il continuerait de recevoir les notifications d'un journal qu'il
- * ne peut plus ouvrir. Le dernier administrateur ne peut pas être retiré.
- */
 export const removeMemberTool: McpTool = {
   name: "remove_member",
   register(server, ctx) {

@@ -2,11 +2,6 @@ import { z } from "zod";
 import type { McpTool } from "../protocol.js";
 import { errorContent, jsonContent } from "../protocol.js";
 
-/**
- * Nomme un proche dont le compte n'a pas de nom (créé par lien magique). La
- * règle est celle du service : on complète un vide, on n'écrase jamais le nom
- * qu'une personne s'est donné.
- */
 export const setMemberNameTool: McpTool = {
   name: "set_member_name",
   register(server, ctx) {

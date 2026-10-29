@@ -28,109 +28,7 @@ import {
 import { MarqueSignature } from "@/components/Marque";
 import { StudioSignature } from "@/components/Studio";
 
-/* ===========================================================================
-   L'ouverture du carnet.
-
-   C'est le premier écran de l'app, et le SEUL que voient les proches avant de
-   nous confier la journée de leur petit-enfant. Il est donc dessiné comme une
-   page de carnet, pas comme un formulaire de SaaS :
-
-   · le contenu est ALIGNÉ À GAUCHE sur le trait de marge groseille, comme une
-     page qu'on commence à écrire — un bloc centré au milieu du vide est la
-     signature du formulaire de connexion générique ;
-   · UN SEUL axe de texte, à 40 px : le surtitre, le nom, la promesse, les
-     libellés de la feuille, le pied de page. La feuille elle-même est décalée
-     de 16 px vers la gauche (`-ml-4`) pour que son bord vienne se poser SUR le
-     trait de marge (24 px) : elle n'est plus une carte qui flotte avec sa
-     propre colonne 21 px plus à droite, elle est reliée à la marge comme une
-     page l'est à sa couture. Son bord gauche est carré et le trait de marge est
-     redessiné DANS la feuille (`MargeRule`) pour que l'axe traverse l'écran
-     d'un bord à l'autre sans être interrompu par un coin arrondi ;
-   · le bandeau n'a pas de pictogramme : le nom EST la marque, en Fraunces
-     30/36. Un logo de livre à côté d'un mot en sérif, c'est un gabarit de
-     landing page ;
-   · la phrase-promesse est réglée en 17/28 et sa ligne de base tombe SUR la
-     première ligne du cahier, que le fond ne dessine qu'à partir d'elle (voir
-     `LoginBackground`) : le texte est posé sur le papier, pas devant ;
-   · DEUX PORTES sont visibles d'emblée, parce qu'il y a deux publics : le
-     parent qui a un mot de passe, et le proche invité qui n'en aura jamais et
-     se connecte par lien e-mail.
-
-   Une QUATRIÈME porte s'ouvre depuis la première, sans jamais s'imposer : le
-   mot de passe oublié. Elle n'était pas là, et son absence coûtait cher — le
-   seul secours affiché était « recevoir un lien par e-mail », c'est-à-dire un
-   MAGIC LINK, qui ouvre une session et ne touche pas au mot de passe. On
-   demandait à le réinitialiser, on recevait un lien de connexion, et le mot de
-   passe restait oublié. Les deux besoins ont donc chacun leur affordance
-   (« Mot de passe oublié ? » sous le champ, « Recevoir un lien par e-mail »
-   après la séparation), chacun leur e-mail, et chacun leur accusé de réception.
-
-   Quatre portes au total (`Door`), un seul écran, aucune navigation.
-
-   COULEUR : le groseille ne dit que deux choses ici, et elles ne se confondent
-   pas — l'ACTION (une surface pleine : le bouton) et l'IDENTITÉ du carnet (un
-   trait : la marge, le halo du nom). Le lien d'inscription, lui, est repassé à
-   l'ENCRE soulignée : c'est une note de bas de page, pas une action, et le
-   groseille portait trois métiers à la fois. L'ambre et le rouge d'état ne
-   sortent que pour une erreur, le vert que pour la confirmation « le lien est
-   parti ». Les cinq feutres de catégorie n'ont RIEN à faire ici.
-
-   TYPOGRAPHIE : six crans, pas un de plus — 30/36 (nom), 22/28 (titre de
-   feuille), 17/28 (promesse, récit, champs), 15/20 (libellés, boutons), 13/20
-   (indices), 11/16 (surtitre). Apostrophes courbes et espace insécable avant
-   les deux-points : c'est le premier écran, il est composé, pas tapé.
-
-   ── Ce que la ronde 2 corrige, et pourquoi c'est ici ──────────────────────
-
-   1. I1 NON-TEXTE. Le bord des champs mesurait 1,51:1 en clair et 1,90:1 en
-      sombre sur `--card`, pour 3:1 exigés (WCAG 1.4.11) : le seul objet de
-      l'écran où l'on doit AGIR n'avait pas de contour visible. La valeur juste
-      vit dans `--input` (index.css), qui n'est pas dans le périmètre de fichiers
-      de cette ronde ; on la POSE donc sur la racine de l'écran, sous le même
-      nom de jeton, pour que tout ce qui écrit `border-input` en hérite — les
-      champs comme les boutons `outline`, qui avaient exactement le même défaut.
-      Mesuré : rgb(140 142 152) sur `--card` = 3,21:1 en clair ;
-      rgb(110 112 120) (l'exact composé de blanc à 36 % sur la feuille de nuit)
-      = 3,28:1 en sombre. La même paire de valeurs doit remonter dans index.css
-      dès que ce fichier est ouvrable — ici elle est scopée, pas dupliquée.
-      Le champ reçoit en plus l'intérieur du PAPIER (`bg-background`) au lieu de
-      celui de la feuille (`bg-card`) : un champ est un creux dans la page.
-      Les trois crans du champ restent distincts : repos 3,2:1 → focus 6,0:1
-      (`--ring`, 2 px) → fautif 6,5:1 (`--destructive`).
-
-   2. I9. Le CTA en attente affichait `Loader2 animate-spin`, une boucle de
-      1000 ms linéaire jamais déclarée au budget mouvement — celle que les
-      pièces timeline et capture ont supprimée. Elle disparaît : le libellé
-      porte l'attente (« Connexion… ») et une barre en DEUX PAS, immobile, dit
-      où l'on en est (« demande partie » en groseille, « réponse attendue » au
-      gris mesuré du système). Aucune animation, donc rien à arrêter sous
-      `prefers-reduced-motion`, et rien qui grimpe faussement.
-
-   3. I8 / clavier. Le bouton n'est plus `disabled` pendant la requête mais
-      `aria-disabled` + `aria-busy` : il garde le focus (avant, il était blurré
-      et `document.activeElement` retombait sur `<body>`, renvoyant en haut du
-      document la personne qui venait de valider au clavier) et il garde SA
-      COULEUR — pendant l'attente, l'action restait la seule chose grise de
-      l'écran. Toute erreur déplace en outre le focus sur le champ fautif, et
-      le champ fautif est décrit par la tuile d'erreur (`aria-describedby`).
-      Enfin, passer d'une porte à l'autre met le focus sur le premier champ vide
-      de la nouvelle porte : sur la porte du lien, taper son adresse est la
-      seule chose à faire, elle ne coûte plus un tap de plus.
-   =========================================================================== */
-
 export default function Login() {
-  /* ── OÙ L'ON ALLAIT ───────────────────────────────────────────────────────
-     La coquille redirige ici en emportant la destination
-     (`<Navigate state={{ from: location }}>`), et cet écran la jetait : la
-     connexion menait toujours à `/`. Conséquence mesurée sur le parcours de
-     lecture d'un proche : le lien « une nouvelle journée est en ligne » reçu par
-     e-mail pointe sur `/entries/:id` ; déconnecté, on le suivait, on se
-     connectait… et on atterrissait sur le journal, à charge de retrouver la
-     journée soi-même. La destination est donc reprise, pour la redirection
-     comme pour le lien magique.
-     Deux garde-fous : uniquement un chemin INTERNE (jamais `//ailleurs.example`
-     ni une URL absolue — un `callbackURL` est un vecteur de redirection
-     ouverte), et jamais `/login` (boucle). */
   const location = useLocation();
   const next = useMemo(() => {
     const from = (
@@ -142,12 +40,6 @@ export default function Login() {
     return p + (from?.search ?? "");
   }, [location.state]);
 
-  /* La porte d'arrivée. Par défaut le mot de passe — mais l'accueil public
-     envoie ici pour CRÉER un carnet (`/login?porte=inscription`) : y arriver
-     sur le formulaire de connexion ferait recommencer le geste d'un cran en
-     arrière. La valeur est lue une seule fois, à l'ouverture ; ensuite, c'est
-     la personne qui choisit sa porte. Si les inscriptions sont fermées, l'effet
-     des réglages publics, plus bas, ramène à la porte du mot de passe. */
   const [door, setDoor] = useState<Door>(() =>
     new URLSearchParams(location.search).get("porte") === "inscription"
       ? "signup"
@@ -158,31 +50,16 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [problem, setProblem] = useState<Problem | null>(null);
   const [busy, setBusy] = useState(false);
-  /** Lien envoyé : l'écran change de nature, il ne montre plus un formulaire. */
   const [sentTo, setSentTo] = useState<string | null>(null);
-  /** QUEL lien est parti. Les deux e-mails se ressemblent dans une boîte de
-   *  réception ; l'accusé de réception, lui, doit dire lequel on attend et ce
-   *  qu'il fera — se connecter, ou mener au choix d'un nouveau mot de passe. */
   const [sentKind, setSentKind] = useState<"magic" | "forgot">("magic");
   const [resent, setResent] = useState(false);
 
   const [appName, setAppName] = useState("Racontine");
   const [signupEnabled, setSignupEnabled] = useState(true);
-  /* Chargement des réglages publics : l'écran est utilisable SANS eux (le nom
-     par défaut est le bon dans la quasi-totalité des cas), donc pas de
-     squelette pleine page — on RÉSERVE seulement la place du seul élément qui
-     en dépend, l'affordance « créer un compte », et on y met un squelette à sa
-     forme. Un écran de connexion qui saute au bout de 80 ms a l'air cassé ;
-     un écran qui se cache derrière un spinner a l'air lent. */
   const [settingsLoaded, setSettingsLoaded] = useState(false);
 
-  /* Les champs sont tenus par référence pour une seule raison : ramener le
-     FOCUS là où il sert (le champ fautif, le premier champ vide d'une porte).
-     Rien n'est piloté par le DOM, la valeur reste dans l'état React. */
   const fields = useRef<Partial<Record<FieldId, HTMLInputElement | null>>>({});
   const alertRef = useRef<HTMLDivElement | null>(null);
-  /** Vrai seulement quand la personne a elle-même changé de porte : on ne vole
-   *  jamais le focus au chargement (clavier mobile qui s'ouvre tout seul). */
   const wantFocus = useRef(false);
 
   useEffect(() => {
@@ -204,9 +81,6 @@ export default function Login() {
     };
   }, []);
 
-  /* Changement de porte : le focus se pose sur le premier champ VIDE de la
-     nouvelle porte. Dans un effet et non dans le gestionnaire de clic, parce
-     que le champ n'existe pas encore au moment du clic. */
   useEffect(() => {
     if (!wantFocus.current) return;
     wantFocus.current = false;
@@ -222,8 +96,6 @@ export default function Login() {
     setSentTo(null);
   }
 
-  /** Un échec ne laisse jamais le focus nulle part : il va sur le champ à
-   *  corriger, ou sur la tuile quand aucun champ n'est en cause (réseau). */
   function fail(p: Problem) {
     setProblem(p);
     const target: FieldId | null =
@@ -248,16 +120,6 @@ export default function Login() {
     return true;
   }
 
-  /**
-   * Le lien de RÉINITIALISATION — celui qui mène au choix d'un nouveau mot de
-   * passe, et pas à une session ouverte. `redirectTo` est un chemin INTERNE
-   * (même garde-fou que `next`) : le serveur vérifie le jeton, puis y redirige
-   * en le repassant en query.
-   *
-   * Le serveur répond toujours OUI, même pour une adresse inconnue : c'est
-   * voulu, sans quoi cet écran dirait qui a un compte sur l'instance. L'accusé
-   * de réception est donc écrit au conditionnel, et il ne ment pas.
-   */
   async function sendResetLink(target: string) {
     const res = await authClient.requestPasswordReset({
       email: target,
@@ -275,9 +137,6 @@ export default function Login() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (busy) return;
-    // Un champ vide n'a pas besoin d'un aller-retour serveur pour être signalé,
-    // et surtout pas d'une bulle native : on rend NOTRE erreur, en français,
-    // instantanément. (Le formulaire est `noValidate` exprès.)
     const trimmed = email.trim();
     const noPass = hasPassword(door) && !password;
     if (!trimmed || noPass) {
@@ -296,8 +155,6 @@ export default function Login() {
     setBusy(true);
     try {
       if (door === "magic") {
-        // On coupe les espaces : une adresse recopiée depuis un e-mail en
-        // traîne presque toujours un, et l'erreur serveur serait incompréhensible.
         await sendMagicLink(trimmed);
       } else if (door === "forgot") {
         await sendResetLink(trimmed);
@@ -312,9 +169,6 @@ export default function Login() {
               });
         if (res.error) fail(problemFor(res.error.message ?? undefined, door));
         else {
-          /* Le bout de l'entonnoir ouvert par l'accueil public. On ne mesure
-             QUE la création d'un carnet : une connexion, elle, est un geste
-             quotidien et n'apprend rien sur la page qui l'a précédée. */
           if (door === "signup") mesure("inscription_creee");
           window.location.href = next;
         }
@@ -343,10 +197,6 @@ export default function Login() {
     }
   }
 
-  /* ---------------------------------------------------------------- rendu --- */
-
-  // Le libellé du bouton PORTE l'état d'attente (« Connexion… ») : il n'est
-  // jamais remplacé par une roue, on ne perd donc pas ce qu'on a demandé.
   const cta =
     door === "forgot"
       ? busy
@@ -375,32 +225,19 @@ export default function Login() {
 
   return (
     <div
-      /* `--input` posé ici, sous son propre nom : voir la note 1 en tête de
-         fichier. Écrit en sRGB (jamais en `oklch()` ni via un modificateur
-         d'opacité) pour rester mesurable par `getComputedStyle`. */
       className="relative isolate min-h-svh overflow-hidden pt-safe pb-safe [--input:rgb(140_142_152)] dark:[--input:rgb(110_112_120)]"
     >
       <LoginBackground />
 
-      {/* La colonne de lecture : 26 rem au plus, un retrait gauche de 40 px
-          (24 px de marge + 16 px de gouttière) qui pose le texte juste à droite
-          du trait groseille, et un retrait droit plus court — une page de
-          carnet n'est pas symétrique. Le retrait haut vaut 84 px = 3 x 28 :
-          tout le bandeau reste ainsi sur la grille du papier. */}
       <div className="rise-enter mx-auto flex w-full max-w-[26rem] flex-col pt-[5.25rem] pr-5 pb-6 pl-10">
-        {/* ── Le bandeau ─────────────────────────────────────────────────── */}
         <p className="surtitre text-muted-foreground">Carnet de liaison</p>
         <h1 className="mt-4 font-serif text-display font-semibold text-foreground">
           {appName}
         </h1>
-        {/* Pas de `max-w` : la colonne EST la mesure (330 px à 390, soit ~45
-            caractères), et la coupe tombe après la virgule au lieu de séparer
-            « la journée » de « s’écrit ». */}
         <p className="carnet-story mt-4 text-foreground">
           {"Photographiez le carnet : la journée s’écrit, les proches la lisent."}
         </p>
 
-        {/* ── La feuille ───────────────────────────────────────────────────── */}
         {sentTo ? (
           <LinkSent
             kind={sentKind}
@@ -412,8 +249,6 @@ export default function Login() {
               setSentTo(null);
               setResent(false);
               wantFocus.current = true;
-              // On revient à la porte d'où l'on vient : corriger l'adresse ne
-              // doit pas changer la nature du lien qu'on attend.
               setDoor(sentKind === "forgot" ? "forgot" : "magic");
             }}
           />
@@ -445,18 +280,12 @@ export default function Login() {
               </p>
             )}
 
-            {/* La porte du mot de passe oublié dit EXACTEMENT ce que fera le
-                lien — parce que la porte d'à côté en envoie un autre, qui
-                ressemble au premier dans une boîte de réception et qui, lui, ne
-                touche pas au mot de passe. */}
             {door === "forgot" && (
               <p className="text-meta text-muted-foreground">
                 {"Nous vous envoyons un lien qui mène au choix d’un nouveau mot de passe. Il ne vaut qu’une heure."}
               </p>
             )}
 
-            {/* Les champs sont GROUPÉS à 16 px, les sections séparées à 20 px :
-                l'écart dit ce qui va ensemble. */}
             <div className="flex flex-col gap-4">
               {door === "signup" && (
                 <Field
@@ -465,10 +294,6 @@ export default function Login() {
                   value={name}
                   onChange={setName}
                   hold={fields}
-                  /* Un EXEMPLE, pas une répétition du libellé : un champ vide
-                     qui montre la forme de la réponse n'a plus l'air inachevé,
-                     et le libellé reste au-dessus (il ne disparaît jamais à la
-                     saisie, contrairement au « libellé flottant »). */
                   placeholder="Camille Durand"
                   autoComplete="name"
                   enterKeyHint="next"
@@ -497,7 +322,6 @@ export default function Login() {
                   value={password}
                   onChange={setPassword}
                   hold={fields}
-                  /* Huit puces : la forme de la réponse ET le minimum exigé. */
                   placeholder="••••••••"
                   minLength={8}
                   autoComplete={
@@ -511,18 +335,6 @@ export default function Login() {
                 />
               )}
 
-              {/* LA SORTIE DU MOT DE PASSE OUBLIÉ EST ICI, collée au champ qui
-                  vient de résister — pas en pied de page, et surtout pas
-                  confondue avec la seconde porte. Avant, l'écran n'offrait
-                  qu'un seul secours (« recevoir un lien par e-mail ») : on
-                  demandait à changer son mot de passe, on recevait un lien de
-                  CONNEXION, et le mot de passe restait oublié. Deux besoins
-                  distincts, deux affordances distinctes, deux e-mails dont
-                  l'objet ne se confond pas.
-                  Réglée à l'ENCRE soulignée, comme l'affordance d'inscription :
-                  c'est une note, pas l'action de l'écran — le groseille reste
-                  au bouton. La cible fait 44 px de haut (taille `sm`) et son
-                  bord gauche tombe sur l'axe de texte (`px-0`). */}
               {door === "password" && (
                 <div className="-mt-1 flex">
                   <Button
@@ -541,19 +353,10 @@ export default function Login() {
 
             {problem && <ProblemNote problem={problem} ref={alertRef} />}
 
-            {/* L'action et son attente forment UN objet : 8 px, pas le pas de
-                20 px des sections. */}
             <div className="flex flex-col gap-2">
               <Button
                 type="submit"
                 size="lg"
-                /* Pendant l'attente : `aria-disabled`, PAS `disabled`. Le
-                   bouton reste focusable (le clavier ne repart pas à zéro) et
-                   garde le groseille de l'action — `disabled:bg-muted` lui
-                   retirait la couleur de marque au moment précis où il est le
-                   seul objet actif de l'écran. Le double clic est arrêté par la
-                   garde `if (busy) return` de `submit`, et le survol ne fonce
-                   plus (rien ne réagit pendant qu'on attend). */
                 className="w-full aria-disabled:cursor-progress aria-disabled:hover:bg-primary"
                 aria-busy={busy || undefined}
                 aria-disabled={busy || undefined}
@@ -565,20 +368,11 @@ export default function Login() {
 
             {door === "password" ? (
               <>
-                {/* ── La seconde porte ─────────────────────────────────────
-                    VISIBLE, pas cachée derrière un lien : c'est le chemin de
-                    tous les proches, et ils n'ont pas de mot de passe à
-                    deviner. */}
                 <div className="flex items-center gap-3">
-                  {/* Une LIGNE DU CAHIER (`--rule`), pas un filet
-                      d'interface : la séparation appartient au papier. */}
                   <span className="h-px flex-1 bg-rule" aria-hidden="true" />
                   <span className="surtitre text-muted-foreground">ou</span>
                   <span className="h-px flex-1 bg-rule" aria-hidden="true" />
                 </div>
-                {/* La RAISON avant l'ACTION : un proche qui lit « je n'ai pas
-                    de mot de passe » comprend le bouton d'en dessous. L'inverse
-                    laissait la phrase en note de bas de feuille. */}
                 <div className="flex flex-col gap-2">
                   <p className="text-meta text-muted-foreground">
                     {"Les proches invités n’ont pas de mot de passe."}
@@ -596,9 +390,6 @@ export default function Login() {
                 </div>
               </>
             ) : (
-              /* UNE seule sortie par porte. La version précédente en offrait
-                 deux à l'inscription — ce bouton, plus « J'ai déjà un compte »
-                 74 px plus bas : deux fois la même porte, deux fois le doute. */
               <Button
                 type="button"
                 variant="ghost"
@@ -613,13 +404,6 @@ export default function Login() {
           </form>
         )}
 
-        {/* ── Pied de page : l'inscription, puis la promesse de discrétion ───
-            L'affordance d'inscription n'apparaît que sur la porte du mot de
-            passe : depuis les deux autres, la sortie est déjà DANS la feuille.
-            Elle est réglée à l'ENCRE soulignée et non en groseille — le
-            groseille est réservé à l'action et à l'identité du carnet, et une
-            note de bas de page qui crie plus fort que le bouton, c'est ce qui
-            arrivait pendant l'attente. */}
         {!sentTo && door === "password" && (
           <div className="mt-2 flex min-h-11 items-center">
             {!settingsLoaded ? (
@@ -629,11 +413,6 @@ export default function Login() {
                 type="button"
                 variant="ghost"
                 size="sm"
-                /* `px-0` : le BORD GAUCHE DE LA BOÎTE tombe à 40 px, sur l'axe
-                   de texte de l'écran — pas seulement les glyphes. Le survol
-                   n'allume donc pas un fond (il serrerait les lettres) : c'est
-                   le soulignement qui fonce. La cible tactile fait quand même
-                   44 px de haut (taille `sm`). */
                 className="justify-start px-0 font-normal underline decoration-input decoration-1 underline-offset-4 hover:bg-transparent hover:decoration-foreground"
                 disabled={busy}
                 onClick={() => switchTo("signup")}
@@ -649,23 +428,13 @@ export default function Login() {
         )}
 
         <p className="mt-4 flex items-start gap-2 text-meta text-muted-foreground">
-          {/* mt-0.5 : demi-pas optique DÉCLARÉ (2 px). L'écart exact pour
-              centrer une icône de 14 px sur une ligne de 20 px serait 3 px,
-              mais 3 n'est pas un multiple de 2 : on prend 2, qui reste sur la
-              grille et corrige l'essentiel du décalage. */}
           <ShieldCheck className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
           <span>
             {"Instance privée : tout reste sur votre serveur."}
           </span>
         </p>
 
-        {/* LA SIGNATURE. Le bandeau au-dessus porte `appName` — le nom que le
-            foyer a donné à son carnet. Cette ligne-ci ne le lit pas : c'est le
-            seul endroit de l'app où la marque est inconditionnelle. */}
         <MarqueSignature className="mt-6" />
-        {/* Et sous la marque, l'éditeur. C'est la première porte du produit :
-            l'endroit où l'on décide de faire confiance est aussi celui où l'on
-            doit pouvoir savoir qui est derrière. */}
         <StudioSignature className="mt-1" />
       </div>
     </div>

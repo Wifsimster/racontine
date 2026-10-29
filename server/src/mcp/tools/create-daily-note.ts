@@ -3,7 +3,6 @@ import { SOURCES } from "../../domain/entry-metadata.js";
 import type { McpTool } from "../protocol.js";
 import { errorContent, jsonContent } from "../protocol.js";
 
-/** Crée une journée à partir d'un contenu déjà transcrit (sans photo ni VLM). */
 export const createDailyNoteTool: McpTool = {
   name: "create_daily_note",
   register(server, ctx) {

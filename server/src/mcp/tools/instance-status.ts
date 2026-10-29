@@ -3,21 +3,6 @@ import { assessOps, type OpsCarnet } from "../../domain/ops-status.js";
 import type { McpTool } from "../protocol.js";
 import { jsonContent } from "../protocol.js";
 
-/* ===========================================================================
-   « COMMENT VA L'INSTANCE ? » — le premier appel d'un agent d'exploitation.
-
-   Un seul aller-retour rend tout ce qu'il faut pour décider : la version qui
-   tourne, les réglages en vigueur, l'état de l'infrastructure, les carnets
-   administrés avec leurs compteurs, et ce qui attend une main. Les trois outils
-   qui suivent (`retry_daily_note`, `publish_daily_note`,
-   `update_instance_settings`) sont les gestes que cette photo appelle.
-
-   Le périmètre est TOUJOURS celui du jeton : un contributeur y voit ses
-   lectures en échec, pas les carnets du foyer d'à côté ; les réglages et
-   l'infrastructure ne s'ouvrent qu'au propriétaire de l'instance.
-   =========================================================================== */
-
-/** Photo d'exploitation de l'instance, au périmètre du jeton. */
 export const instanceStatusTool: McpTool = {
   name: "instance_status",
   register(server, ctx) {
@@ -43,9 +28,6 @@ export const instanceStatusTool: McpTool = {
         const owner = await ctx.instance.isOwner(ctx.user.id);
         const settings = await ctx.instance.settings();
 
-        // La console rend 403 à qui n'administre aucun carnet : c'est un
-        // périmètre vide, pas une erreur — un contributeur pilote quand même
-        // ses lectures.
         const console = await ctx.admin.console(ctx.user.id);
         const carnets: OpsCarnet[] = console.ok
           ? console.console.children.map((c) => ({
@@ -75,7 +57,6 @@ export const instanceStatusTool: McpTool = {
           instance: {
             appName: settings.appName,
             version: ctx.instance.version,
-            // Réglages et infrastructure : affaire du propriétaire seul.
             settings: owner ? settings : null,
             infra: owner ? ctx.instance.infra() : null,
           },

@@ -17,27 +17,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { InlineError } from "@/components/PageState";
 
-/**
- * MES DONNÉES — les emporter, ou s'en aller.
- *
- * Deux gestes que l'application ne proposait nulle part, alors qu'elle garde ce
- * qu'un produit peut garder de plus intime : le quotidien d'un enfant, des
- * photos de son carnet, le nom de ses proches. On pouvait effacer une journée ;
- * on ne pouvait ni tout reprendre, ni partir.
- *
- * L'effacement n'est PAS un bouton rouge suivi d'un « Êtes-vous sûr ? ». Il
- * commence par un aperçu — ce qui part avec le compte, ce qui reste aux autres —
- * et se termine par une adresse recopiée. Entre les deux, rien n'est effacé.
- */
 export default function MesDonnees({ email }: { email?: string }) {
   const [busy, setBusy] = useState<"preview" | "delete" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  /* L'aperçu ouvre le dialogue. `blocked` porte la phrase du serveur quand
-     quelque chose retient encore le compte (abonnement, propriété de
-     l'instance, dernier administrateur) : dans ce cas, aucun champ de
-     confirmation ne s'affiche — il n'y a rien à confirmer, il y a quelque
-     chose à faire d'abord. */
   const [plan, setPlan] = useState<ErasurePreview | null>(null);
   const [blocked, setBlocked] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
@@ -52,8 +35,6 @@ export default function MesDonnees({ email }: { email?: string }) {
     try {
       setPlan(await api.erasurePreview());
     } catch (e) {
-      // Le refus du serveur (409) EST le contenu du dialogue : il nomme ce qui
-      // retient le compte et ce qu'il faut faire pour le libérer.
       setBlocked(e instanceof Error ? e.message : "Effacement impossible");
     } finally {
       setBusy(null);
@@ -66,9 +47,6 @@ export default function MesDonnees({ email }: { email?: string }) {
     setError(null);
     try {
       await api.deleteMyAccount(typed);
-      /* Les sessions sont parties avec le compte : `signOut` parle à une porte
-         qui n'existe plus et peut échouer — ce n'est pas une erreur à montrer.
-         On nettoie ce qu'on peut, puis on quitte l'application pour de bon. */
       await signOut().catch(() => {});
       window.location.href = "/login";
     } catch (e) {
@@ -202,7 +180,6 @@ export default function MesDonnees({ email }: { email?: string }) {
   );
 }
 
-/** Les carnets concernés, nommés — jamais un compte « et ses données ». */
 function CarnetList({
   title,
   carnets,
@@ -246,13 +223,6 @@ function CarnetList({
   );
 }
 
-/**
- * Le champ de confirmation, côté écran : il n'AUTORISE rien, il allume le
- * bouton. La seule comparaison qui compte est celle du serveur (`confirms`,
- * dans `domain/erasure.ts`) ; celle-ci en reprend la tolérance — espaces,
- * casse, accents — pour ne pas laisser un bouton éteint devant une saisie que
- * le serveur aurait acceptée.
- */
 function matches(typed: string, expected?: string): boolean {
   if (!expected) return false;
   const fold = (s: string) =>

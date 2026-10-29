@@ -3,24 +3,6 @@ import { useEffect, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
-/* ===========================================================================
-   Les écrans de réglage (« Partager », « Proches », « Réglages », « Mon
-   compte ») partagent une coquille et TROIS états dessinés.
-
-   Pourquoi ce module existe : le journal, la capture et la relecture ont chacun
-   reçu leur bandeau, leur squelette et leur écran d'erreur — dessinés, mesurés,
-   et à chaque fois réécrits sur place. Les quatre écrans de réglage, eux,
-   étaient restés à « Chargement… » centré, à un `<p>` rouge pour toute erreur et
-   à un `h1` sans-serif : le même produit changeait de langue au troisième
-   onglet. Plutôt que de recopier une quatrième fois le bandeau du journal, on
-   nomme le vocabulaire UNE fois ici.
-
-   Les trois états ne sont pas décoratifs, ils sont l'invariant I7 : une page qui
-   charge montre la FORME de sa réponse, une page vide dit ce qui la remplira, et
-   une page en erreur dit ce qui est intact et ce qu'on peut faire.
-   =========================================================================== */
-
-/** La colonne de lecture, l'axe partagé avec l'en-tête (`--shell-max`). */
 export function PageShell({
   className,
   ...props
@@ -33,16 +15,6 @@ export function PageShell({
   );
 }
 
-/**
- * Le bandeau d'écran : le seul cran 30/36 de la page, en sérif, comme « Le
- * journal ». La coquille porte le nom de l'INSTANCE, cette ligne porte le nom de
- * l'ÉCRAN — et elle ne dépend pas des données (elle reste pendant le
- * chargement, le vide et l'erreur, exactement là où l'on est le plus perdu).
- *
- * Pas d'icône à côté du titre : les quatre écrans en avaient une, de 20 px,
- * posée contre une capitale de 30 px qu'elle n'arrivait pas à aligner. Le titre
- * se tient seul.
- */
 export function PageHeader({
   title,
   lede,
@@ -62,11 +34,6 @@ export function PageHeader({
   );
 }
 
-/**
- * Intertitre de section. C'est le surtitre du carnet (11/16, capitales, 0,14 em)
- * — le même objet que le mois du journal, et non un `text-xs font-semibold
- * uppercase tracking-wide` réinventé sur chaque écran.
- */
 export function SectionLabel({
   className,
   ...props
@@ -80,22 +47,11 @@ export function SectionLabel({
 }
 
 const TONE = {
-  /* Un état vide n'est pas une panne : il est encre pâlie, pas rouge. */
   neutral: "bg-muted text-muted-foreground",
-  /* Une porte fermée par un rôle : groseille pâle, la couleur de la marque. */
   locked: "bg-primary-soft text-primary",
   error: "bg-destructive-soft text-destructive",
 } as const;
 
-/**
- * Un état plein écran : vide, interdit ou en panne. Même géométrie que l'écran
- * d'erreur du journal — tuile de 64 px, titre sérif, une phrase de 34 caractères
- * de mesure, puis les actions.
- *
- * La hauteur retirée est celle du chrome et du bandeau : le bloc se centre dans
- * ce qui RESTE de l'écran, au lieu de se centrer dans la page entière et de
- * laisser un vide sous lui.
- */
 export function PageState({
   icon: Icon,
   tone = "neutral",
@@ -137,14 +93,6 @@ export function PageState({
   );
 }
 
-/**
- * Le chargement montre la forme de ce qui arrive : des cartes fantômes au
- * gabarit réel. Au bout de trois secondes il dit qu'il est long — la seule chose
- * honnête quand on ne connaît ni total ni progression.
- *
- * Le message est un `role="status"` : un lecteur d'écran l'entend, les carrés
- * gris lui sont cachés.
- */
 export function PageSkeleton({
   label = "On ouvre le carnet",
   slowLabel = "Le carnet met du temps à venir",
@@ -166,8 +114,6 @@ export function PageSkeleton({
         <p role="status" className="surtitre text-muted-foreground">
           {slow ? slowLabel : label}
         </p>
-        {/* Le point respire au rythme de la balayeuse des squelettes
-            (1200 ms, déclarée dans index.css) : pas de seconde boucle. */}
         <span aria-hidden="true" className="skeleton size-2 rounded-full" />
       </div>
       {Array.from({ length: rows }, (_, i) => (
@@ -186,13 +132,6 @@ export function PageSkeleton({
   );
 }
 
-/**
- * Un message d'erreur INLINE, pour un geste qui a échoué sans faire tomber
- * l'écran (une invitation refusée, un rôle qu'on n'a pas pu changer). Il porte
- * une icône et un fond mesuré, au lieu d'être un `<p>` rouge dans le flux : sur
- * papier crème, une ligne rouge de 13 px se lit comme une légende, pas comme un
- * refus.
- */
 export function InlineError({
   children,
   className,

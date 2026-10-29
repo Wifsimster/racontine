@@ -8,8 +8,6 @@ import {
 } from "../testing/fakes.js";
 import { PageService } from "./page-service.js";
 
-/* Les quatre règles des pages photographiées, vérifiées sans base ni disque. */
-
 class FakePages implements PageRepository {
   readonly removed: string[] = [];
   readonly rotations: { id: string; rotation: number }[] = [];
@@ -107,7 +105,6 @@ test("tourner une page réécrit le fichier et enregistre l'orientation", async 
   assert.equal(result.ok, true);
   if (!result.ok) return;
   assert.equal(result.rotation, 1);
-  // Un quart de tour impair échange largeur et hauteur.
   assert.equal(result.width, 1600);
   assert.deepEqual(images.rotated, [{ path: "p1.jpg", quarters: 1 }]);
   assert.deepEqual(pages.rotations, [{ id: "att-1", rotation: 1 }]);
@@ -166,7 +163,6 @@ test("une journée garde toujours au moins une page", async () => {
   const several = build({ siblings: 3 });
   assert.deepEqual(await several.service.remove("u", "att-1"), { ok: true });
   assert.deepEqual(several.pages.removed, ["att-1"]);
-  // Le fichier part avec la ligne.
   assert.deepEqual(several.images.deleted, ["p1.jpg"]);
 });
 

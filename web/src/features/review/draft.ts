@@ -6,17 +6,12 @@ import {
 } from "@/lib/types";
 import { itemKind } from "@/lib/items";
 
-/* Le BROUILLON en cours de relecture : ce qui distingue un travail modifié
-   d'un travail intact, et ce qu'on envoie au serveur. Fonctions pures. */
-
-/** Un moment de la journée en cours d'édition (champs à plat, tous en texte). */
 export type DraftItem = {
   type: ItemType;
   data: Record<string, string>;
   position: number;
 };
 
-/** Les moments d'une journée chargée → brouillon éditable. */
 export function toDraftItems(items: EntryItem[]): DraftItem[] {
   return items.map((it, i) => ({
     type: it.type,
@@ -25,17 +20,10 @@ export function toDraftItems(items: EntryItem[]): DraftItem[] {
   }));
 }
 
-/** Un moment vierge du type demandé (les champs viennent du registre). */
 export function emptyDraft(type: ItemType): Record<string, string> {
   return itemKind(type).emptyDraft();
 }
 
-/**
- * Ce qu'une ligne de coup d'œil dit d'un moment : son libellé (le moment du
- * repas, « Sieste »…) et sa valeur en une phrase. C'est volontairement une
- * PROJECTION, pas un formulaire : on lit, on ne corrige pas ici. Le détail de
- * chaque type vit dans le registre `lib/items`.
- */
 export function glanceOf(it: DraftItem): { label: string; value: string } {
   return itemKind(it.type).summarize(it.data);
 }
@@ -48,16 +36,6 @@ export function pruneEmpty(data: Record<string, string>): Record<string, string>
   return out;
 }
 
-/**
- * Empreinte d'une journée, pour savoir s'il y a du travail à perdre.
- *
- * Elle applique EXACTEMENT les normalisations de `currentPatch` — coupe des
- * blancs, chaîne vide ramenée à `null`, champs vides élagués des moments,
- * positions renumérotées — et dans le MÊME ordre de clés, puisque la
- * comparaison se fait sur le JSON. Toute divergence ferait apparaître une
- * modification là où il n'y en a pas, et le garde-fou crierait à l'ouverture de
- * l'écran.
- */
 export function fingerprint(v: {
   title: string | null;
   story: string | null;
@@ -86,7 +64,6 @@ export function fingerprint(v: {
   });
 }
 
-/** Tolère les anciennes entrées où `uncertainties` était un simple tableau de chaînes. */
 export function normalizeUncertainties(raw: unknown): Uncertainty[] {
   if (!Array.isArray(raw)) return [];
   return raw.map((u) =>

@@ -12,16 +12,8 @@ import type {
 import { FakeImageStore, FakeLogger } from "../testing/fakes.js";
 import { PrivacyService } from "./privacy-service.js";
 
-/* Emporter et partir, vérifiés sans base ni disque : la confirmation exigée, la
-   porte de l'administrateur, et l'ORDRE — les fichiers avant les lignes. */
-
 const ARCHIVE = { format: "racontine.export.v1", carnets: [] } as unknown as ExportArchive;
 
-/**
- * Dépôt en mémoire qui RETIENT L'ORDRE des gestes. C'est tout l'intérêt de la
- * doublure ici : la garantie qu'on veut prouver n'est pas « ça efface », c'est
- * « ça efface dans cet ordre-là ».
- */
 class FakePrivacyRepo implements PrivacyRepository {
   readonly steps: string[] = [];
 
@@ -66,14 +58,12 @@ class FakePrivacyRepo implements PrivacyRepository {
   }
 }
 
-/** Mise en archive qui garde la liste de ce qu'on lui a confié, et lit les flux. */
 class FakePacker implements ArchivePacker {
   entries: ArchiveEntry[] = [];
   pack(entries: ArchiveEntry[]): Readable {
     this.entries = entries;
     return Readable.from([]);
   }
-  /** Le contenu de chaque fichier de l'archive, flux compris. */
   async contents(): Promise<Map<string, string>> {
     const out = new Map<string, string>();
     for (const e of this.entries) {
@@ -113,9 +103,6 @@ function build(state: ConstructorParameters<typeof FakePrivacyRepo>[0] = {}) {
   };
 }
 
-/* -------------------------------- Emporter ------------------------------- */
-
-/** Un carnet d'une journée à deux pages. */
 function archiveWithPages(): ExportArchive {
   const page = (id: string) => ({
     id,
@@ -158,7 +145,6 @@ test("l'export met le journal ET les photos dans l'archive", async () => {
     json.carnets[0].entries[0].pages.map((p: { file: string }) => p.file),
     ["photos/Lou/2026-09-17-1.jpg", "photos/Lou/2026-09-17-2.jpg"],
   );
-  // Le chemin interne au serveur ne sort pas.
   assert.doesNotMatch(files.get("racontine-export.json")!, /2026\/09\/a\.jpg/);
 });
 
@@ -185,8 +171,6 @@ test("un compte disparu n'a pas d'archive (404, pas 500)", async () => {
   assert.equal(await service.exportAccount("u1"), null);
 });
 
-/* ---------------------------- Effacer un carnet -------------------------- */
-
 test("effacer un carnet exige d'en recopier le prénom", async () => {
   const { service, repo } = build({ standing: standing() });
   const result = await service.deleteCarnet({
@@ -198,7 +182,6 @@ test("effacer un carnet exige d'en recopier le prénom", async () => {
   assert.ok(!result.ok);
   assert.equal(result.httpCode, 400);
   assert.equal(result.code, "confirmation");
-  // Et surtout : RIEN n'a bougé.
   assert.deepEqual(repo.steps, []);
 });
 
@@ -210,7 +193,7 @@ test("le prénom recopié efface le carnet : fichiers puis lignes", async () => 
   const result = await service.deleteCarnet({
     userId: "u1",
     childId: "child-1",
-    confirmation: "lou", // la casse et les espaces sont tolérés
+    confirmation: "lou",
   });
   assert.ok(result.ok);
   assert.equal(result.name, "Lou");
@@ -222,8 +205,6 @@ test("le prénom recopié efface le carnet : fichiers puis lignes", async () => 
 });
 
 test("un contributeur ne peut pas effacer le carnet, et ne l'apprend pas", async () => {
-  // Même 404 que pour un carnet inexistant : la réponse ne doit pas révéler
-  // qu'il y a bien un carnet derrière cette adresse.
   const { service, repo } = build({ standing: standing({ role: "contributor" }) });
   const result = await service.deleteCarnet({
     userId: "u1",
@@ -245,8 +226,6 @@ test("un carnet hors du cercle rend le même 404", async () => {
   assert.ok(!result.ok);
   assert.equal(result.httpCode, 404);
 });
-
-/* ---------------------------- Effacer son compte ------------------------- */
 
 test("effacer son compte exige de recopier SON adresse", async () => {
   const { service, repo } = build();
@@ -304,7 +283,6 @@ test("le compte part avec les carnets que personne d'autre ne tenait", async () 
   });
   assert.ok(result.ok);
   assert.deepEqual(result.carnets, [{ id: "c1", name: "Lou" }]);
-  // Le carnet partagé (c2) n'est pas touché : on s'en retire, il reste aux autres.
   assert.deepEqual(repo.steps, [
     "lit-fichiers:c1",
     "efface-carnets:c1",
@@ -314,8 +292,6 @@ test("le compte part avec les carnets que personne d'autre ne tenait", async () 
 });
 
 test("les fichiers mis en attente par MCP partent avec le compte", async () => {
-  // Ils ne pendent à aucun carnet : sans ce balayage, ils survivraient sur le
-  // disque à la ligne qui disait à qui ils appartenaient.
   const { service, images } = build({
     staged: [{ originalPath: "staging/x.bin", thumbPath: null }],
   });
@@ -329,8 +305,6 @@ test("les fichiers mis en attente par MCP partent avec le compte", async () => {
 });
 
 test("un fichier qu'on n'arrive pas à effacer n'empêche pas le compte de partir", async () => {
-  // Un disque en lecture seule ne doit pas retenir quelqu'un qui s'en va. La
-  // ligne part, et l'échec se voit dans le journal d'exploitation.
   const { service, repo, images, logger } = build({
     staged: [{ originalPath: "staging/x.bin", thumbPath: null }],
   });
@@ -346,8 +320,6 @@ test("un fichier qu'on n'arrive pas à effacer n'empêche pas le compte de parti
   assert.deepEqual(repo.steps, ["efface-compte:u1"]);
   assert.deepEqual(logger.errors, ["Fichier non effacé"]);
 });
-
-/* -------------------------------- L'aperçu ------------------------------- */
 
 test("l'aperçu annonce ce qui part et ce qui reste, sans rien toucher", async () => {
   const { service, repo } = build({

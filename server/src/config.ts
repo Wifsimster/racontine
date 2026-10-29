@@ -12,12 +12,6 @@ function parseOrigins(raw: string | undefined): string[] {
   return list.length ? list : [...DEFAULT_ORIGINS];
 }
 
-/**
- * Parse un booléen d'environnement de façon robuste : « true/1/yes/on » → true,
- * « false/0/no/off » → false (insensible à la casse et aux espaces). Toute autre
- * valeur (ou l'absence) retombe sur `fallback`. Évite le piège d'un
- * `!== "false"` qui laisserait SIGNUP_ENABLED=0 activer l'inscription.
- */
 function parseBool(raw: string | undefined, fallback: boolean): boolean {
   if (raw === undefined) return fallback;
   const v = raw.trim().toLowerCase();
@@ -26,21 +20,12 @@ function parseBool(raw: string | undefined, fallback: boolean): boolean {
   return fallback;
 }
 
-/** Parse un entier d'environnement, en ignorant les valeurs non numériques. */
 function parseIntEnv(raw: string | undefined, fallback: number): number {
   if (raw === undefined || raw.trim() === "") return fallback;
   const n = Number(raw);
   return Number.isFinite(n) ? n : fallback;
 }
 
-/**
- * Réseaux des relais de confiance, en CIDR. Défaut : la boucle locale et les
- * trois plages privées — c'est EXACTEMENT la topologie livrée (nginx dans le
- * conteneur `web`, plus un éventuel reverse proxy du homelab), et le serveur
- * n'est joignable que depuis le réseau Docker dans `docker-compose.prod.yml`.
- * Un déploiement qui expose l'API directement doit resserrer cette liste :
- * `X-Forwarded-For` devient sinon une adresse que le client choisit lui-même.
- */
 const DEFAULT_TRUSTED_PROXIES = [
   "127.0.0.1/32",
   "::1/128",
@@ -58,20 +43,6 @@ function parseList(raw: string | undefined, fallback: string[]): string[] {
   return list.length ? list : [...fallback];
 }
 
-/**
- * Entrées de TRUSTED_PROXIES qui ne sont ni une IP ni un CIDR plausible.
- *
- * Une entrée mal écrite ne fait pas confiance « à peu près » : elle ne
- * correspond à aucune adresse, donc à aucun relais. La liste se comporte alors
- * comme si le maillon manquait — le débit repasse sur un seau partagé — mais
- * sans rien signaler. C'est le pire des cas : la configuration a l'air en place.
- *
- * Contrôle de FORME uniquement, et c'est délibéré : il attrape la coquille
- * (« /33 », un nom d'hôte, une plage écrite avec un tiret). La correspondance
- * réelle reste l'affaire de `proxy-addr` et de Better Auth — redéfinir ici leur
- * sémantique CIDR exacte créerait une deuxième vérité à maintenir, qui finirait
- * par diverger de celle qui décide vraiment.
- */
 export function findMalformedProxies(entries: string[]): string[] {
   return entries.filter((entry) => {
     const slash = entry.lastIndexOf("/");
@@ -79,8 +50,6 @@ export function findMalformedProxies(entries: string[]): string[] {
     const isIPv4 =
       /^\d{1,3}(\.\d{1,3}){3}$/.test(addr) &&
       addr.split(".").every((o) => Number(o) <= 255);
-    // IPv6 : on se contente des caractères autorisés, la forme exacte
-    // (compression « :: », mapping IPv4) est l'affaire des bibliothèques.
     const isIPv6 = addr.includes(":") && /^[0-9a-fA-F:.]+$/.test(addr);
     if (!isIPv4 && !isIPv6) return true;
     if (slash === -1) return false;
@@ -97,117 +66,40 @@ export const config = {
   port: parseIntEnv(process.env.PORT, 3010),
   host: process.env.HOST ?? "0.0.0.0",
   databaseUrl: process.env.DATABASE_URL ?? DEFAULT_DATABASE_URL,
-  // La lecture des carnets utilise la clé API Anthropic PROPRE à chaque
-  // utilisateur (réglages > clé API), chiffrée en base. Il n'y a plus de clé
-  // partagée d'instance : ANTHROPIC_API_KEY n'est plus lue par le serveur.
   vlmModel: process.env.VLM_MODEL ?? "claude-sonnet-5",
   uploadsDir: process.env.UPLOADS_DIR ?? "./uploads",
   auth: {
     secret: process.env.BETTER_AUTH_SECRET ?? DEFAULT_AUTH_SECRET,
     url: process.env.BETTER_AUTH_URL ?? "http://localhost:3010",
-    /**
-     * Ouvre l'inscription email/mot de passe. Ce n'est que le DÉFAUT : le
-     * réglage stocké en base (écran Réglages) prime dès qu'il est renseigné.
-     *
-     * Le défaut dépend de l'environnement, et c'est délibéré. En production,
-     * une instance dont on a oublié la variable laissait n'importe quel passant
-     * se créer un compte sur le homelab de quelqu'un d'autre. Le défaut y est
-     * donc FERMÉ. En développement il reste ouvert : on crée et recrée des
-     * comptes toute la journée.
-     *
-     * Le premier compte n'est pas concerné : une instance sans aucun
-     * utilisateur accepte toujours l'inscription (voir le hook `before` dans
-     * `auth.ts`), sinon un défaut fermé rendrait une installation neuve
-     * impossible à amorcer.
-     */
     signupEnabled: parseBool(
       process.env.SIGNUP_ENABLED,
       process.env.NODE_ENV !== "production",
     ),
   },
-  /** Origines autorisées par CORS (front en dev + reverse proxy). */
   corsOrigins,
-  /**
-   * Relais de confiance pour résoudre l'ADRESSE RÉELLE du client.
-   *
-   * Ce n'est pas un détail d'exploitation : sans cette liste, le limiteur de
-   * débit de Better Auth ne sait pas à qui attribuer une requête. nginx AJOUTE
-   * son maillon à `X-Forwarded-For` (`$proxy_add_x_forwarded_for`), et le
-   * reverse proxy du homelab en ajoute un autre — l'en-tête porte donc au moins
-   * deux valeurs, et Better Auth refuse par sécurité d'en croire une seule.
-   * Il retombe alors sur un SEUL SEAU PARTAGÉ (`no-trusted-ip`) pour toute
-   * l'instance : trois connexions par dix secondes pour le monde entier, mamie
-   * comprise. C'est à la fois inutile côté sécurité (personne n'est distingué)
-   * et cassant côté disponibilité (une famille se bloque toute seule).
-   * Avec la liste, la chaîne est dépilée par la droite jusqu'au premier maillon
-   * non fiable : on obtient l'adresse publique du client, et chacun son seau.
-   */
   trustedProxies: parseList(
     process.env.TRUSTED_PROXIES,
     DEFAULT_TRUSTED_PROXIES,
   ),
-  /**
-   * Base publique du front, pour construire les liens d'invitation, de magic
-   * link et des e-mails de notification. Défaut : la 1re origine CORS.
-   */
   webBaseUrl: (
     process.env.WEB_BASE_URL ??
     process.env.APP_URL ??
     corsOrigins[0] ??
     "http://localhost:5173"
   ).replace(/\/$/, ""),
-  /** Durée de validité d'une invitation (jours). */
   invitationTtlDays: parseIntEnv(process.env.INVITATION_TTL_DAYS, 14),
-  /**
-   * Webhook optionnel (ntfy, etc.) pour livrer les liens aux proches. Sans lui,
-   * les liens sont journalisés côté serveur et l'admin copie le lien depuis l'UI.
-   */
   notifyWebhookUrl: process.env.NOTIFY_WEBHOOK_URL,
-  /**
-   * Web Push (VAPID) pour les notifications navigateur/mobile aux abonnés.
-   * Optionnel : sans paire de clés VAPID, le push est désactivé (les notifs
-   * in-app et e-mail continuent de fonctionner). Générer une paire avec
-   * `npx web-push generate-vapid-keys`.
-   */
   webPush: {
     publicKey: process.env.VAPID_PUBLIC_KEY,
     privateKey: process.env.VAPID_PRIVATE_KEY,
-    // `mailto:` ou URL du responsable, exigé par la spec Web Push.
     subject: process.env.VAPID_SUBJECT ?? "mailto:no-reply@racontine.local",
   },
-  /**
-   * LE PÉAGE, ET SON INTERRUPTEUR PRINCIPAL.
-   *
-   * Le paywall n'existe QUE si `STRIPE_SECRET_KEY` et `STRIPE_PRICE_ID` sont
-   * tous deux renseignés. Sans eux — le cas de toute instance auto-hébergée —
-   * `billingEnabled()` rend false, le carnet est ouvert et gratuit, et pas une
-   * ligne d'abonnement n'est écrite en base. Ce n'est pas une politesse : c'est
-   * la promesse du produit. Racontine est hébergeable chez soi ; l'abonnement
-   * paie l'offre HÉBERGÉE, pas le droit d'utiliser son propre homelab.
-   *
-   * `STRIPE_WEBHOOK_SECRET` est le troisième pied : sans lui, on ne saurait pas
-   * distinguer Stripe d'un inconnu qui poste sur une URL publique, et la route
-   * de webhook refuse tout (voir `routes/billing.ts`). Un paiement resterait
-   * malgré tout rattrapé au retour du client, mais une résiliation ou un impayé
-   * ne remonteraient jamais : `validateConfig` le signale bruyamment.
-   *
-   * `STRIPE_PORTAL_CONFIG_ID` est facultatif, mais il ne l'est vraiment que sur
-   * un compte Stripe qui n'héberge QUE Racontine. Un compte qui porte plusieurs
-   * produits n'a qu'UNE configuration de portail par défaut : sans cet
-   * identifiant, une famille qui clique « Gérer mon abonnement » atterrit sur
-   * le portail d'un AUTRE produit, titre compris. Stripe ne signale rien — la
-   * session se crée très bien, elle est juste habillée par quelqu'un d'autre.
-   */
   billing: {
     secretKey: process.env.STRIPE_SECRET_KEY?.trim() || undefined,
     priceId: process.env.STRIPE_PRICE_ID?.trim() || undefined,
     webhookSecret: process.env.STRIPE_WEBHOOK_SECRET?.trim() || undefined,
     portalConfigId: process.env.STRIPE_PORTAL_CONFIG_ID?.trim() || undefined,
   },
-  /**
-   * E-mail (SMTP) pour les notifications aux proches abonnés. Optionnel : si
-   * SMTP_HOST est absent, les e-mails sont désactivés (notifs in-app seules).
-   */
   mail: {
     host: process.env.SMTP_HOST,
     port: parseIntEnv(process.env.SMTP_PORT, 587),
@@ -218,22 +110,10 @@ export const config = {
   },
 };
 
-/**
- * Le péage est-il armé sur cette instance ? Une seule réponse, lue partout :
- * deux endroits qui décident chacun de leur côté qu'on fait payer, c'est la
- * garantie qu'un jour l'un fera payer ce que l'autre donne.
- */
 export function billingEnabled(): boolean {
   return Boolean(config.billing.secretKey && config.billing.priceId);
 }
 
-/**
- * Vérifie la configuration au démarrage. En production (`NODE_ENV=production`),
- * l'usage des valeurs par défaut sensibles (secret d'auth, base de données) est
- * fatal : mieux vaut refuser de démarrer que tourner sur un secret public. Les
- * défauts non critiques (origines/liens en localhost) ne produisent qu'un
- * avertissement. En dev, tout est un simple avertissement.
- */
 export function validateConfig(): void {
   const isProd = process.env.NODE_ENV === "production";
   const fatal: string[] = [];

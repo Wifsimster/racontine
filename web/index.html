@@ -4,14 +4,6 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#faf8f3" />
-    <!-- L'ONGLET N'AVAIT PAS DE MARQUE. Sans `rel="icon"`, le navigateur va
-         chercher /favicon.ico, ne le trouve pas (404 à chaque visite), et pose
-         la page blanche générique : dans une barre de vingt onglets, Racontine
-         était le seul à ne pas se reconnaître, alors que l'app posée sur
-         l'écran d'accueil, elle, a son R depuis toujours.
-         Le PNG est déclaré AVANT le SVG : un navigateur qui sait lire les
-         favicons vectorielles prend la dernière déclaration qu'il comprend,
-         les autres s'arrêtent à la première. -->
     <link rel="icon" type="image/png" sizes="192x192" href="/pwa-192.png" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -19,51 +11,10 @@
     <meta name="apple-mobile-web-app-title" content="Racontine" />
     <title>Racontine</title>
 
-    <!-- LE LIEN PARTAGÉ N'AVAIT AUCUNE CARTE. Le lien d'invitation
-         (`/invite/<token>`) se colle dans un SMS, un fil WhatsApp, un Signal :
-         sans ces balises il s'y affiche en URL nue, sans titre ni vignette, au
-         moment précis où l'on demande à quelqu'un de confier la journée de son
-         petit-enfant. C'est le seul chemin par lequel le produit se propage.
-
-         La carte est STATIQUE, et c'est une décision : un aperçu qui porterait
-         le prénom de l'enfant serait mis en cache par les serveurs de WhatsApp,
-         de Slack et de Google. Elle dit le produit, jamais la famille.
-         `og.png` se regénère avec `pnpm brand`.
-
-         `og:image` et `og:url` sont écrits RELATIFS dans ce fichier, et nginx
-         les réécrit en ABSOLU à la volée (`sub_filter`, voir nginx.conf).
-
-         C'est le seul montage qui tienne pour un produit auto-hébergé. Le
-         domaine n'est pas connu au BUILD — il n'y en a pas UN, il y en a un par
-         instance — mais il est connu à la REQUÊTE, où nginx le lit dans
-         l'en-tête `Host`. Personne n'a donc rien à configurer en hébergeant :
-         l'URL d'aperçu se déduit de la requête du robot lui-même.
-
-         Pourquoi ce détour, plutôt que de laisser le relatif : les robots de
-         Facebook et de X NE RÉSOLVENT PAS une URL relative. Ils ne chargent pas
-         la page dans un contexte de navigation, ils lisent les balises hors
-         sol ; `/og.png` ne veut rien dire pour eux. C'est la première cause
-         d'aperçu sans vignette sur ces deux plateformes.
-
-         Le relatif reste la valeur de REPLI : servi sans nginx — le serveur de
-         développement de Vite, ou tout autre serveur statique — le fichier
-         reste valide, et les robots qui résolvent le relatif (WhatsApp, Slack,
-         Signal) affichent la vignette comme avant.
-
-         `og:url` pointe la RACINE, pas l'URL partagée : l'app est une SPA, la
-         même coquille répond sur toutes les routes, et une URL de carnet porte
-         un identifiant d'enfant qui n'a rien à faire dans le graphe de
-         Facebook. La carte dit le produit, jamais la famille — ici aussi. -->
     <meta
       name="description"
       content="Photographiez le carnet de la nounou : la journée devient un journal privé, hébergé chez vous, partagé avec les proches que vous choisissez."
     />
-    <!-- L'ÉDITEUR. Racontine n'est pas un produit anonyme : il est conçu,
-         développé et hébergé par BATTISTELLA. Tant que l'app était gratuite,
-         c'était une question de fierté ; depuis qu'elle encaisse, c'est aussi ce
-         qu'un service payant doit pouvoir dire de lui-même. La signature est
-         visible dans l'app (pied du menu, écran de connexion) et complète, liens
-         légaux compris, au-dessus du bouton de paiement. -->
     <meta name="author" content="BATTISTELLA — Damien Battistella" />
     <link rel="author" href="https://pro.battistella.ovh/" />
     <meta property="og:type" content="website" />
@@ -90,10 +41,6 @@
       content="Racontine — votre carnet de liaison, dématérialisé sans rien demander à la nounou."
     />
 
-    <!-- Umami — mesure d'audience auto-hébergée, sans cookie.
-         `data-exclude-search`/`data-exclude-hash` : une URL de carnet peut
-         porter un identifiant d'enfant, qui n'a rien à faire dans
-         l'analytics. Le tracker envoie l'URL complète par défaut. -->
     <script defer src="https://umami.battistella.ovh/stats.js"
       data-website-id="5904ab0e-3399-4fbe-8a59-2363edd2a94f"
       data-exclude-search="true" data-exclude-hash="true"></script>

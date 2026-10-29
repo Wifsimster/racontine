@@ -13,10 +13,6 @@ import {
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
-/* -------------------------------------------------------------------------- */
-/*  Better Auth (schéma par défaut — ne pas renommer les colonnes)            */
-/* -------------------------------------------------------------------------- */
-
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
@@ -73,11 +69,6 @@ export const verification = pgTable("verification", {
   updatedAt: timestamp("updatedAt").$defaultFn(() => new Date()),
 });
 
-/* -------------------------------------------------------------------------- */
-/*  Domaine Racontine                                                          */
-/* -------------------------------------------------------------------------- */
-
-/** Où la journée a été passée — sert de dimension à l'entrée. */
 export const entrySource = pgEnum("entry_source", [
   "nounou",
   "mam",
@@ -85,13 +76,6 @@ export const entrySource = pgEnum("entry_source", [
   "maison",
 ]);
 
-/**
- * Cycle de vie d'une entrée :
- *  processing → upload reçu, extraction VLM en cours
- *  draft      → extraite, en attente de relecture humaine
- *  published  → validée par un parent, visible dans le journal
- *  failed     → photo illisible ou erreur VLM (voir failureReason)
- */
 export const entryStatus = pgEnum("entry_status", [
   "processing",
   "draft",
@@ -99,7 +83,6 @@ export const entryStatus = pgEnum("entry_status", [
   "failed",
 ]);
 
-/** Types d'items structurés — typés pour les graphiques de la Phase 3. */
 export const entryItemType = pgEnum("entry_item_type", [
   "meal",
   "nap",
@@ -109,22 +92,16 @@ export const entryItemType = pgEnum("entry_item_type", [
 ]);
 
 export const attachmentKind = pgEnum("attachment_kind", [
-  "carnet", // photo d'une page du carnet
-  "souvenir", // photo souvenir libre
+  "carnet",
+  "souvenir",
 ]);
 
-/** Champ de la valorisation où un mot incertain a été repéré par le VLM. */
 export type UncertaintyField =
   | "titre"
   | "recit"
   | "temps_fort"
   | "transcription_integrale";
 
-/**
- * Mot ou passage dont la lecture manuscrite est incertaine, avec des
- * suggestions de correction à valider par un proche. `resolved` porte la
- * valeur choisie une fois validée (null tant que la relecture n'a pas tranché).
- */
 export type Uncertainty = {
   original: string;
   contexte: string;
@@ -133,28 +110,20 @@ export type Uncertainty = {
   resolved: string | null;
 };
 
-/**
- * Rôle d'un utilisateur sur un enfant — portée par enfant (§3.4 du plan produit).
- *  admin       → parent pivot : tout, y compris inviter/révoquer.
- *  contributor → co-parent : photographie, relit, publie.
- *  reader      → proche : consulte le journal publié, rien d'autre.
- */
 export const memberRole = pgEnum("member_role", [
   "admin",
   "contributor",
   "reader",
 ]);
 
-/** Cycle de vie d'une invitation à rejoindre le cercle d'un enfant. */
 export const invitationStatus = pgEnum("invitation_status", [
   "pending",
   "accepted",
   "revoked",
 ]);
 
-/** Type de notification — extensible (jalons, invitations… en Phase 3). */
 export const notificationType = pgEnum("notification_type", [
-  "entry_published", // une nouvelle journée est publiée sur la timeline suivie
+  "entry_published",
 ]);
 
 export const children = pgTable("children", {
@@ -176,24 +145,11 @@ export const entries = pgTable(
     status: entryStatus("status").notNull().default("processing"),
     failureReason: text("failure_reason"),
     mood: text("mood"),
-    /* --- Valorisation automatique de la journée (généré par le VLM) --- */
-    /** Titre court et évocateur de la journée. */
     title: text("title"),
-    /** Récit chaleureux de la journée, destiné aux proches. */
     story: text("story"),
-    /** Le temps fort du jour (première fois, mot rigolo…). */
     highlight: text("highlight"),
-    /** transcription_integrale du carnet. */
     transcription: text("transcription"),
-    /** Champs signalés incertains par le VLM (surlignés à la relecture). */
     uncertainties: jsonb("uncertainties").$type<Uncertainty[]>().default([]),
-    /**
-     * Identifiant partagé par les journées issues d'un même envoi de photos
-     * (le carnet couvrait plusieurs jours). Null pour une journée seule.
-     * Pas de clé étrangère : ce n'est pas l'id d'une entrée mais un simple
-     * repère de lot, pour ne pas coupler la suppression d'une journée aux
-     * autres journées du même lot.
-     */
     batchId: uuid("batch_id"),
     createdBy: text("created_by").references(() => user.id, {
       onDelete: "set null",
@@ -203,7 +159,6 @@ export const entries = pgTable(
     publishedAt: timestamp("published_at"),
   },
   (t) => [
-    // Deux photos de la même page → une seule entrée, fusionnée à la relecture.
     unique("entries_child_date_source").on(t.childId, t.date, t.source),
     index("entries_timeline_idx").on(t.childId, t.date),
     index("entries_batch_idx").on(t.batchId),
@@ -237,13 +192,6 @@ export const entryItems = pgTable(
   (t) => [index("entry_items_entry_idx").on(t.entryId)],
 );
 
-/**
- * Correction validée par un proche pour un mot ou passage signalé incertain
- * par le VLM. Constitue, journée après journée, un glossaire par enfant
- * (surnoms, mots d'enfant, écriture d'un intervenant donné…) réinjecté à la
- * prochaine lecture pour améliorer la reconnaissance de l'écriture au fil du
- * temps — voir `corrections.ts`.
- */
 export const wordCorrections = pgTable(
   "word_corrections",
   {
@@ -251,11 +199,8 @@ export const wordCorrections = pgTable(
     childId: uuid("child_id")
       .notNull()
       .references(() => children.id, { onDelete: "cascade" }),
-    /** Mot ou passage tel que lu à l'origine (lecture incertaine). */
     original: text("original").notNull(),
-    /** Correction validée par un proche. */
     corrected: text("corrected").notNull(),
-    /** Champ concerné, si connu (titre, récit, temps fort, transcription). */
     field: text("field"),
     entryId: uuid("entry_id").references(() => entries.id, {
       onDelete: "set null",
@@ -276,22 +221,11 @@ export const attachments = pgTable(
       .notNull()
       .references(() => entries.id, { onDelete: "cascade" }),
     kind: attachmentKind("kind").notNull().default("carnet"),
-    /** Chemins relatifs à UPLOADS_DIR. */
     originalPath: text("original_path").notNull(),
     thumbPath: text("thumb_path"),
     mime: text("mime").notNull(),
     width: integer("width"),
     height: integer("height"),
-    /**
-     * Quarts de tour DÉJÀ APPLIQUÉS aux fichiers, cumulés depuis l'import (0-3).
-     *
-     * Tourner une page réécrit vraiment le JPEG et sa miniature : la photo est
-     * droite partout (relecture, timeline, visionneuse, relance de lecture),
-     * sans que chaque écran ait à connaître un angle. Ce compteur ne sert donc
-     * pas au rendu mais de NUMÉRO DE RÉVISION : il est collé aux URL servies
-     * (`?v=`), sans quoi le `Cache-Control: immutable` de la route garderait
-     * l'ancienne orientation affichée jusqu'à vider le cache du navigateur.
-     */
     rotation: integer("rotation").notNull().default(0),
     position: integer("position").notNull().default(0),
     createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -299,10 +233,6 @@ export const attachments = pgTable(
   (t) => [index("attachments_entry_idx").on(t.entryId)],
 );
 
-/**
- * Qui a accès à quel enfant, et avec quel rôle. Un même utilisateur peut suivre
- * plusieurs enfants ; un même enfant peut être partagé avec plusieurs proches.
- */
 export const memberships = pgTable(
   "memberships",
   {
@@ -317,18 +247,12 @@ export const memberships = pgTable(
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (t) => [
-    // Un seul rôle par (utilisateur, enfant).
     unique("memberships_user_child").on(t.userId, t.childId),
     index("memberships_user_idx").on(t.userId),
     index("memberships_child_idx").on(t.childId),
   ],
 );
 
-/**
- * Invitation d'un proche à rejoindre le cercle d'un enfant. Le `token` est la
- * capacité : quiconque le détient et se connecte peut accepter. Lien partagé
- * par l'admin (copié depuis l'UI) ou envoyé par magic link.
- */
 export const invitations = pgTable(
   "invitations",
   {
@@ -356,10 +280,6 @@ export const invitations = pgTable(
   ],
 );
 
-/**
- * Abonnement d'un proche à la timeline d'un enfant : chaque publication d'une
- * journée déclenche une notification in-app + un e-mail à tous les abonnés.
- */
 export const subscriptions = pgTable(
   "subscriptions",
   {
@@ -370,18 +290,15 @@ export const subscriptions = pgTable(
     childId: uuid("child_id")
       .notNull()
       .references(() => children.id, { onDelete: "cascade" }),
-    /** L'abonné reçoit aussi un e-mail (en plus de la notif in-app). */
     emailEnabled: boolean("email_enabled").notNull().default(true),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (t) => [
-    // Un seul abonnement par (proche, enfant).
     unique("subscriptions_user_child").on(t.userId, t.childId),
     index("subscriptions_child_idx").on(t.childId),
   ],
 );
 
-/** Notification in-app pour un abonné (cloche + liste des non-lues). */
 export const notifications = pgTable(
   "notifications",
   {
@@ -398,22 +315,13 @@ export const notifications = pgTable(
     type: notificationType("type").notNull(),
     title: text("title").notNull(),
     body: text("body"),
-    /** Null tant que la notification n'a pas été lue. */
     readAt: timestamp("read_at"),
-    /** Horodatage de l'envoi de l'e-mail (null si non/pas encore envoyé). */
     emailedAt: timestamp("emailed_at"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (t) => [index("notifications_user_idx").on(t.userId, t.createdAt)],
 );
 
-/**
- * Abonnement Web Push (VAPID) d'un appareil pour un utilisateur. Un même proche
- * peut avoir plusieurs appareils (téléphone, ordinateur) : une ligne par
- * endpoint. L'endpoint est unique — le navigateur en fournit un stable par
- * appareil/installation. Purgé quand le service de push répond 404/410
- * (abonnement expiré), voir `push.ts`.
- */
 export const pushSubscriptions = pgTable(
   "push_subscriptions",
   {
@@ -422,80 +330,38 @@ export const pushSubscriptions = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
     endpoint: text("endpoint").notNull().unique(),
-    /** Clé publique P-256 ECDH du client (chiffrement du payload). */
     p256dh: text("p256dh").notNull(),
-    /** Secret d'authentification du client. */
     auth: text("auth").notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (t) => [index("push_subscriptions_user_idx").on(t.userId)],
 );
 
-/**
- * Réglages de l'instance, modifiables à chaud par le propriétaire depuis l'UI
- * (sans redéploiement ni édition de variables d'environnement). Table singleton :
- * une seule ligne, `id = "singleton"`. Une colonne à `null` retombe sur le défaut
- * d'environnement (config.ts) — voir `settings.ts`.
- */
 export const appSettings = pgTable("app_settings", {
   id: text("id").primaryKey().default("singleton"),
-  /** Nom d'affichage de l'instance (en-tête, écran de connexion). */
   appName: text("app_name"),
-  /** Inscription email/mot de passe ouverte (fermer une fois le foyer créé). */
   signupEnabled: boolean("signup_enabled"),
-  /** Durée de validité d'une invitation (jours). */
   invitationTtlDays: integer("invitation_ttl_days"),
-  /** Modèle VLM utilisé pour l'extraction des carnets. */
   vlmModel: text("vlm_model"),
-  /** Envoi global des e-mails de notification aux abonnés (in-app toujours actif). */
   emailNotificationsEnabled: boolean("email_notifications_enabled"),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-  /** Dernier propriétaire ayant modifié les réglages. */
   updatedBy: text("updated_by").references(() => user.id, {
     onDelete: "set null",
   }),
 });
 
-/**
- * L'ABONNEMENT DU FOYER — une seule ligne, `id = "singleton"`, comme les
- * réglages. Ce n'est pas un oubli de multi-tenant : une instance Racontine EST
- * un foyer, et l'abonnement se règle par son propriétaire. Le co-parent
- * contribue et les proches lisent sans qu'on leur demande jamais de carte.
- *
- * La ligne n'existe QUE sur une instance dont le péage est armé (Stripe
- * configuré) : un homelab sans caisse n'a pas d'abonnement, pas d'essai, et pas
- * de ligne. Elle naît à la première consultation du péage, ce qui donne
- * `TRIAL_DAYS` jours à tout le monde — y compris à une instance déjà installée
- * le jour où l'on branche Stripe.
- *
- * Aucun détail de carte n'est stocké ici, et aucun ne le sera jamais : la page
- * de paiement et le portail sont hébergés par Stripe.
- */
 export const instanceSubscription = pgTable("instance_subscription", {
   id: text("id").primaryKey().default("singleton"),
-  /** Fin de l'essai gratuit, posée à la première consultation du péage. */
   trialEndsAt: timestamp("trial_ends_at").notNull(),
-  /** Client Stripe du foyer (`cus_…`), connu dès le premier paiement. */
   stripeCustomerId: text("stripe_customer_id"),
-  /** Abonnement Stripe en cours (`sub_…`). */
   stripeSubscriptionId: text("stripe_subscription_id"),
-  /** Statut Stripe brut (« active », « past_due »…), ou null s'il n'y en a jamais eu. */
   status: text("status"),
-  /** Fin de la période déjà payée : ce qui est payé reste dû au foyer. */
   currentPeriodEnd: timestamp("current_period_end"),
-  /** Résiliation demandée : l'abonnement s'arrête au terme de la période. */
   cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
-  /** Dernier événement Stripe appliqué — garde-fou contre les rejeux hors ordre. */
   lastEventAt: timestamp("last_event_at"),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-/**
- * Jeton d'accès personnel pour connecter un client MCP (session Claude cloud,
- * Claude Desktop, Claude Code…) au serveur. Le jeton porte les droits de
- * l'utilisateur qui l'a créé (mêmes rôles par enfant). On ne stocke que le
- * hash SHA-256 : la valeur en clair n'est montrée qu'une fois, à la création.
- */
 export const mcpTokens = pgTable(
   "mcp_tokens",
   {
@@ -503,27 +369,15 @@ export const mcpTokens = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    /** Libellé lisible choisi par l'utilisateur (ex. « Session Claude cloud »). */
     name: text("name").notNull(),
-    /** SHA-256 (hex) du jeton — jamais la valeur en clair. */
     tokenHash: text("token_hash").notNull().unique(),
-    /** Préfixe lisible pour identifier le jeton dans l'UI (ex. « rac_mcp_ab12 »). */
     tokenPrefix: text("token_prefix").notNull(),
-    /** Dernière utilisation du jeton (null tant qu'il n'a jamais servi). */
     lastUsedAt: timestamp("last_used_at"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (t) => [index("mcp_tokens_user_idx").on(t.userId)],
 );
 
-/**
- * Fichier brut mis en attente par un client MCP avant création de la journée.
- * Résout le problème du base64 inline : un client shell téléverse les octets
- * bruts d'une photo via `POST /api/mcp/uploads` (aucun base64 à faire transiter
- * par les arguments d'outil), récupère un `id` court, puis appelle
- * `upload_daily_note` avec cet identifiant. Le fichier vit sous
- * `UPLOADS_DIR/staging/…` et est supprimé après ingestion (ou à l'expiration).
- */
 export const mcpUploads = pgTable(
   "mcp_uploads",
   {
@@ -531,12 +385,9 @@ export const mcpUploads = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    /** Chemin relatif à UPLOADS_DIR du fichier brut mis en attente. */
     path: text("path").notNull(),
-    /** Taille du fichier brut (octets) — indice d'affichage / diagnostic. */
     byteSize: integer("byte_size").notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
-    /** Au-delà, l'upload est considéré périmé et balayé (fichier + ligne). */
     expiresAt: timestamp("expires_at").notNull(),
   },
   (t) => [
@@ -545,25 +396,14 @@ export const mcpUploads = pgTable(
   ],
 );
 
-/**
- * Réglages LLM propres à chaque utilisateur. Chaque contributeur apporte SA
- * propre clé API Anthropic (facturation individuelle, pas de clé partagée
- * d'instance). La clé n'est jamais stockée en clair : on conserve un blob
- * chiffré (AES-256-GCM, voir crypto.ts) et un indice non sensible (4 derniers
- * caractères) pour l'affichage. Une ligne par utilisateur.
- */
 export const userLlmSettings = pgTable("user_llm_settings", {
   userId: text("user_id")
     .primaryKey()
     .references(() => user.id, { onDelete: "cascade" }),
-  /** Clé API Anthropic chiffrée (AES-256-GCM), ou null si non configurée. */
   anthropicKeyEnc: text("anthropic_key_enc"),
-  /** Indice d'affichage : les 4 derniers caractères de la clé (jamais la clé). */
   anthropicKeyHint: text("anthropic_key_hint"),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
-
-/* ----------------------------------- Relations --------------------------- */
 
 export const childrenRelations = relations(children, ({ many }) => ({
   entries: many(entries),
@@ -636,7 +476,6 @@ export const attachmentsRelations = relations(attachments, ({ one }) => ({
 }));
 
 export type Entry = typeof entries.$inferSelect;
-/** États possibles d'une journée (aligné sur l'enum `entry_status`). */
 export type EntryStatus = (typeof entryStatus.enumValues)[number];
 export type EntryItem = typeof entryItems.$inferSelect;
 export type Attachment = typeof attachments.$inferSelect;

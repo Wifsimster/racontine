@@ -28,21 +28,6 @@ import { StudioSignature } from "@/components/Studio";
 import { useBilling } from "@/lib/billing";
 import Bienvenue from "@/pages/Bienvenue";
 
-/* ===========================================================================
-   La coquille : en-tête collant, navigation, transition de page, zones sûres.
-
-   Avant, l'en-tête alignait SIX icônes de 32 px — 6 cibles ratées sur 7, et
-   288 px de chrome sur les 390 px de large d'un téléphone. Maintenant il porte
-   deux choses de 44 px (les notifications, la navigation) et le nom de
-   l'instance ; tout le reste est dans un panneau qui descend.
-
-   Pourquoi un panneau et pas une barre d'onglets en bas : trois écrans
-   (journal, relecture, réglages) ont DÉJÀ leur propre barre d'action collée en
-   bas — « Photographier le carnet », « Publier », « Enregistrer ». Une barre
-   d'onglets viendrait s'y superposer. Le chrome haut coûte 56 px, soit 7 % de
-   l'écran : le carnet garde 93 % de la place.
-   =========================================================================== */
-
 type NavItem = {
   to: string;
   label: string;
@@ -54,19 +39,12 @@ export default function App() {
   const { data: session, isPending } = useSession();
   const location = useLocation();
   const [isOwner, setIsOwner] = useState(false);
-  /* Administrateur d'au moins un carnet — ce n'est PAS le propriétaire de
-     l'instance : un co-parent nommé admin ouvre la console sans jamais toucher
-     aux réglages, et le propriétaire d'une instance où il n'administre aucun
-     enfant ne la voit pas. Deux portes, deux clés. */
   const [isAdmin, setIsAdmin] = useState(false);
   const [appName, setAppName] = useState("Racontine");
   const [menuOpen, setMenuOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
-  /* L'entrée « L'abonnement » n'existe que sur une instance qui encaisse : sur
-     un homelab, un menu qui parle d'argent serait un menu qui ment. */
   const { billing } = useBilling(Boolean(session));
 
-  // Nom de l'instance + accès aux réglages (le lien n'apparaît qu'au propriétaire).
   const userId = session?.user.id;
   useEffect(() => {
     if (!userId) return;
@@ -86,10 +64,8 @@ export default function App() {
       .catch(() => {});
   }, [userId]);
 
-  // Le panneau se ferme au changement de page…
   useEffect(() => setMenuOpen(false), [location.pathname]);
 
-  // …et à la touche Échap, en rendant le focus au bouton qui l'a ouvert.
   useEffect(() => {
     if (!menuOpen) return;
     function onKey(e: KeyboardEvent) {
@@ -105,15 +81,6 @@ export default function App() {
   if (isPending) return <AppSplash />;
 
   if (!session) {
-    /* SANS SESSION, LA RACINE N'EST PLUS UN FORMULAIRE DE CONNEXION.
-       Ouvrir l'app menait droit au mot de passe : on demandait un compte à
-       quelqu'un à qui l'on n'avait encore rien proposé, et le tarif était
-       enfermé derrière ce compte. L'accueil montre donc l'offre — le prix,
-       l'essai, ce qu'il comprend — et la connexion est un lien de plus.
-
-       Les AUTRES chemins, eux, redirigent comme avant en emportant la
-       destination : un proche qui suit « une nouvelle journée est en ligne »
-       veut se connecter et retomber sur la journée, pas lire une offre. */
     if (location.pathname === "/") return <Bienvenue />;
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
@@ -173,10 +140,6 @@ export default function App() {
 
   return (
     <div className="min-h-svh">
-      {/* Le clavier arrive d'abord sur le contenu, pas sur la navigation.
-          Le lien est rangé HORS de l'écran (translation), pas réduit à 1 px par
-          `sr-only` : un lien de 1 x 1 px est une cible ratée dès qu'un clavier
-          le fait apparaître, et il faut qu'il fasse ses 44 px quand il arrive. */}
       <a
         href="#contenu"
         className="fixed top-2 left-4 z-60 -translate-y-24 rounded-xl bg-card px-4 py-3 text-ui font-bold text-foreground shadow-lift transition-transform dur-slow ease-page focus-visible:translate-y-0"
@@ -190,10 +153,6 @@ export default function App() {
             to="/"
             className="-ml-1 flex min-h-11 min-w-0 items-center gap-2 rounded-xl px-1 transition-colors dur-fast hover:bg-accent"
           >
-            {/* LA MARQUE, et non plus `BookOpenText` — qui est l'icône de
-                l'entrée « Le journal » du menu, deux rangs plus bas : le
-                produit et l'une de ses destinations portaient le même glyphe.
-                C'est ici exactement la tuile de l'écran d'accueil. */}
             <Marque />
             <span className="truncate font-serif text-title font-semibold">
               {appName}
@@ -228,8 +187,6 @@ export default function App() {
             aria-label="Navigation principale"
             className="panel-down fixed inset-x-0 top-header z-40 px-safe"
           >
-            {/* `px-safe` et `px-4` sur deux éléments distincts : sur un même
-                élément, la marge de sécurité écraserait la gouttière. */}
             <div className="shell-width px-4">
               <div className="mt-2 rounded-2xl border bg-popover p-2 text-popover-foreground shadow-lift">
                 {items.map(({ to, label, icon: Icon, hint }) => {
@@ -286,10 +243,6 @@ export default function App() {
                   </span>
                 </button>
 
-                {/* Le pied du menu : la version, puis QUI ÉDITE. Deux lignes
-                    au même cran, et la seconde ne dépend pas de `appName` —
-                    un foyer qui a rebaptisé son carnet « Le carnet de Léo »
-                    doit quand même pouvoir savoir à qui il a affaire. */}
                 <div className="flex flex-col gap-0.5 px-4 pt-2 pb-1">
                   <p className="text-meta text-muted-foreground">
                     {appName} · version {__APP_VERSION__}
@@ -302,8 +255,6 @@ export default function App() {
         </>
       )}
 
-      {/* La page fond en 220 ms ; on n'anime PAS de transformation ici, sinon
-          les barres d'action `fixed` des pages se recalent sur `main`. */}
       <main
         id="contenu"
         key={location.pathname}
@@ -312,26 +263,11 @@ export default function App() {
         <Outlet />
       </main>
 
-      {/* ON REVIENT OÙ L'ON ÉTAIT.
-          Mesuré : ouvrir une journée depuis le journal puis revenir remettait
-          le fil en haut — jusqu'à cent cinquante écrans de pouce effacés sur un
-          carnet d'un an, à chaque aller-retour. React Router restaure la
-          position d'un écran quitté PAR LE BOUTON RETOUR, et lui seul ; une
-          navigation neuve ouvre bien en haut.
-          La clé est le chemin, sans la query : le journal garde donc sa place
-          quel que soit le cadrage, et c'est `journal-view.ts` qui rend au fil sa
-          hauteur d'avant — sans quoi la position serait rendue à une page trop
-          courte, qui se recalerait aussitôt. */}
       <ScrollRestoration getKey={(location) => location.pathname} />
     </div>
   );
 }
 
-/**
- * Ouverture de l'app : on ne montre pas « Chargement… », on montre la FORME de
- * ce qui arrive — le bandeau du carnet puis une journée en attente. Le message
- * réel est annoncé aux lecteurs d'écran via `role="status"`.
- */
 function AppSplash() {
   return (
     <div className="min-h-svh bg-background">

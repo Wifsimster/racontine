@@ -3,37 +3,9 @@ import { useId } from "react";
 import { MARQUE } from "@/components/marque.generated";
 import { cn } from "@/lib/utils";
 
-/* ===========================================================================
-   LA MARQUE, DANS L'APP.
-
-   Ce composant existe pour refermer un écart précis : l'en-tête et l'écran de
-   démarrage portaient `BookOpenText`, une icône du catalogue Lucide — et cette
-   même icône était AUSSI celle de l'entrée « Le journal » du menu, deux rangs
-   plus bas. Le produit et l'une de ses cinq destinations avaient le même
-   glyphe, pendant que l'onglet et l'écran d'accueil en portaient un troisième.
-
-   L'en-tête porte désormais EXACTEMENT ce que porte l'écran d'accueil : la
-   tuile, à 26 px, trait de marge compris. Rien à accorder, rien à dessiner de
-   nouveau — et `BookOpenText` redevient libre d'être l'icône du journal, et de
-   rien d'autre.
-
-   Toute la géométrie vient de `marque.generated.ts`, qui sort de
-   `web/brand/mark.mjs` : les mêmes nombres produisent la favicon, les icônes
-   PWA, la pastille de notification et la carte de lien. Voir docs/identite.md.
-   =========================================================================== */
-
-/**
- * LA TUILE — la marque telle qu'elle est posée sur un écran d'accueil.
- *
- * Dimensionnée par la classe (`size-*`) et non par un attribut : elle se
- * mesure comme une icône Lucide, et suit les mêmes crans.
- */
 export function Marque({ className }: { className?: string }) {
   const { page, glyphR, tile, ink, radius } = MARQUE;
   const r = radius * 512;
-  // Un identifiant PAR INSTANCE. Un `id` figé marcherait tant que toutes les
-  // tuiles sont identiques — mais deux `id` identiques dans un document, c'est
-  // le genre de dette qui se paie le jour où une variante apparaît.
   const clipId = `marque-${useId()}`;
   return (
     <svg
@@ -76,17 +48,6 @@ export function Marque({ className }: { className?: string }) {
   );
 }
 
-/**
- * LA SILHOUETTE — la même page, sans tuile, en une couleur.
- *
- * Les réglures prennent l'encre du texte qui l'entoure (`currentColor`) ; seul
- * le trait de marge garde le groseille, parce que c'est lui qui dit « carnet »
- * et qu'il est le seul élément de la silhouette qui puisse porter une teinte
- * sans se confondre avec du texte.
- *
- * Boîte de 24 : celle de Lucide. Posée à côté d'une icône de l'app, elle fait
- * exactement la même taille, au pixel près.
- */
 export function MarqueSilhouette({ className }: { className?: string }) {
   const { silhouette } = MARQUE;
   const box = silhouette.viewBox;
@@ -120,20 +81,6 @@ export function MarqueSilhouette({ className }: { className?: string }) {
   );
 }
 
-/**
- * LA SIGNATURE — « Propulsé par Racontine ».
- *
- * Le nom affiché partout ailleurs dans l'app est `appName`, un réglage
- * d'instance : un foyer qui appelle son carnet « Le carnet de Léo » ne voyait
- * plus jamais le nom du produit, nulle part. Pour un logiciel auto-hébergé,
- * c'est la bonne fonctionnalité — mais alors il faut UN endroit, un seul, où
- * la marque ne dépende de rien.
- *
- * C'est celui-ci, et c'est la seule ligne de l'app qui ne lit pas `appName`.
- * Elle est au pied des portes (connexion, invitation), là où l'on décide de
- * faire confiance, et jamais dans la coquille : elle ne concurrence pas le nom
- * du carnet, elle dit de quoi il est fait.
- */
 export function MarqueSignature({ className }: { className?: string }) {
   return (
     <p className={cn("flex items-center gap-2 text-muted-foreground", className)}>

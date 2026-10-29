@@ -4,17 +4,6 @@ import { Slot } from "radix-ui";
 
 import { cn } from "@/lib/utils";
 
-/**
- * Pastille.
- *
- * Chaque variante est une paire (encre, fond) mesurée dans LES DEUX thèmes
- * (>= 5,1:1). Les variantes `success` / `warning` portent un état : la couleur
- * ne suffit jamais, on leur passe une icône (`<Check/>`, `<TriangleAlert/>`)
- * pour que l'état reste lisible en noir et blanc.
- *
- * Une pastille cliquable (`<a>` / `<button>`) passe automatiquement à 44 px de
- * haut : une cible de 20 px n'est pas une cible (I2).
- */
 const badgeVariants = cva(
   [
     "inline-flex w-fit min-h-6 shrink-0 items-center justify-center gap-1",

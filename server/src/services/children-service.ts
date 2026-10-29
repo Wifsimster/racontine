@@ -12,14 +12,6 @@ export type CreateChildResult =
   | { ok: true; child: ChildRecord }
   | { ok: false; httpCode: number; error: string };
 
-/**
- * L'ARRIVÉE D'UN ENFANT — et du cercle qui va avec.
- *
- * Son créateur en devient administrateur et suit d'office sa timeline. La
- * validation du nom et de la date de naissance est ici, et non dans le
- * gestionnaire HTTP : un outil MCP qui créerait un enfant demain devrait obéir
- * aux mêmes règles, et il n'aura pas à les recopier.
- */
 export class ChildrenService {
   constructor(private readonly children: ChildRepository) {}
 

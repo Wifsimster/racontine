@@ -27,21 +27,9 @@ import type {
   StoredImage,
 } from "../ports.js";
 
-/* ===========================================================================
-   DES DOUBLURES, PARCE QUE LES PORTS EXISTENT.
-
-   Ce fichier est la preuve la plus directe du découpage : la lecture d'un
-   carnet, l'arrivée d'un lot de photos, la publication d'une journée
-   s'exécutent ici EN ENTIER, sans Postgres, sans disque, sans appel facturé au
-   modèle. Ce qu'aucun test ne pouvait toucher hier — le découpage d'un carnet
-   couvrant trois jours, la course entre une lecture et une publication — se
-   vérifie maintenant en millisecondes.
-   =========================================================================== */
-
 let sequence = 0;
 const nextId = (prefix: string) => `${prefix}-${++sequence}`;
 
-/** Journée en base, avec des valeurs par défaut plausibles. */
 export function entryRecord(over: Partial<Entry> = {}): Entry {
   const now = new Date("2026-02-01T08:00:00Z");
   return {
@@ -66,7 +54,6 @@ export function entryRecord(over: Partial<Entry> = {}): Entry {
   };
 }
 
-/** Journée lue par le modèle, avec des valeurs par défaut vides. */
 export function carnetDay(over: Partial<CarnetDay> = {}): CarnetDay {
   return {
     date: null,
@@ -88,7 +75,6 @@ export function carnetDay(over: Partial<CarnetDay> = {}): CarnetDay {
   };
 }
 
-/** Dépôt des journées en mémoire — respecte les mêmes garanties que le SQL. */
 export class FakeEntryRepository
   implements EntryRepository, EntryRevisionRepository
 {
@@ -217,9 +203,6 @@ export class FakeEntryRepository
     });
   }
 
-  /* ----------------------------- Révisions ------------------------------ */
-
-  /** Erreur à lever à la prochaine révision (pour rejouer un conflit de base). */
   failNextRevision: Error | null = null;
 
   async revise(
@@ -263,7 +246,6 @@ export class FakeEntryRepository
     this.corrections.push(correction);
   }
 
-  /** Fichiers des pages de chaque journée, rendus par `remove`. */
   readonly files = new Map<
     string,
     { originalPath: string; thumbPath: string | null }[]
@@ -280,7 +262,6 @@ export class FakeEntryRepository
   }
 }
 
-/** Pages rattachées, en mémoire. */
 export class FakeAttachmentRepository implements AttachmentRepository {
   readonly pages = new Map<
     string,
@@ -355,12 +336,10 @@ export class FakeAttachmentRepository implements AttachmentRepository {
   }
 }
 
-/** Stockage d'images en mémoire, avec trace des suppressions. */
 export class FakeImageStore implements ImageStore {
   readonly stored: StoredImage[] = [];
   readonly deleted: string[] = [];
   readonly contents = new Map<string, Buffer>();
-  /** Si vrai, `store` lève — comme sharp sur une image indécodable. */
   rejectNext = false;
 
   async store(input: Buffer): Promise<StoredImage> {
@@ -382,7 +361,6 @@ export class FakeImageStore implements ImageStore {
     return this.contents.get(relPath) ?? Buffer.from(relPath);
   }
 
-  /** Chemins à tenir pour absents du disque (`exists` rend faux). */
   readonly missing = new Set<string>();
 
   async exists(relPath: string): Promise<boolean> {
@@ -398,7 +376,6 @@ export class FakeImageStore implements ImageStore {
   }
 
   readonly rotated: { path: string; quarters: number }[] = [];
-  /** Si vrai, `rotate` lève — comme sharp sur un fichier illisible. */
   rotateFails = false;
 
   async rotate(
@@ -407,14 +384,12 @@ export class FakeImageStore implements ImageStore {
   ): Promise<{ width: number; height: number }> {
     if (this.rotateFails) throw new Error("image illisible");
     this.rotated.push({ path: img.originalPath, quarters });
-    // Un quart de tour impair échange largeur et hauteur.
     return quarters % 2 === 0
       ? { width: 1200, height: 1600 }
       : { width: 1600, height: 1200 };
   }
 }
 
-/** Lecteur de carnet programmable : rend des journées, ou lève. */
 export class FakeCarnetReader implements CarnetReader {
   readonly calls: { pages: number; apiKey: string; glossary: GlossaryEntry[] }[] =
     [];
@@ -448,7 +423,6 @@ export class FakeGlossaryStore implements GlossaryStore {
   }
 }
 
-/** Droits programmables : la liste des enfants et le rôle accordé. */
 export class FakeAccessPolicy implements AccessPolicy {
   constructor(
     private readonly childIds: string[] = ["child-1"],
@@ -475,11 +449,6 @@ export class FakeAccessPolicy implements AccessPolicy {
   }
 }
 
-/**
- * Le péage, en test : ouvert par défaut. Un service qui crée une journée ne doit
- * pas avoir besoin d'un abonnement pour être testé — et le jour où le péage
- * ferme, on le dit explicitement, ici, en une ligne.
- */
 export class FakePaywall implements Paywall {
   constructor(private readonly reason: string | null = null) {}
   async blockedReason(): Promise<string | null> {
@@ -494,7 +463,6 @@ export class FakeChildDirectory implements ChildDirectory {
   }
 }
 
-/** Notificateur qui garde trace de ce qu'il aurait annoncé. */
 export class FakePublicationNotifier implements PublicationNotifier {
   readonly announcements: {
     entryId: string;
@@ -515,11 +483,6 @@ export class FakePublicationNotifier implements PublicationNotifier {
   }
 }
 
-/**
- * Exécuteur d'arrière-plan pour les tests : il lance tout de suite et retient la
- * promesse, pour qu'un test puisse attendre la fin d'un effet censé être
- * asynchrone plutôt que de dormir.
- */
 export class ImmediateRunner implements BackgroundRunner {
   readonly labels: string[] = [];
   private readonly pending: Promise<unknown>[] = [];
@@ -529,13 +492,11 @@ export class ImmediateRunner implements BackgroundRunner {
     this.pending.push(task());
   }
 
-  /** Attend tous les travaux lancés (les échecs sont ignorés, comme en prod). */
   async settle(): Promise<void> {
     await Promise.allSettled(this.pending);
   }
 }
 
-/** Journal silencieux, qui garde ce qu'on lui a écrit. */
 export class FakeLogger implements Logger {
   readonly errors: string[] = [];
   info(): void {}
@@ -545,7 +506,6 @@ export class FakeLogger implements Logger {
   }
 }
 
-/** Raccourci de lecture : les moments d'une entrée, en (type, données). */
 export function itemPairs(
   rows: ItemRow[],
 ): { type: ItemType; data: EntryItemData }[] {

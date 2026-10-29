@@ -1,9 +1,4 @@
 #!/usr/bin/env node
-// Propage la version calculée par semantic-release dans tous les package.json
-// du monorepo. Chaque contexte de build Docker (./web, ./server) est isolé et
-// ne voit que son propre package.json, d'où la synchronisation des trois.
-//
-// Usage : node scripts/sync-version.mjs <version>
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";

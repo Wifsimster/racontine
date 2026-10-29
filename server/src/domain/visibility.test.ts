@@ -2,9 +2,6 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { timelineScope } from "./visibility.js";
 
-/* La règle de visibilité du journal — la même pour la timeline web et pour les
-   outils MCP, qui en portaient jusqu'ici chacun leur copie. */
-
 test("sans aucune adhésion, il n'y a rien à voir", () => {
   assert.deepEqual(timelineScope([]), { kind: "empty" });
 });

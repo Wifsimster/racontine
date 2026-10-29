@@ -7,22 +7,6 @@ import { Button } from "@/components/ui/button";
 import { capitalize, monthYear } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-/* ===========================================================================
-   LES TROIS COMMANDES DU FIL — quel carnet, comment le lire, et où sauter.
-
-   Elles tiennent sur UNE ligne de 44 px sous le titre, et c'est la contrainte
-   qui a dicté leur forme : le journal a déjà un bandeau d'écran, un bandeau de
-   mois collant et un bouton flottant ; une quatrième barre aurait mangé le pli.
-   Le choix du carnet ne s'affiche donc qu'à partir de DEUX enfants, et le saut
-   de mois est porté par le bandeau de mois lui-même — qui était jusqu'ici un
-   panneau indicateur, jamais une porte.
-   =========================================================================== */
-
-/**
- * Le carnet qu'on lit. Rien à ouvrir, rien à replier : deux ou trois pastilles
- * en clair. « Tous » d'abord, parce que c'est l'état de départ et qu'un foyer
- * lit souvent les deux enfants ensemble.
- */
 export function ChildFilter({
   children,
   value,
@@ -37,10 +21,6 @@ export function ChildFilter({
     <div
       role="group"
       aria-label="Quel carnet lire"
-      /* Le rail déborde des gouttières et défile : à 320 px, trois pastilles
-         et le bouton de mode ne tiennent pas sur une ligne. `pr-2` laisse un
-         blanc entre la dernière pastille et le bouton, pour que la coupe se
-         lise comme un défilement et non comme un recouvrement. */
       className="-mx-4 flex snap-x gap-2 overflow-x-auto px-4 pr-2 pb-1"
     >
       <Button
@@ -61,8 +41,6 @@ export function ChildFilter({
           className="shrink-0 snap-start"
           onClick={() => onChange(c.id)}
         >
-          {/* La pastille reste ACHROMATIQUE ici aussi : elle désigne, elle ne
-              colore pas — les feutres ont déjà pris les couleurs. */}
           <ChildMark name={c.name} current={value === c.id} />
           {c.name}
         </Button>
@@ -71,12 +49,6 @@ export function ChildFilter({
   );
 }
 
-/**
- * Lire ou parcourir. Ce n'est pas une préférence d'affichage, c'est un geste
- * différent : « lire » déroule les journées entières (488 px pièce, 1,7 par
- * écran) ; « parcourir » les réduit à une ligne (11 par écran) pour chercher
- * une journée dont on ne connaît que le mois. Le choix est mémorisé.
- */
 export function ModeToggle({
   value,
   onChange,
@@ -85,8 +57,6 @@ export function ModeToggle({
   onChange: (mode: JournalMode) => void;
 }) {
   const parcourt = value === "parcourir";
-  /* Pas d'`aria-pressed` ici : le libellé dit ce que le bouton VA FAIRE, et un
-     bouton « Lire » annoncé « pressé » se contredirait à voix haute. */
   return (
     <Button
       variant="ghost"
@@ -99,19 +69,6 @@ export function ModeToggle({
   );
 }
 
-/**
- * LE SAUT DE MOIS — la table des matières du carnet.
- *
- * Le bandeau de mois disait où l'on était sans jamais emmener ailleurs :
- * atteindre la rentrée de l'an dernier se payait en une douzaine d'appuis sur
- * « voir les journées précédentes ». Il devient un bouton, et le panneau qu'il
- * ouvre est la seule liste de l'app où l'on voit le carnet en entier : un mois
- * par ligne, son nombre de journées, le mois courant marqué.
- *
- * Panneau et non feuille modale : c'est le même objet que le menu de la
- * coquille (voile, `panel-down`, Échap, focus rendu au bouton) — l'app n'a pas
- * deux façons d'ouvrir une liste.
- */
 export function MonthJump({
   id,
   months,
@@ -122,12 +79,9 @@ export function MonthJump({
   onClose,
   onJump,
 }: {
-  /** Identifiant du titre de section — le mois reste un `h2` repérable. */
   id?: string;
   months: JournalMonth[];
-  /** Le mois en tête de l'écran, pour le marquer dans la liste. */
   current: string | null;
-  /** Le mois d'où l'on est reparti, s'il y a eu un saut. */
   active: string | null;
   open: boolean;
   onOpen: () => void;
@@ -148,8 +102,6 @@ export function MonthJump({
     return () => document.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  // À l'ouverture, le focus entre dans le panneau : au clavier comme au
-  // lecteur d'écran, la liste doit être là où l'on vient d'appuyer.
   useEffect(() => {
     if (open) panneauRef.current?.focus();
   }, [open]);
@@ -158,13 +110,6 @@ export function MonthJump({
 
   return (
     <>
-      {/* Un `h2` qui PORTE un bouton, et non un bouton à la place du titre : le
-          mois reste un repère de navigation pour un lecteur d'écran, et il
-          devient une porte pour tout le monde. La cible fait toute la hauteur
-          du bandeau (44 px), pas celle du texte. */}
-      {/* `z-40` : le voile du panneau (z-30) couvre la page, mais pas le
-          bandeau depuis lequel on vient d'appuyer — un bouton qui grise au
-          moment où on l'active donne l'impression d'avoir raté sa cible. */}
       <h2 id={id} className="relative z-40 flex">
         <button
           ref={boutonRef}
@@ -185,10 +130,6 @@ export function MonthJump({
         </button>
       </h2>
 
-      {/* Le VOILE n'est pas ici : il est posé par le journal, hors du bandeau
-          collant. Enfant du bandeau, il en aurait recouvert le fond — le mois
-          sur lequel on vient d'appuyer serait passé au gris pendant qu'on le
-          lit. */}
       {open && (
         <>
           <div
@@ -214,8 +155,6 @@ export function MonthJump({
                 </Button>
               </div>
 
-              {/* Le retour au présent : visible seulement quand on a sauté,
-                  parce qu'un « revenir » sans départ ne veut rien dire. */}
               {active && (
                 <button
                   type="button"
@@ -276,7 +215,6 @@ export function MonthJump({
   );
 }
 
-/** Le voile du panneau des mois, posé au niveau de la page (cf. ci-dessus). */
 export function MonthJumpVeil({ onClose }: { onClose: () => void }) {
   return (
     <div

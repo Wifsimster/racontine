@@ -16,19 +16,6 @@ import {
   type DraftItem,
 } from "./draft";
 
-/* ===========================================================================
-   LA JOURNÉE QU'ON RELIT : la charger, la suivre, et savoir si elle a changé.
-
-   L'écran de relecture tenait tout : quatorze `useState`, six effets, le
-   sondage de la lecture en cours, la liste des rôles, les journées sœurs du
-   lot, le brouillon en cours d'édition et son empreinte — mêlés à 1 400 lignes
-   de rendu. On ne pouvait pas lire la règle « une lecture en cours se resonde
-   toutes les 2,5 s » sans traverser du JSX.
-
-   Ce hook porte L'ÉTAT DE LA DONNÉE ; l'écran garde ce qui est de l'écran :
-   ce qu'on publie, ce qu'on annonce, ce qu'on dessine.
-   =========================================================================== */
-
 export type ReviewEntryState = ReturnType<typeof useReviewEntry>;
 
 export function useReviewEntry(id: string) {
@@ -41,12 +28,10 @@ export function useReviewEntry(id: string) {
   const [transcription, setTranscription] = useState("");
   const [source, setSource] = useState<EntrySource>("nounou");
   const [date, setDate] = useState("");
-  /** Le rôle par enfant (`/api/children`) : `null` = pas encore connu. */
   const [roles, setRoles] = useState<Map<string, MemberRole> | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [batchDays, setBatchDays] = useState<BatchEntrySummary[] | null>(null);
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  /** Empreinte de la journée TELLE QU'ELLE EST SUR LE SERVEUR. Voir `dirty`. */
   const clean = useRef("");
 
   const hydrate = useCallback((e: Entry) => {
@@ -59,11 +44,6 @@ export function useReviewEntry(id: string) {
     setTranscription(e.transcription ?? "");
     setSource(e.source);
     setDate(e.date);
-    // L'empreinte est calculée avec EXACTEMENT les mêmes normalisations que le
-    // correctif envoyé (`currentPatch`) : sans ça, un champ vide côté serveur
-    // (`null`) et le même champ vide côté formulaire (`""`) feraient croire à
-    // une modification dès l'ouverture de l'écran, et le garde-fou se
-    // déclencherait sans qu'on ait touché à rien.
     clean.current = fingerprint({
       title: e.title,
       story: e.story,
@@ -79,10 +59,6 @@ export function useReviewEntry(id: string) {
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
-    /* `alive` borne CE chargement : une réponse arrivée après le démontage (ou
-       après un `reload`) ne réarme plus de minuterie. Sans lui, un sondage en
-       vol au moment du nettoyage relançait une boucle orpheline, doublée à
-       chaque rechargement, jusqu'à la fin de la lecture. */
     let alive = true;
     const fetchEntry = async (): Promise<void> => {
       const e = await api.getEntry(id);
@@ -92,9 +68,6 @@ export function useReviewEntry(id: string) {
       if (e.status === "processing")
         pollRef.current = setTimeout(() => void fetchEntry().catch(fail), 2500);
     };
-    // L'échec de CHARGEMENT est un état à part entière : avant, il était rangé
-    // dans `error` alors que le rendu, lui, restait bloqué sur « Chargement… »
-    // parce que `entry` valait toujours null. L'écran mentait indéfiniment.
     const fail = (err: unknown) => {
       if (alive) setLoadError(err instanceof Error ? err.message : String(err));
     };
@@ -105,16 +78,6 @@ export function useReviewEntry(id: string) {
     };
   }, [id, hydrate, reloadKey]);
 
-  /* ── QUI A LE DROIT D'ÊTRE ICI ────────────────────────────────────────────
-     `/api/entries/:id` renvoie la journée à TOUS les membres du carnet, lecteurs
-     compris (le serveur ne leur cache que les brouillons). Cet écran est un
-     ÉDITEUR : ouvert à un lecteur, il lui laissait choisir une suggestion, voir
-     le texte changer, taper « Republier la journée » — et lui répondait « accès
-     refusé » sur un travail qui ne pourra jamais être enregistré. Le rôle vient
-     donc de `/api/children`, et un lecteur reçoit la journée en LECTURE (cf.
-     `ReadOnlyDay`) au lieu d'un formulaire piégé.
-     Échec de la liste → `null` : on n'invente pas un refus à partir d'une
-     requête qui n'a pas répondu, le serveur reste l'arbitre à l'enregistrement. */
   useEffect(() => {
     let alive = true;
     api.listChildren().then(
@@ -130,8 +93,6 @@ export function useReviewEntry(id: string) {
     };
   }, []);
 
-  // Le carnet photographié peut couvrir plusieurs journées d'un coup : quand
-  // c'est le cas, on récupère les journées sœurs du lot pour le stepper.
   useEffect(() => {
     if (!entry?.batchId) {
       setBatchDays(null);
@@ -149,10 +110,6 @@ export function useReviewEntry(id: string) {
     return () => {
       alive = false;
     };
-    // Inclut `id` : deux journées voisines d'un même lot ont souvent le même
-    // batchId ET le même statut (« draft »), ce qui laisserait cet effet ne
-    // jamais se redéclencher en navigation SPA d'une journée à l'autre sans
-    // ce repère — et donc le stepper afficher un compte de publication figé.
   }, [entry?.batchId, entry?.status, id]);
 
   function setItemField(idx: number, key: string, value: string) {

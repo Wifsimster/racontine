@@ -1,26 +1,11 @@
 import type { MemberRole } from "../db/schema.js";
 
-/* ===========================================================================
-   LE CERCLE D'UN ENFANT — qui en fait partie, et à quelles conditions.
-
-   Ces règles vivaient dans les gestionnaires HTTP de `routes/sharing.ts`, entre
-   deux requêtes SQL : « il doit rester au moins un administrateur », « une
-   invitation ne sert qu'une fois », « elle est nominative », « retirer un
-   proche retire aussi son abonnement ». Ce sont les règles qui décident QUI VOIT
-   LA JOURNÉE D'UN ENFANT — les plus sensibles du produit —, et aucune n'était
-   vérifiable sans une base Postgres et une requête HTTP.
-
-   Elles sont ici, derrière des ports. La route ne fait plus que traduire.
-   =========================================================================== */
-
-/** Les rôles acceptés, dans l'ordre décroissant de droits. */
 export const ROLES: readonly MemberRole[] = ["admin", "contributor", "reader"];
 
 export function isRole(value: string): value is MemberRole {
   return (ROLES as readonly string[]).includes(value);
 }
 
-/** Une adhésion au cercle d'un enfant. */
 export type MemberRow = {
   userId: string;
   role: MemberRole;
@@ -29,7 +14,6 @@ export type MemberRow = {
   createdAt: Date;
 };
 
-/** Une invitation en attente ou déjà tranchée. */
 export type InvitationRow = {
   id: string;
   childId: string;
@@ -40,43 +24,21 @@ export type InvitationRow = {
   expiresAt: Date;
 };
 
-/** Rang d'un rôle : plus il est haut, plus il donne de droits. */
 export function roleRank(role: MemberRole): number {
   return ROLES.length - ROLES.indexOf(role);
 }
 
-/**
- * Issue d'une modification du cercle. « last-admin » : elle aurait laissé
- * l'enfant sans administrateur, et n'a donc PAS été appliquée.
- */
 export type CircleChange = "ok" | "missing" | "last-admin";
 
 export interface MembershipRepository {
   listMembers(childId: string): Promise<MemberRow[]>;
-  /**
-   * Change le rôle d'un membre, sauf s'il est le dernier administrateur et
-   * perdrait ce rôle. La vérification et l'écriture sont ATOMIQUES (verrou sur
-   * le cercle) : deux rétrogradations croisées ne peuvent pas passer toutes
-   * les deux.
-   */
   setRole(childId: string, userId: string, role: MemberRole): Promise<CircleChange>;
-  /**
-   * Retire l'adhésion, l'abonnement et les invitations encore en attente pour
-   * son adresse, d'un seul tenant — sauf s'il s'agit du dernier administrateur
-   * (même atomicité que `setRole`).
-   */
   remove(childId: string, userId: string): Promise<CircleChange>;
-  /**
-   * Donne un nom à un membre de CE cercle, uniquement s'il n'en a pas encore
-   * (compte créé par lien magique). `named` : il en a déjà un, qu'on ne
-   * remplace pas — le nom qu'une personne a choisi n'appartient qu'à elle.
-   */
   nameIfBlank(
     childId: string,
     userId: string,
     name: string,
   ): Promise<"ok" | "missing" | "named">;
-  /** Crée ou met à jour l'adhésion d'un utilisateur. */
   upsert(childId: string, userId: string, role: MemberRole): Promise<void>;
   isMember(childId: string, userId: string): Promise<boolean>;
 }
@@ -93,24 +55,15 @@ export interface InvitationRepository {
   }): Promise<InvitationRow>;
   findById(id: string): Promise<InvitationRow | null>;
   findByToken(token: string): Promise<(InvitationRow & { childName: string }) | null>;
-  /** Révoque une invitation EN ATTENTE. False si elle ne l'était plus. */
   revoke(id: string): Promise<boolean>;
-  /** Révoque toutes les invitations en attente de cet enfant pour cette adresse. */
   revokePendingFor(childId: string, email: string): Promise<void>;
-  /**
-   * Marque l'invitation acceptée SI elle est encore en attente, et crée
-   * l'adhésion dans la même transaction. False si quelqu'un l'a acceptée
-   * entre-temps — c'est la garde contre le double usage concurrent.
-   */
   acceptIfPending(invitationId: string, userId: string): Promise<boolean>;
 }
 
-/** L'adresse e-mail d'un compte existant, s'il y en a un. */
 export interface UserDirectory {
   findIdByEmail(email: string): Promise<string | null>;
 }
 
-/** Remise d'un lien de capacité (e-mail, webhook). */
 export interface LinkDelivery {
   deliver(to: string, subject: string, url: string): Promise<void>;
 }
@@ -120,9 +73,7 @@ export type SharingDeps = {
   invitations: InvitationRepository;
   users: UserDirectory;
   delivery: LinkDelivery;
-  /** Durée de validité d'une invitation, en jours (réglage d'instance). */
   invitationTtlDays(): Promise<number>;
-  /** Lien public d'acceptation d'une invitation. */
   inviteUrl(token: string): string;
   newToken(): string;
   now(): Date;
@@ -138,7 +89,6 @@ const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 export class SharingService {
   constructor(private readonly deps: SharingDeps) {}
 
-  /** Membres du cercle + invitations en attente (vue d'administration). */
   async circle(childId: string) {
     const [members, pending] = await Promise.all([
       this.deps.memberships.listMembers(childId),
@@ -158,7 +108,6 @@ export class SharingService {
     };
   }
 
-  /** Invite un proche : valide, crée le lien, et le remet à son destinataire. */
   async invite(params: {
     childId: string;
     inviterId: string;
@@ -172,7 +121,6 @@ export class SharingService {
     const role = params.role ?? "reader";
     if (!isRole(role)) return { ok: false, httpCode: 400, error: "rôle invalide" };
 
-    // Déjà membre ? (le compte existe et suit déjà cet enfant.)
     const existingUser = await this.deps.users.findIdByEmail(email);
     if (
       existingUser &&
@@ -184,9 +132,6 @@ export class SharingService {
         error: "cette personne suit déjà cet enfant",
       };
 
-    // Une seule invitation vivante par adresse : les liens précédents tombent.
-    // Sinon, un doublon oublié survivrait à l'acceptation du premier… et au
-    // retrait du proche, qu'il ferait revenir dans le cercle.
     await this.deps.invitations.revokePendingFor(params.childId, email);
 
     const token = this.deps.newToken();
@@ -212,7 +157,6 @@ export class SharingService {
     return { ok: true, invitation, url };
   }
 
-  /** Change le rôle d'un membre, sans jamais laisser l'enfant sans administrateur. */
   async setRole(params: {
     childId: string;
     userId: string;
@@ -226,11 +170,6 @@ export class SharingService {
     );
   }
 
-  /**
-   * Nomme un proche qui n'a pas de nom. Le nom est celui du COMPTE (visible
-   * dans tous ses cercles), d'où la règle : on complète un vide, on n'écrase
-   * jamais un nom existant.
-   */
   async nameMember(params: {
     childId: string;
     userId: string;
@@ -255,22 +194,17 @@ export class SharingService {
     return { ok: true, name };
   }
 
-  /** Retire un membre (et son abonnement), sauf s'il est le dernier admin. */
   async removeMember(params: {
     childId: string;
     userId: string;
   }): Promise<Ok<object> | Rejection> {
-    // Retirer l'adhésion ET l'abonnement : sans quoi le proche continuerait de
-    // recevoir notifications et e-mails de la timeline malgré l'accès révoqué.
     const outcome = await this.deps.memberships.remove(
       params.childId,
       params.userId,
     );
-    // Déjà absent : l'état voulu est atteint (retrait idempotent).
     return outcome === "missing" ? { ok: true } : circleOutcome(outcome);
   }
 
-  /** Aperçu public d'une invitation (le jeton EST la capacité). */
   async preview(token: string) {
     const inv = await this.deps.invitations.findByToken(token);
     if (!inv) return null;
@@ -283,24 +217,10 @@ export class SharingService {
     };
   }
 
-  /**
-   * Accepte une invitation pour un compte connecté.
-   *
-   * Trois refus, dans cet ordre : usage unique (un lien transféré ne doit pas
-   * rester exploitable), expiration, et destinataire — l'invitation est
-   * NOMINATIVE, le jeton ne doit pas faire entrer un tiers dans le cercle d'un
-   * enfant.
-   */
   async accept(params: {
     token: string;
     userId: string;
     userEmail: string;
-    /**
-     * L'adresse du compte a-t-elle été PROUVÉE (lien magique suivi) ? Une
-     * adresse seulement déclarée à l'inscription ne dit pas que ce compte est
-     * bien le destinataire : sans cette preuve, quiconque tient un lien
-     * transféré pourrait créer le compte à l'adresse invitée et entrer.
-     */
     emailVerified: boolean;
   }): Promise<Ok<{ childId: string; role: MemberRole }> | Rejection> {
     const inv = await this.deps.invitations.findByToken(params.token);
@@ -337,19 +257,10 @@ export class SharingService {
     return { ok: true, childId: inv.childId, role: inv.role };
   }
 
-  /**
-   * L'invitation visée, pour savoir DE QUEL ENFANT elle relève — c'est ce qui
-   * permet à l'appelant de vérifier qu'il en est administrateur AVANT de la
-   * révoquer.
-   */
   findInvitation(id: string): Promise<InvitationRow | null> {
     return this.deps.invitations.findById(id);
   }
 
-  /**
-   * Révoque une invitation en attente (l'autorisation est déjà vérifiée).
-   * False si elle ne l'était plus (acceptée ou déjà révoquée).
-   */
   revokeInvitation(id: string): Promise<boolean> {
     return this.deps.invitations.revoke(id);
   }

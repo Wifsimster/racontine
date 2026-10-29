@@ -7,7 +7,6 @@ import type {
   SubscriberDirectory,
 } from "./types.js";
 
-/** Met une date AAAA-MM-JJ en français lisible (« mardi 25 novembre »). */
 export function formatDateFr(iso: string): string {
   const d = new Date(iso + "T00:00:00");
   if (Number.isNaN(d.getTime())) return iso;
@@ -22,24 +21,10 @@ export type SubscriberNotifierDeps = {
   subscribers: SubscriberDirectory;
   log: NotificationLog;
   channels: NotificationChannel[];
-  /** Base publique de l'app, pour le lien profond. */
   webBaseUrl: string;
   logger: Logger;
 };
 
-/**
- * L'ORCHESTRATEUR : qui prévenir, quoi écrire, puis chaque canal à son tour.
- *
- * Il ne sait ni envoyer un e-mail ni pousser une notification — il connaît la
- * liste des canaux et le registre in-app. Deux garanties tiennent ici :
- *  · la notification in-app est écrite AVANT toute tentative externe, pour
- *    qu'un SMTP en panne ne prive jamais un abonné de sa notification ;
- *  · chaque destinataire et chaque canal sont isolés (`allSettled`) : un échec
- *    n'emporte pas les autres.
- *
- * Ne lève jamais : prévenir est un effet de bord de la publication, et ne doit
- * pas la faire échouer.
- */
 export class SubscriberNotifier implements PublicationNotifier {
   constructor(private readonly deps: SubscriberNotifierDeps) {}
 
@@ -58,8 +43,6 @@ export class SubscriberNotifier implements PublicationNotifier {
       if (!recipients.length) return;
 
       const event = this.describe(params);
-      // Les canaux indisponibles (SMTP absent, VAPID absent, interrupteur du
-      // propriétaire) sont écartés UNE fois, pas une fois par abonné.
       const channels = await this.enabledChannels();
 
       const results = await Promise.allSettled(

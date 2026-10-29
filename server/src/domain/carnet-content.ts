@@ -2,14 +2,6 @@ import { tidyUncertainties } from "../uncertainties.js";
 import type { CarnetDay, TranscribedNote } from "./carnet.js";
 import type { EntryContent } from "../ports.js";
 
-/**
- * Journée lue par le modèle → champs de contenu d'une entrée.
- *
- * Les incertitudes gagnent ici leur `resolved: null` (rien n'est encore
- * tranché) et sont remises en forme AVANT d'être stockées : un mot dans
- * `original`, sa glose dans `contexte` — voir `uncertainties.ts`, qui explique
- * ce que coûtait l'inverse.
- */
 export function contentFromCarnetDay(day: CarnetDay): EntryContent {
   return {
     mood: day.humeur,
@@ -23,7 +15,6 @@ export function contentFromCarnetDay(day: CarnetDay): EntryContent {
   };
 }
 
-/** Journée déjà transcrite → champs de contenu d'une entrée. */
 export function contentFromNote(note: TranscribedNote): EntryContent {
   return {
     mood: note.mood ?? null,
@@ -31,19 +22,10 @@ export function contentFromNote(note: TranscribedNote): EntryContent {
     story: note.story ?? null,
     highlight: note.highlight ?? null,
     transcription: note.transcription ?? null,
-    /* Même remise en forme que pour une lecture : un agent MCP envoie lui aussi
-       « «mot» : explication » dans une simple chaîne, et c'est `original` qui
-       sera remplacé dans le récit à la relecture. */
     uncertainties: tidyUncertainties(note.uncertainties ?? []),
   };
 }
 
-/**
- * Deux journées d'un même lot lues à la MÊME date n'en font qu'une : sans cette
- * fusion, la seconde écrasait la première (même entrée, contenu remplacé) et
- * le texte de la première page disparaissait. Les listes s'ajoutent, les
- * textes se suivent dans l'ordre des pages, et un titre déjà trouvé est gardé.
- */
 export function mergeCarnetDays(a: CarnetDay, b: CarnetDay): CarnetDay {
   const join = (x: string | null, y: string | null) =>
     x && y ? `${x}\n\n${y}` : (x ?? y);

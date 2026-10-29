@@ -16,11 +16,6 @@ import type {
   AdminRepository,
 } from "../services/admin-service.js";
 
-/**
- * Les lectures de la console d'administration, en Postgres. Toutes prennent la
- * liste des enfants administrés en paramètre : le périmètre est décidé UNE fois
- * (par `administeredChildren`), et aucune requête d'ici ne peut le déborder.
- */
 export class DrizzleAdminRepository implements AdminRepository {
   async administeredChildren(userId: string): Promise<AdminChild[]> {
     return db
@@ -75,9 +70,6 @@ export class DrizzleAdminRepository implements AdminRepository {
     const rows = await db
       .select({
         childId: entries.childId,
-        // `max()` de Drizzle, et non un `sql` brut : lui seul repasse la valeur
-        // par le décodeur de la colonne, et rend donc une Date là où le SQL nu
-        // rendrait ce que le pilote a bien voulu.
         at: max(entries.publishedAt),
       })
       .from(entries)

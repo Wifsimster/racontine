@@ -32,16 +32,9 @@ import {
 
 type ChildState = {
   status: SubscriptionStatus;
-  /** Null hors administrateur : la liste (noms, e-mails) lui est réservée. */
   subscribers: Subscriber[] | null;
 };
 
-/**
- * Active/désactive les notifications navigateur (Web Push) pour l'APPAREIL
- * courant. C'est un réglage par appareil, indépendant du suivi par enfant :
- * une fois activé, l'abonné reçoit une notification système pour chaque
- * timeline qu'il suit, même l'app fermée.
- */
 function PushCard() {
   const [state, setState] = useState<PushState | null>(null);
   const [busy, setBusy] = useState(false);
@@ -70,8 +63,6 @@ function PushCard() {
     }
   }
 
-  // Rien à afficher si le navigateur ne gère pas le push ou si le serveur n'a
-  // pas de clés VAPID : le canal n'existe pas, inutile de proposer un bouton.
   if (state === null || state === "unsupported" || state === "unavailable")
     return null;
 
@@ -119,10 +110,6 @@ function ChildCard({ child }: { child: Child }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // La liste des abonnés expose noms et e-mails : le serveur la réserve à
-  // l'administrateur (404 sinon). La demander à un lecteur faisait échouer
-  // TOUT le chargement — et le bouton « Suivre » avec, pour le public même
-  // des notifications.
   const isAdmin = child.role === "admin";
 
   async function load() {
@@ -134,9 +121,6 @@ function ChildCard({ child }: { child: Child }) {
   }
 
   useEffect(() => {
-    // Un échec de chargement ne se déguise PAS en « non abonné » : on le dit.
-    // Avant, le `catch` fabriquait un état crédible (`subscribed: false`), et
-    // l'écran affirmait tranquillement le contraire de la vérité.
     load().catch((e) =>
       setError(e instanceof Error ? e.message : "Suivi indisponible"),
     );
@@ -181,11 +165,6 @@ function ChildCard({ child }: { child: Child }) {
   return (
     <li className="flex flex-col gap-4 rounded-2xl border bg-card p-5 shadow-card">
       <div className="flex items-center justify-between gap-3">
-        {/* LE CARNET A UN VISAGE. La pastille d'initiale et l'âge en clair :
-            `birthdate` était dans le modèle depuis le début et n'était lu nulle
-            part, alors que c'est exactement la donnée qu'un journal d'enfance
-            doit porter — dans six ans, on relira « 2 ans et 4 mois » plus
-            souvent qu'une date. */}
         <div className="flex min-w-0 items-center gap-3">
           <ChildMark name={child.name} size="md" />
           <div className="flex min-w-0 flex-col">
@@ -209,10 +188,6 @@ function ChildCard({ child }: { child: Child }) {
         </Button>
       </div>
 
-      {/* Le MÊME interrupteur que dans « Réglages » : c'est le même geste (un
-          booléen appliqué tout de suite), il n'a pas à changer de dessin d'un
-          écran à l'autre. Avant, c'était une case à cocher native de 16 px, dont
-          le libellé n'était même pas cliquable. */}
       {state && state.status.subscribed && (
         <div className="flex items-center justify-between gap-3">
           <label

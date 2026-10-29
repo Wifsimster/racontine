@@ -48,7 +48,6 @@ a{color:inherit}
 .lede{font-size:1.05rem;color:var(--muted);max-width:62ch}
 .sub{font-size:.9rem;color:var(--muted)}
 
-/* ---- tale of the tape ---- */
 header{display:flex;flex-direction:column;gap:1.1rem;
   border-bottom:2px solid var(--fg);padding-bottom:1.75rem}
 .tape{display:grid;grid-template-columns:repeat(auto-fit,minmax(7.5rem,1fr));
@@ -59,21 +58,17 @@ header{display:flex;flex-direction:column;gap:1.1rem;
   font-variant-numeric:tabular-nums;line-height:1}
 .tape span{font-size:.7rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
 
-/* ---- callout ---- */
 .note{border-left:3px solid var(--amber);padding:.9rem 0 .9rem 1.1rem;
   background:color-mix(in oklab,var(--amber) 8%,transparent)}
 .note p+p{margin-top:.6rem}
 
-/* ---- section ---- */
 section{display:flex;flex-direction:column;gap:1.25rem}
 
-/* ---- bar strip ---- */
 .refs{display:grid;grid-template-columns:repeat(auto-fit,minmax(9rem,1fr));gap:1.25rem}
 .refs figure{margin:0;display:flex;flex-direction:column;gap:.5rem}
 .refs img{width:100%;border:1px solid var(--line);border-radius:.4rem;display:block}
 .refs figcaption{font-size:.8rem;color:var(--muted)}
 
-/* ---- piece ---- */
 .piece{border-top:1px solid var(--line);padding-top:1.5rem;
   display:flex;flex-direction:column;gap:1rem}
 .phead{display:flex;flex-wrap:wrap;align-items:baseline;gap:.6rem 1rem}
@@ -91,14 +86,12 @@ section{display:flex;flex-direction:column;gap:1.25rem}
 blockquote{margin:0;padding-left:1rem;border-left:2px solid var(--line);
   color:var(--muted);font-size:.92rem}
 
-/* ---- exhibit pair ---- */
 .pair{display:grid;grid-template-columns:1fr 1fr;gap:.9rem;max-width:30rem}
 .pair figure{margin:0;display:flex;flex-direction:column;gap:.45rem}
 .pair img{width:100%;border:1px solid var(--line);border-radius:.4rem;display:block}
 .pair figcaption{font-size:.72rem;letter-spacing:.09em;text-transform:uppercase;
   color:var(--muted)}
 
-/* ---- open list ---- */
 ul.open{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.7rem}
 ul.open li{position:relative;padding-left:1.2rem;font-size:.95rem;min-width:0}
 code{overflow-wrap:anywhere}

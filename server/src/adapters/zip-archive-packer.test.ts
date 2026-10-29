@@ -10,7 +10,6 @@ async function collect(stream: Readable): Promise<Buffer> {
   return Buffer.concat(chunks);
 }
 
-/** Relit un zip : nom de chaque fichier → contenu. */
 async function unzip(zip: Buffer): Promise<Map<string, string>> {
   const archive = await yauzl.fromBufferPromise(zip, { lazyEntries: true });
   const entries = await new Promise<yauzl.Entry[]>((resolve, reject) => {

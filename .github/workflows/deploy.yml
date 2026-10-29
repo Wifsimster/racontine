@@ -1,9 +1,5 @@
 name: Deploy — homelab
 
-# Runs on the self-hosted runner alongside the target docker host. Fires
-# after the image-publishing workflow succeeds on main, pulls `:latest`,
-# reconciles the compose stack, and prunes dangling images.
-
 on:
   workflow_run:
     workflows: ["Build & push images (GHCR)"]
@@ -17,8 +13,6 @@ concurrency:
 
 permissions:
   contents: read
-  # `docker compose pull` tire des images GHCR privées : sans ce scope, le
-  # registre répond « error from registry: denied ».
   packages: read
 
 jobs:

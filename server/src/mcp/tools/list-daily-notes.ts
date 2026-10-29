@@ -3,7 +3,6 @@ import type { EntryStatus } from "../../db/schema.js";
 import type { McpTool } from "../protocol.js";
 import { errorContent, jsonContent } from "../protocol.js";
 
-/** États possibles d'une journée (aligné sur l'enum `entry_status`). */
 const ENTRY_STATUSES = [
   "processing",
   "draft",
@@ -11,7 +10,6 @@ const ENTRY_STATUSES = [
   "failed",
 ] as const satisfies readonly EntryStatus[];
 
-/** Liste les journées récentes visibles par le compte. */
 export const listDailyNotesTool: McpTool = {
   name: "list_daily_notes",
   register(server, ctx) {
@@ -50,7 +48,6 @@ export const listDailyNotesTool: McpTool = {
           status,
           limit: limit ?? 20,
         });
-        // On ne divulgue pas l'existence d'un enfant non partagé : message uniforme.
         if (notes === null)
           return errorContent("Enfant introuvable ou inaccessible.");
         return jsonContent({ notes });

@@ -1,11 +1,6 @@
 import nodemailer, { type Transporter } from "nodemailer";
 import { config } from "./config.js";
 
-/**
- * Transport SMTP paresseux. Null si SMTP n'est pas configuré (SMTP_HOST absent) :
- * dans ce cas les envois sont silencieusement ignorés — la fonctionnalité
- * dégrade proprement vers les seules notifications in-app.
- */
 let transporter: Transporter | null | undefined;
 
 function getTransport(): Transporter | null {
@@ -26,7 +21,6 @@ function getTransport(): Transporter | null {
   return transporter;
 }
 
-/** True si un transport e-mail est configuré. */
 export function mailEnabled(): boolean {
   return getTransport() !== null;
 }
@@ -38,11 +32,6 @@ export type Mail = {
   html?: string;
 };
 
-/**
- * Envoie un e-mail. Ne lève jamais : une notification e-mail ratée ne doit pas
- * faire échouer l'action métier (publication d'une entrée). Renvoie true si
- * l'e-mail a été remis au serveur SMTP.
- */
 export async function sendMail(mail: Mail): Promise<boolean> {
   const tx = getTransport();
   if (!tx) return false;

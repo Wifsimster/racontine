@@ -30,7 +30,7 @@ test("trancher une incertitude ne touche pas les autres", () => {
   const after = resolveUncertaintyAt(before, 1, "B");
   assert.equal(after[0].resolved, null);
   assert.equal(after[1].resolved, "B");
-  assert.equal(before[1].resolved, null); // l'entrée d'origine n'est pas mutée
+  assert.equal(before[1].resolved, null);
 });
 
 test("seul le mot entier est remplacé, pas les mots qui le contiennent", () => {

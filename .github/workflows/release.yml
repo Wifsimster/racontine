@@ -1,13 +1,5 @@
 name: Release — semantic versioning
 
-# À chaque merge sur `main`, analyse les commits conventionnels (`feat`, `fix`,
-# `BREAKING CHANGE`) pour calculer la prochaine version, met à jour les
-# package.json + CHANGELOG, taggue le dépôt et publie une release GitHub.
-#
-# Le commit de release (`chore(release): x.y.z`) n'est pas releasable : il
-# déclenche à nouveau ce workflow (no-op) ainsi que la reconstruction des
-# images Docker, qui repartent alors avec la version fraîchement bumpée.
-
 on:
   push:
     branches: [main]
@@ -36,11 +28,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          # Pas de `cache: pnpm` ici : ce job n'exécute aucun `pnpm install`
-          # (semantic-release-action gère ses propres plugins), donc le store
-          # pnpm reste vide et le post-step de cache échouait en fin de job
-          # (« Path(s) specified for caching do not exist »), marquant le
-          # workflow en erreur alors que la release réussissait.
 
       - name: Semantic release
         uses: cycjimmy/semantic-release-action@v6

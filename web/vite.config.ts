@@ -5,8 +5,6 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
 
-// La version affichée dans l'app provient du package.json, tenu à jour par
-// semantic-release à chaque merge sur main.
 const { version } = JSON.parse(
   readFileSync(path.resolve(__dirname, "package.json"), "utf8"),
 );
@@ -20,42 +18,19 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: "autoUpdate",
-      // `badge-96.png` est précachée : la pastille est demandée par le service
-      // worker au moment où une notification arrive, donc potentiellement hors
-      // ligne. `og.png`, elle, n'est jamais lue par l'app — seulement par les
-      // robots d'aperçu de lien — et n'a rien à faire dans le précache.
       includeAssets: [
         "apple-touch-icon.png",
         "favicon.svg",
         "push-sw.js",
         "badge-96.png",
       ],
-      // On garde la stratégie generateSW (précache Workbox) et on y injecte nos
-      // gestionnaires Web Push via un script séparé (public/push-sw.js) plutôt
-      // que de passer à injectManifest : plus simple, précache inchangé.
       workbox: {
         importScripts: ["push-sw.js"],
-        // SANS CETTE LISTE, LES LIENS DE CONNEXION DES PROCHES NE MARCHENT PAS.
-        // `generateSW` pose une NavigationRoute qui répond `index.html` à TOUTE
-        // navigation de même origine. Or le lien de connexion d'un proche est
-        // une navigation vers `/api/auth/magic-link/verify?token=…` — même
-        // origine, puisque nginx sert le front et proxie `/api/`. Dès qu'un
-        // service worker était installé (donc dès la 2e visite), Workbox servait
-        // la coquille de l'app depuis le cache, le serveur ne voyait jamais le
-        // jeton, et le proche retombait sur l'écran de connexion sans qu'aucune
-        // erreur ne soit levée nulle part. Le magic link est le chemin de
-        // connexion PRINCIPAL des proches invités : c'était la panne la plus
-        // silencieuse du produit.
-        // Tout ce qui commence par `/api/` doit donc aller au réseau, jamais au
-        // cache : l'API, l'authentification et les pièces jointes ouvertes dans
-        // un onglet.
         navigateFallbackDenylist: [/^\/api\//],
       },
       manifest: {
         name: "Racontine",
         short_name: "Racontine",
-        // La même phrase que la carte de lien et que la porte de connexion :
-        // la promesse du produit ne doit pas avoir trois formulations.
         description:
           "Votre carnet de liaison, dématérialisé sans rien demander à la nounou.",
         theme_color: "#faf8f3",

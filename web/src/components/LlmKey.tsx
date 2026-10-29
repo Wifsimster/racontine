@@ -26,11 +26,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { InlineError } from "@/components/PageState";
 
-/**
- * Clé API Anthropic propre à l'utilisateur : la lecture des carnets est
- * facturée sur SON compte Anthropic. La clé est chiffrée côté serveur et n'est
- * jamais réaffichée — on n'en montre que les 4 derniers caractères.
- */
 export default function LlmKey() {
   const [state, setState] = useState<UserLlm | null>(null);
   const [value, setValue] = useState("");
@@ -91,15 +86,10 @@ export default function LlmKey() {
           stockée chiffrée et n'est jamais réaffichée.
         </p>
 
-        {/* « Aller chercher une clé » est une ACTION, pas une incise : en lien
-            dans la phrase, la cible faisait 129 x 18 px (I2). Sortie du
-            paragraphe, elle fait 44 px de haut et se voit. */}
         <Button
           asChild
           variant="outline"
           size="sm"
-          /* `whitespace-normal` : le libellé du bouton est long, et à 320 px un
-             `nowrap` poussait la page à 325 px de large (I5). */
           className="h-auto min-h-11 self-start py-2 text-left whitespace-normal"
         >
           <a
@@ -112,7 +102,6 @@ export default function LlmKey() {
           </a>
         </Button>
 
-        {/* État actuel */}
         {state?.configured ? (
           <div className="flex items-center gap-2 rounded-xl bg-success-bg px-3 py-2 text-meta text-success">
             <ShieldCheck className="size-4 shrink-0" aria-hidden="true" />
@@ -139,7 +128,6 @@ export default function LlmKey() {
           <div className="skeleton h-10 w-full" role="status" aria-label="On regarde si une clé est enregistrée" />
         )}
 
-        {/* Saisie / remplacement */}
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="anthropicKey">
             {state?.configured ? "Remplacer la clé" : "Clé API Anthropic"}

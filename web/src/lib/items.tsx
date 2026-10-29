@@ -22,63 +22,30 @@ import {
 import { ITEM_CHIP } from "./ui";
 import { NBSP, formatClock, formatDuration, fr, parseTime } from "./format";
 
-/* ===========================================================================
-   LES CINQ MOMENTS D'UNE JOURNÉE, DÉCRITS UNE SEULE FOIS.
-
-   « Repas, sieste, activité, anecdote, santé » étaient réécrits à chaque écran :
-   une table d'icônes dans le journal, une autre dans la relecture, un `switch`
-   pour le résumé d'un moment, une cascade de `if (item.type === …)` pour la
-   ligne de détail, une table de champs pour le formulaire, une liste de types à
-   proposer à l'ajout. Six endroits pour un même vocabulaire — et le sixième
-   type de moment, le jour où il arrivera, devra être ajouté aux six.
-
-   Un type de moment est ici UNE entrée de `ITEM_KINDS` : son nom, son feutre,
-   ses champs, son résumé, sa pastille de coup d'œil et sa ligne de détail. Les
-   écrans parcourent la liste ; ils ne la connaissent plus.
-   =========================================================================== */
-
 type LucideIcon = typeof Soup;
 
-/** Un champ éditable d'un moment, dans l'ordre où il se saisit. */
 export type ItemField = {
   key: string;
   label: string;
-  /** Champ de PROSE : zone de texte qui grandit plutôt qu'une ligne. */
   long: boolean;
 };
 
-/** Ce que la bande de feutres du journal dit d'un type de moment. */
 export type ItemGlance = { value: string; spoken: string };
 
 export type ItemKind = {
   type: ItemType;
-  /** Libellé humain (« Repas », « Sieste »…). */
   label: string;
-  /** Glyphe par défaut du type. */
   Icon: LucideIcon;
-  /** Classe du feutre coloré (journal). */
   chip: string;
-  /**
-   * Rang d'importance dans la bande de coup d'œil, quand il y a plus de trois
-   * pastilles : la santé d'abord — le bobo, la fièvre, le médicament, c'est ce
-   * qu'un parent ouvre l'app pour trouver.
-   */
   glanceRank: number;
-  /** Glyphe affiné selon le contenu (un repas change avec le moment). */
   iconFor(item: EntryItem): LucideIcon;
-  /** Champs éditables à la relecture. */
   fields: ItemField[];
-  /** Brouillon vide de ce type. */
   emptyDraft(): Record<string, string>;
-  /** Résumé d'un moment : son libellé et sa valeur en une phrase. */
   summarize(data: Record<string, string>): { label: string; value: string };
-  /** Pastille de coup d'œil pour tous les moments de ce type, ou null. */
   glance(items: EntryItem[]): ItemGlance | null;
-  /** Contenu de la ligne de détail sur le journal (hors puce). */
   renderLine(item: EntryItem): ReactNode;
 };
 
-/** Joint des morceaux non vides par « · ». */
 function join(...parts: (string | undefined)[]): string {
   return parts
     .map((p) => (p ?? "").trim())
@@ -86,12 +53,10 @@ function join(...parts: (string | undefined)[]): string {
     .join(" · ");
 }
 
-/** Accord au pluriel d'un compte (« 2 activités »). */
 function plural(n: number, one: string, many = `${one}s`): string {
   return `${n} ${n > 1 ? many : one}`;
 }
 
-/** Icône de repas selon le moment de la journée (à défaut, un bol). */
 function mealIcon(moment?: string): LucideIcon {
   const m = (moment ?? "").toLowerCase();
   if (m.includes("matin") || m.includes("réveil") || m.includes("petit-déj"))
@@ -164,8 +129,6 @@ export const ITEM_KINDS: readonly ItemKind[] = [
         const b = parseTime(d.fin);
         if (a !== null && b !== null && b > a) total += b - a;
       }
-      // Le mot AVANT la durée, et son nombre dit si c'est un cumul : « sieste
-      // 2 h 05 » (une seule) contre « siestes 2 h 05 » (le total du jour).
       const noun = items.length > 1 ? "siestes" : "sieste";
       return {
         value:
@@ -226,9 +189,6 @@ export const ITEM_KINDS: readonly ItemKind[] = [
         ? { value: plural(items.length, "anecdote"), spoken: "anecdotes" }
         : null,
     renderLine: (item) => (
-      /* Les guillemets ET l'encre prune : le mot d'enfant reste reconnaissable
-         même en noir et blanc. Pas d'italique — aucune fonte italique n'est
-         embarquée, l'oblique serait synthétique. */
       <span className="text-anecdote">
         «{NBSP}
         {fr((item.data as AnecdoteData).text)}
@@ -259,10 +219,8 @@ export const ITEM_KINDS: readonly ItemKind[] = [
 
 const BY_TYPE = new Map(ITEM_KINDS.map((k) => [k.type, k]));
 
-/** Le descripteur d'un type de moment. */
 export function itemKind(type: ItemType): ItemKind {
   return BY_TYPE.get(type) ?? ITEM_KINDS[0];
 }
 
-/** Les types proposés à l'ajout, dans l'ordre d'une journée. */
 export const ITEM_TYPES_IN_ORDER: ItemType[] = ITEM_KINDS.map((k) => k.type);

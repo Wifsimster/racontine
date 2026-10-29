@@ -1,26 +1,3 @@
-/* ===========================================================================
-   LES QUATRE ROUTES, AVEC UNE VRAIE SESSION.
-
-   `integration/privacy.ts` prouve que l'adaptateur efface ce qu'il doit. Il ne
-   dit rien du CHEMIN qui y mène — et c'est là que ces routes-ci sont fragiles,
-   pour des raisons qui ne se voient dans aucun test unitaire :
-
-     · la confirmation voyage dans le CORPS d'un DELETE. Un parseur qui
-       l'ignorerait ne casserait rien de visible : chaque effacement répondrait
-       simplement « recopiez votre adresse », pour toujours ;
-     · l'export doit DESCENDRE (`Content-Disposition`), être un zip qui se
-       rouvre, et ne dormir dans aucun cache — ce qu'aucune assertion de
-       service ne regarde ;
-     · après le départ, le cookie encore dans le navigateur ne doit plus rien
-       ouvrir. C'est la dernière promesse de l'effacement, et la seule qui se
-       vérifie de l'extérieur.
-
-   Comme son voisin, il lui faut une vraie base :
-
-     docker compose up -d db
-     pnpm --filter server db:migrate
-     pnpm --filter server test:privacy:http
-   =========================================================================== */
 import assert from "node:assert/strict";
 import { buildApp } from "../src/app.js";
 import { db } from "../src/db/index.js";
@@ -51,7 +28,6 @@ ok("compte créé, session ouverte");
 const me = await app.inject({ method: "GET", url: "/api/me", headers: { cookie: jar } });
 const userId = JSON.parse(me.body).id as string;
 
-// Sans session : 401 partout.
 for (const [method, url] of [
   ["GET", "/api/me/export"],
   ["GET", "/api/me/erasure"],
@@ -62,7 +38,6 @@ for (const [method, url] of [
 }
 ok("sans session, les quatre routes répondent 401");
 
-// Un carnet, pour que l'aperçu ait quelque chose à dire.
 const created = await app.inject({
   method: "POST",
   url: "/api/children",
@@ -114,7 +89,6 @@ assert.equal(preview.statusCode, 200, preview.body);
 assert.deepEqual(JSON.parse(preview.body).deletes, [{ id: childId, name: "Léa" }]);
 ok("l'aperçu annonce le carnet qui partirait");
 
-// Mauvaise confirmation → 400, et RIEN n'a bougé.
 const refused = await app.inject({
   method: "DELETE",
   url: `/api/children/${childId}`,
@@ -126,7 +100,6 @@ assert.equal(JSON.parse(refused.body).code, "confirmation");
 assert.equal((await db.select().from(children).where(eq(children.id, childId))).length, 1);
 ok("un prénom recopié de travers ne supprime rien (400)");
 
-// Le bon prénom, aux accents près.
 const erased = await app.inject({
   method: "DELETE",
   url: `/api/children/${childId}`,
@@ -137,7 +110,6 @@ assert.equal(erased.statusCode, 200, erased.body);
 assert.equal((await db.select().from(children).where(eq(children.id, childId))).length, 0);
 ok("le prénom recopié efface le carnet (accents et espaces tolérés)");
 
-// Mauvaise adresse → 400.
 const badEmail = await app.inject({
   method: "DELETE",
   url: "/api/me",
@@ -159,7 +131,6 @@ assert.equal((await db.select().from(user).where(eq(user.id, userId))).length, 0
 assert.equal((await db.select().from(memberships).where(eq(memberships.userId, userId))).length, 0);
 ok("le compte part, et ses adhésions avec lui");
 
-// La session est morte avec le compte : l'ancien cookie ne vaut plus rien.
 const after = await app.inject({ method: "GET", url: "/api/me", headers: { cookie: jar } });
 assert.equal(after.statusCode, 401);
 ok("le cookie survivant ne rouvre rien (401)");

@@ -15,7 +15,6 @@ function build(
   opts: {
     entries?: ReturnType<typeof entryRecord>[];
     role?: "reader" | "contributor" | "admin" | null;
-    /** Phrase de refus du péage ; `null` = carnet ouvert. */
     blocked?: string | null;
   } = {},
 ) {
@@ -54,7 +53,6 @@ test("une journée transcrite devient un brouillon avec ses moments ordonnés", 
     entries.itemsOf(result.id).map((i) => i.type),
     ["meal", "nap", "activity", "anecdote", "health"],
   );
-  // Un brouillon ne prévient personne.
   assert.deepEqual(notifier.announcements, []);
 });
 
@@ -103,8 +101,6 @@ test("les incertitudes fournies en texte libre sont remises en forme", async () 
   assert.equal(result.ok, true);
   if (!result.ok) return;
   const stored = (await entries.findById(result.id))?.uncertainties ?? [];
-  // Le mot d'un côté, sa glose de l'autre : c'est `original` que la relecture
-  // remplacera dans le récit.
   assert.equal(stored[0].original, "Roueil");
   assert.match(stored[0].contexte, /mot incertain/);
 });
@@ -122,8 +118,6 @@ test("les mêmes règles d'accès que l'ingestion s'appliquent", async () => {
 });
 
 test("l'abonnement terminé refuse aussi une journée DÉJÀ transcrite (402)", async () => {
-  // L'outil MCP ne doit pas être la porte dérobée du péage : il crée une
-  // journée sans photo ni clé d'API, mais c'est toujours une journée.
   const { service, entries } = build({ blocked: "Votre essai gratuit est terminé." });
 
   const result = await service.create({

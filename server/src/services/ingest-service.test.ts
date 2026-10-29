@@ -18,7 +18,6 @@ function build(
     apiKey?: string | null;
     childIds?: string[];
     role?: "reader" | "contributor" | "admin" | null;
-    /** Phrase de refus du péage ; `null` = carnet ouvert. */
     blocked?: string | null;
   } = {},
 ) {
@@ -59,7 +58,6 @@ test("une photo de carnet crée la journée, range ses pages et lance la lecture
   assert.equal(result.status, "processing");
   assert.equal((await entries.findById(result.id))?.status, "processing");
   assert.equal(images.stored.length, 2);
-  // La lecture part sur TOUTES les pages de la journée, dans l'ordre.
   assert.deepEqual(reads, [
     {
       entryId: result.id,
@@ -86,7 +84,6 @@ test("des pages ajoutées à une journée existante se rangent à la suite", asy
   const paths = await attachments.pathsFor("e1");
   assert.equal(paths.length, 2);
   assert.equal(paths[0], "ancienne.jpg");
-  // La relecture repart de l'ensemble des pages, pas seulement des nouvelles.
   assert.deepEqual(reads[0].paths, paths);
 });
 
@@ -107,7 +104,6 @@ test("une journée déjà publiée n'est pas rouverte, et les fichiers écrits s
   if (result.ok) return;
   assert.equal(result.httpCode, 409);
   assert.equal(result.id, "e1");
-  // Rien ne doit rester sur le disque : ces octets n'appartiennent à personne.
   assert.deepEqual(images.deleted, images.stored.map((i) => i.originalPath));
 });
 
@@ -138,7 +134,6 @@ test("sans clé d'API, on refuse tout de suite plutôt que d'échouer en arrièr
   if (result.ok) return;
   assert.equal(result.httpCode, 400);
   assert.match(result.error, /clé API Anthropic/);
-  // Aucune image n'a été écrite : le refus précède le stockage.
   assert.equal(images.stored.length, 0);
 });
 
@@ -200,8 +195,6 @@ test("les métadonnées mal formées sont refusées avant tout stockage", async 
 });
 
 test("l'essai terminé refuse la journée (402) SANS écrire une seule photo", async () => {
-  // Le péage passe avant le disque et avant la clé d'API : refuser après avoir
-  // rangé douze pages de 20 Mo serait payer le stockage d'un refus.
   const { service, entries, images } = build({
     blocked: "Votre essai gratuit est terminé.",
   });

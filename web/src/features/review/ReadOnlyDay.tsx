@@ -6,38 +6,7 @@ import { itemKind } from "@/lib/items";
 import { glanceOf, toDraftItems } from "./draft";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-/* La journée telle qu'un LECTEUR la reçoit : on la lit, on ne la corrige pas. */
 
-/* ===========================================================================
-   L'ATTENTE DU GESTE LE PLUS CONSÉQUENT DU PRODUIT.
-
-   Mesuré sur un PATCH /api/entries/:id qui ne revient jamais : à 1,5 s, 6 s et
-   20 s l'écran était IDENTIQUE — un bouton désactivé, une roue, `aria-busy`, le
-   libellé « Publier la journée » inchangé, la ligne du dessus disant toujours
-   « 1 lecture sera publiée telle quelle » au présent. Aucun nœud `role="status"`
-   ne se déclenchait, aucun temps, aucun compte, aucune escalade, aucune sortie.
-   Le produit savait déjà faire mieux ailleurs (« Envoi de 1 page vers
-   Racontine… », « page 2 sur 3 en cours de lecture », « Le carnet met du temps à
-   venir ») : le seul endroit resté muet était celui qui compte.
-
-   CE QU'ON PEUT DIRE HONNÊTEMENT, et rien de plus :
-     · CE QUI PART : le nombre de moments et de pages — un compte, pas une roue.
-     · DEPUIS QUAND : les secondes écoulées, en chiffres tabulaires. C'est la
-       seule grandeur déterminée dont on dispose : le serveur ne rapporte pas
-       l'avancement d'un PATCH, et inventer un pourcentage de publication serait
-       un mensonge dessiné.
-     · LA BARRE mesure donc le temps CONTRE LA DURÉE HABITUELLE (3 s), plafonnée
-       à 92 % : elle n'atteint jamais le bout tant que ce n'est pas fini, et
-       au-delà de l'habituel elle s'arrête et la phrase prend le relais.
-     · L'ESCALADE : à 5 s « c'est plus long que d'habitude », à 12 s « le carnet
-       ne répond toujours pas ». Deux phrases, deux annonces `role="status"`.
-     · LA SORTIE, à partir de 3 s : « Arrêter d'attendre ». Elle n'est pas
-       nommée « annuler » : abandonner la requête n'annule rien côté serveur, et
-       le message qui suit le dit mot pour mot.
-   =========================================================================== */
-
-
-/* La journée pour un LECTEUR : on la lit, on ne la corrige pas. */
 
 export function ReadOnlyDay({ entry }: { entry: Entry }) {
   return (
@@ -88,13 +57,6 @@ export function ReadOnlyDay({ entry }: { entry: Entry }) {
         )}
       </article>
 
-      {/* LA JOURNÉE, pas seulement le récit. Un lecteur arrive ici par une
-          notification (« la journée de Louise est publiée » -> /entries/:id) :
-          il doit y trouver la journée ENTIÈRE — les moments et l'humeur compris —
-          et non un extrait qui l'obligerait à repartir vers le journal pour lire
-          ce qu'il venait lire. Mêmes libellés, mêmes glyphes, même ordre que
-          partout ailleurs ; les pastilles de confiance, elles, restent à l'écran
-          de relecture : elles ne veulent rien dire pour qui ne tranche pas. */}
       {entry.items.length > 0 && (
         <ul className="mt-4 rounded-2xl border bg-card px-4 shadow-card">
           {toDraftItems(entry.items).map((it, i) => {

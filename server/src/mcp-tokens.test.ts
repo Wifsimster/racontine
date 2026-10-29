@@ -18,9 +18,8 @@ test("generateRawToken porte le préfixe et un secret base64url", () => {
   const tok = generateRawToken();
   assert.ok(tok.startsWith("rac_mcp_"));
   const secret = tok.slice("rac_mcp_".length);
-  // base64url : uniquement A–Z a–z 0–9 - _ (pas de +, /, =).
   assert.match(secret, /^[A-Za-z0-9_-]+$/);
-  assert.ok(secret.length >= 42); // 32 octets encodés en base64url
+  assert.ok(secret.length >= 42);
 });
 
 test("generateRawToken ne se répète pas", () => {
@@ -28,8 +27,6 @@ test("generateRawToken ne se répète pas", () => {
   assert.equal(tokens.size, 50);
 });
 
-// Ces rejets se produisent AVANT toute requête base : l'en-tête est écarté sur
-// sa seule forme (absent, mauvais schéma, mauvais préfixe) — aucun accès DB.
 test("authenticateMcpToken rejette un en-tête absent", async () => {
   assert.equal(await authenticateMcpToken(undefined), null);
 });

@@ -8,7 +8,6 @@ import {
   jsonContent,
 } from "../protocol.js";
 
-/** Téléverse des pages photographiées : le serveur les lit et crée un brouillon. */
 export const uploadDailyNoteTool: McpTool = {
   name: "upload_daily_note",
   register(server, ctx) {
@@ -55,8 +54,6 @@ export const uploadDailyNoteTool: McpTool = {
       async ({ images, imageIds, childId, date, source }) => {
         const buffers: Buffer[] = [];
 
-        // Pages pré-téléversées (octets bruts) d'abord, puis base64 inline. On
-        // conserve l'ordre demandé pour la fusion/positions des pages.
         if (imageIds?.length) {
           const resolved = await ctx.uploads.resolve(ctx.user.id, imageIds);
           if (!resolved.ok) return errorContent(resolved.error);
@@ -90,8 +87,6 @@ export const uploadDailyNoteTool: McpTool = {
 
         if (!result.ok) return errorContent(result.error);
 
-        // Ingestion réussie : les octets bruts en attente ne servent plus. En cas
-        // d'échec on les laisse (l'appelant peut réessayer jusqu'à l'expiration).
         if (imageIds?.length) await ctx.uploads.consume(ctx.user.id, imageIds);
 
         return jsonContent({

@@ -3,12 +3,6 @@ import { parseSettingsPatch } from "../../domain/settings-patch.js";
 import type { McpTool } from "../protocol.js";
 import { errorContent, jsonContent } from "../protocol.js";
 
-/**
- * Change les réglages de l'instance à chaud — l'équivalent MCP de l'écran
- * Réglages. La validation est celle du domaine (`domain/settings-patch.ts`),
- * partagée mot pour mot avec `PATCH /api/settings` : deux protocoles, une seule
- * règle sur le nom de l'instance ou la durée d'une invitation.
- */
 export const updateInstanceSettingsTool: McpTool = {
   name: "update_instance_settings",
   register(server, ctx) {
@@ -31,10 +25,6 @@ export const updateInstanceSettingsTool: McpTool = {
             .describe(
               "Ouvre ou ferme la création de comptes e-mail/mot de passe. Les proches invités par lien restent toujours acceptés. À laisser fermé hors ajout d'un co-parent.",
             ),
-          // Les BORNES sont dans `domain/settings-patch.ts`, pas ici : deux
-          // gardes, ce serait deux vérités, et l'agent recevrait un refus en
-          // anglais du SDK là où la règle du produit parle français. Zod ne
-          // décrit donc que la FORME ; la borne est dite dans la description.
           invitationTtlDays: z
             .number()
             .int()

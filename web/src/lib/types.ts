@@ -14,11 +14,6 @@ export type UncertaintyField =
   | "temps_fort"
   | "transcription_integrale";
 
-/**
- * Mot ou passage dont la lecture manuscrite est incertaine, avec des
- * suggestions de correction à valider. `resolved` porte la valeur choisie une
- * fois la relecture faite (null tant que non validé).
- */
 export type Uncertainty = {
   original: string;
   contexte: string;
@@ -48,7 +43,6 @@ export type Child = {
   id: string;
   name: string;
   birthdate: string | null;
-  /** Rôle de l'utilisateur courant sur cet enfant. */
   role?: MemberRole;
 };
 
@@ -97,7 +91,6 @@ export type Entry = {
   status: EntryStatus;
   failureReason: string | null;
   mood: string | null;
-  /** Valorisation automatique de la journée. */
   title: string | null;
   story: string | null;
   highlight: string | null;
@@ -106,32 +99,19 @@ export type Entry = {
   publishedAt: string | null;
   items: EntryItem[];
   attachments: AttachmentRef[];
-  /**
-   * Identifiant commun aux journées issues d'un même envoi de photos
-   * couvrant plusieurs jours (carnet photographié sur plusieurs pages à la
-   * fois). Null pour une journée seule.
-   */
   batchId: string | null;
 };
 
-/**
- * Une page du fil. `nextCursor` est l'ancre de la suivante : l'identifiant de
- * la dernière journée rendue, et non un décalage — une journée publiée pendant
- * qu'on lit ne décale donc plus rien (cf. `domain/feed-window.ts` côté serveur).
- */
 export type TimelinePage = {
   entries: Entry[];
   nextCursor: string | null;
 };
 
-/** Un mois du carnet et son nombre de journées, pour le saut de mois. */
 export type JournalMonth = {
-  /** AAAA-MM. */
   month: string;
   count: number;
 };
 
-/** Résumé léger d'une journée sœur dans un même lot (stepper de relecture). */
 export type BatchEntrySummary = {
   id: string;
   date: string;
@@ -182,20 +162,14 @@ export const ITEM_LABELS: Record<ItemType, string> = {
   health: "Santé",
 };
 
-/* ------------------------------ Réglages ------------------------------- */
-
-/** Utilisateur courant, et les portes qui s'ouvrent pour lui. */
 export type Me = {
   id: string;
   email: string;
   name: string;
-  /** Propriétaire de l'instance (premier compte) : accès aux réglages. */
   isOwner: boolean;
-  /** Administrateur d'au moins un enfant : accès à la console d'administration. */
   isAdmin: boolean;
 };
 
-/** Réglages effectifs de l'instance, modifiables par le propriétaire. */
 export type AppSettings = {
   appName: string;
   signupEnabled: boolean;
@@ -204,7 +178,6 @@ export type AppSettings = {
   emailNotificationsEnabled: boolean;
 };
 
-/** État de l'infrastructure (piloté par l'environnement, en lecture seule). */
 export type SettingsMeta = {
   mailConfigured: boolean;
   webPushConfigured: boolean;
@@ -213,10 +186,6 @@ export type SettingsMeta = {
   knownVlmModels: string[];
 };
 
-/**
- * État de la clé API LLM propre à l'utilisateur courant. La clé n'est jamais
- * renvoyée : seul un indice (4 derniers caractères) sert à la confirmation.
- */
 export type UserLlm = {
   configured: boolean;
   hint: string | null;
@@ -227,15 +196,11 @@ export type SettingsResponse = {
   meta: SettingsMeta;
 };
 
-/** Réglages publics, exposés sans authentification (écran de connexion). */
 export type PublicSettings = {
   appName: string;
   signupEnabled: boolean;
 };
 
-/* --------------------------- Jetons MCP -------------------------------- */
-
-/** Jeton d'accès MCP (sans le secret, jamais renvoyé après la création). */
 export type McpToken = {
   id: string;
   name: string;
@@ -244,15 +209,11 @@ export type McpToken = {
   createdAt: string;
 };
 
-/** Réponse de création : le secret en clair n'est renvoyé qu'ici, une fois. */
 export type CreatedMcpToken = {
   token: McpToken;
   secret: string;
 };
 
-/* ----------------------------- Abonnement ------------------------------ */
-
-/** Pourquoi le carnet est ouvert, ou fermé (miroir de `domain/paywall.ts`). */
 export type AccessReason =
   | "self-hosted"
   | "trial"
@@ -261,61 +222,36 @@ export type AccessReason =
   | "trial-over"
   | "subscription-over";
 
-/**
- * L'accès à l'ÉCRITURE du carnet. Lire n'est jamais concerné : le journal déjà
- * publié reste lisible quoi qu'il arrive, et aucun écran ne doit laisser penser
- * le contraire.
- */
 export type CarnetAccess = {
-  /** Peut-on commencer une NOUVELLE journée ? */
   open: boolean;
   reason: AccessReason;
-  /** Jours entiers restants d'essai, ou null. */
   daysLeft: number | null;
-  /** Date (ISO) jusqu'à laquelle l'accès est acquis, ou null. */
   until: string | null;
-  /** Date (ISO) de fin d'un abonnement résilié, ou null. */
   endingAt: string | null;
 };
 
-/** Le tarif, tel que Stripe le détient — jamais recopié dans le front. */
 export type PlanPrice = {
-  /** Montant en centimes. */
   unitAmount: number;
   currency: string;
-  /** « month », « year »… */
   interval: string;
   intervalCount: number;
 };
 
-/**
- * L'OFFRE TELLE QU'ON PEUT LA MONTRER SANS SESSION — ce que rend
- * `/api/billing/offer`, et tout ce dont l'écran d'accueil public a besoin.
- * Aucun état de foyer ici : ni accès, ni échéance, ni payeur.
- */
 export type BillingOffer = {
-  /** false sur une instance auto-hébergée : il n'y a pas de caisse. */
   enabled: boolean;
   price: PlanPrice | null;
-  /** Durée de l'essai gratuit, en jours — annoncée avant de créer un compte. */
   trialDays: number;
 };
 
 export type Billing = {
-  /** false sur une instance auto-hébergée : aucun péage, rien à afficher. */
   enabled: boolean;
   access: CarnetAccess;
   price: PlanPrice | null;
-  /** L'appelant peut-il payer / gérer (propriétaire du foyer) ? */
   canManage: boolean;
   hasSubscription: boolean;
-  /** Qui règle l'abonnement, pour les autres membres du foyer. */
   billedTo: { name: string; email: string } | null;
 };
 
-/* --------------------------- Administration ----------------------------- */
-
-/** Un carnet administré, avec l'état de ses journées. */
 export type AdminChildRow = {
   id: string;
   name: string;
@@ -325,17 +261,14 @@ export type AdminChildRow = {
   lastPublishedAt: string | null;
 };
 
-/** Une personne du cercle, tous ses rôles rassemblés. */
 export type AdminPerson = {
   userId: string;
   name: string;
   email: string;
   isOwner: boolean;
-  /** L'administrateur qui regarde : on ne lui propose pas de se retirer. */
   isSelf: boolean;
   since: string;
   roles: { childId: string; childName: string; role: MemberRole }[];
-  /** Enfants dont cette personne est le SEUL administrateur (gestes refusés). */
   soleAdminOf: string[];
 };
 
@@ -349,7 +282,6 @@ export type AdminInvitationRow = {
   expired: boolean;
 };
 
-/** Ce que rend `/api/admin/console` : le périmètre administré, et lui seul. */
 export type AdminConsole = {
   children: AdminChildRow[];
   people: AdminPerson[];
@@ -364,22 +296,10 @@ export type AdminConsole = {
   };
 };
 
-/* ----------------------- Emporter ses données, partir -------------------- */
-
-/** Un carnet nommé, tel que l'aperçu d'effacement le désigne. */
 export type CarnetRef = { id: string; name: string };
 
-/**
- * CE QUE L'EFFACEMENT DU COMPTE FERAIT, demandé avant d'appuyer.
- *
- * `deletes` part avec le compte (personne d'autre ne tient ces carnets),
- * `leaves` reste à ceux qui les partagent. L'écran doit nommer les deux : un
- * bouton « effacer mon compte » qui emporte silencieusement le journal d'un
- * enfant n'est pas un consentement éclairé.
- */
 export type ErasurePreview = { deletes: CarnetRef[]; leaves: CarnetRef[] };
 
-/** Ce qui retient encore un compte sur l'instance (HTTP 409). */
 export type ErasureBlock = {
   error: string;
   code?: "subscription_active" | "instance_owner" | "sole_admin";

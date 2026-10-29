@@ -3,11 +3,6 @@ import { ROLES } from "../../services/sharing-service.js";
 import type { McpTool } from "../protocol.js";
 import { errorContent, jsonContent } from "../protocol.js";
 
-/**
- * Change le rôle d'un membre du cercle. La règle du DERNIER ADMINISTRATEUR est
- * celle du service : un carnet ne peut pas se retrouver sans personne pour le
- * gérer, et le refus arrive avant l'écriture.
- */
 export const setMemberRoleTool: McpTool = {
   name: "set_member_role",
   register(server, ctx) {

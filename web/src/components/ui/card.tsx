@@ -2,16 +2,6 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-/**
- * La feuille : une page du carnet posée sur le papier.
- *
- * · Gouttière 20 px, rythme vertical en pas de 4, rayon 24 px.
- * · La structure vient du filet 1 px ; l'ombre (`shadow-card`) est presque
- *   invisible en clair et devient un liseré haut en sombre — voir `--elev-1`.
- * · `CardMedia` en premier enfant colle la photo à trois bords de la feuille
- *   et lui donne son liseré (`seam`) : une image pâle garde son bord, et elle
- *   ne porte JAMAIS d'ombre — c'est la carte qui en porte une.
- */
 function Card({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
@@ -26,7 +16,6 @@ function Card({ className, ...props }: React.ComponentProps<"div">) {
   );
 }
 
-/** Photo (ou page de carnet) collée au bord haut de la feuille. */
 function CardMedia({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div

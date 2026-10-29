@@ -1,22 +1,10 @@
-/**
- * Réduit une photo de carnet avant l'envoi : les appareils photo de téléphone
- * produisent des JPEG de plusieurs Mo, et trois pages suffisent à dépasser la
- * limite de taille du reverse proxy — l'upload échoue alors avec un « Failed to
- * fetch » brut, sans réponse HTTP. Le serveur borne de toute façon les images à
- * 2400 px : redimensionner côté client rend l'envoi fiable et rapide en 4G.
- *
- * Best-effort : tout échec (format HEIC non décodable par le navigateur, canvas
- * indisponible…) renvoie le fichier d'origine, que le serveur sait normaliser.
- */
-const MAX_DIM = 2000; // px, côté le plus long
+const MAX_DIM = 2000;
 const QUALITY = 0.82;
 
 export async function compressImage(file: File): Promise<File> {
   if (!file.type.startsWith("image/")) return file;
 
   try {
-    // imageOrientation: "from-image" applique l'orientation EXIF au bitmap ; la
-    // ré-encodage produit alors un JPEG déjà droit (sans métadonnée EXIF).
     const bitmap = await createImageBitmap(file, {
       imageOrientation: "from-image",
     }).catch(() => createImageBitmap(file));
@@ -39,7 +27,6 @@ export async function compressImage(file: File): Promise<File> {
     const blob = await new Promise<Blob | null>((resolve) =>
       canvas.toBlob(resolve, "image/jpeg", QUALITY),
     );
-    // On ne garde le résultat que s'il allège réellement le fichier.
     if (!blob || blob.size >= file.size) return file;
 
     const name = file.name.replace(/\.[^.]+$/, "") + ".jpg";
@@ -49,16 +36,6 @@ export async function compressImage(file: File): Promise<File> {
   }
 }
 
-/**
- * Attend qu'une image soit dans le cache du navigateur, sans jamais échouer.
- *
- * Sert après une rotation : le serveur a réécrit la photo et rend une nouvelle
- * URL, mais tant que celle-ci n'est pas chargée le `<img>` continue d'afficher
- * l'ancienne. Échanger la source tout de suite ferait donc revenir la page de
- * travers le temps du téléchargement, juste après l'avoir vue se redresser.
- * Un échec de préchargement se résout quand même : c'est le `<img>` de l'écran
- * qui décide, on ne fait que lui laisser une longueur d'avance.
- */
 export function preloadImage(src: string): Promise<void> {
   return new Promise((resolve) => {
     const img = new Image();

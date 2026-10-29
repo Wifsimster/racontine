@@ -4,11 +4,11 @@ import path from "node:path";
 import sharp from "sharp";
 import { config } from "./config.js";
 
-const THUMB_MAX = 512; // px, côté le plus long
-const ORIGINAL_MAX = 2400; // px, borne les photos plein cadre (l'API vision n'a pas besoin de plus)
+const THUMB_MAX = 512;
+const ORIGINAL_MAX = 2400;
 
 export type StoredImage = {
-  originalPath: string; // relatif à UPLOADS_DIR
+  originalPath: string;
   thumbPath: string;
   mime: string;
   width: number;
@@ -18,7 +18,6 @@ export type StoredImage = {
 function absolute(relPath: string): string {
   const root = path.resolve(config.uploadsDir);
   const abs = path.resolve(root, relPath);
-  // Défense en profondeur : ne jamais sortir du dossier uploads.
   if (abs !== root && !abs.startsWith(root + path.sep)) {
     throw new Error("chemin hors du dossier uploads");
   }
@@ -29,12 +28,6 @@ export function resolveUpload(relPath: string): string {
   return absolute(relPath);
 }
 
-/**
- * Normalise une photo de carnet : auto-rotation EXIF, conversion en JPEG
- * (couvre HEIC/PNG/WebP livrés par la galerie du téléphone), redimensionnement
- * borné, plus une miniature pour la timeline. sharp lève si le format est
- * indécodable — l'appelant transforme ça en entrée `failed`.
- */
 export async function storeCarnetImage(input: Buffer): Promise<StoredImage> {
   const now = new Date();
   const dir = path.join(
@@ -47,7 +40,7 @@ export async function storeCarnetImage(input: Buffer): Promise<StoredImage> {
 
   await mkdir(absolute(dir), { recursive: true });
 
-  const base = sharp(input, { failOn: "error" }).rotate(); // rotate() applique l'orientation EXIF
+  const base = sharp(input, { failOn: "error" }).rotate();
 
   const normalized = await base
     .clone()
@@ -76,20 +69,6 @@ export async function storeCarnetImage(input: Buffer): Promise<StoredImage> {
   };
 }
 
-/**
- * TOURNE POUR DE BON une page déjà stockée : le JPEG plein cadre ET sa
- * miniature sont réécrits d'un quart de tour horaire (`quarters`, compté modulo
- * 4), et les nouvelles dimensions sont rendues à l'appelant pour la base.
- *
- * On réécrit les fichiers plutôt que de mémoriser un angle appliqué au rendu :
- * une page tournée l'est alors PARTOUT — relecture, timeline, visionneuse,
- * relance de lecture par le modèle — sans que chaque écran, chaque export et
- * chaque appel MCP ait à connaître, puis à réappliquer, la même correction.
- *
- * L'écriture se fait en deux temps (tout décoder, puis tout écrire) : si la
- * seconde image est indécodable, rien n'a encore été écrasé et la page reste
- * telle qu'elle était, plutôt qu'à moitié tournée.
- */
 export async function rotateStoredImage(
   img: { originalPath: string; thumbPath: string | null },
   quarters: number,
@@ -104,8 +83,6 @@ export async function rotateStoredImage(
     .jpeg({ quality: 88 })
     .toBuffer({ resolveWithObject: true });
 
-  // La miniature est facultative en base (colonne nullable) : sans elle, seule
-  // la page plein cadre tourne.
   const thumb = img.thumbPath
     ? await sharp(await readFile(absolute(img.thumbPath)), { failOn: "error" })
         .rotate(angle)
@@ -119,11 +96,6 @@ export async function rotateStoredImage(
   return { width: original.info.width, height: original.info.height };
 }
 
-/**
- * Supprime du disque les fichiers d'une image stockée (original + miniature).
- * Best-effort : un fichier déjà absent n'est pas une erreur. Sert à nettoyer les
- * images écrites avant qu'un contrôle en aval n'annule l'ingestion.
- */
 export async function deleteStored(img: {
   originalPath: string;
   thumbPath: string;

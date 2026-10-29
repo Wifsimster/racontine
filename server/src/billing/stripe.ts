@@ -1,23 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
-/* ===========================================================================
-   STRIPE, EN TROIS CENTS LIGNES ET SANS SDK.
-
-   Pourquoi pas `npm i stripe` : une instance auto-hébergée qui n'encaisse rien
-   — c'est-à-dire la plupart d'entre elles — embarquerait quand même quatre Mo
-   de SDK et une version d'API épinglée par quelqu'un d'autre. Ce dont on a
-   besoin tient en quatre appels (créer un paiement, ouvrir le portail, lire un
-   prix, relire un abonnement) et une vérification de signature. Tout est ici,
-   testable sans réseau, et le jour où ça ne suffit plus, le port ne change pas.
-
-   Ce fichier ne connaît RIEN de Racontine : ni foyer, ni carnet, ni base. Il
-   parle HTTP à Stripe, et c'est tout — la politique vit dans `domain/paywall.ts`,
-   l'orchestration dans `billing/index.ts`.
-   =========================================================================== */
-
 const API = "https://api.stripe.com/v1";
 
-/** Erreur d'appel à Stripe, avec le message renvoyé par l'API si on l'a. */
 export class StripeError extends Error {
   constructor(
     message: string,
@@ -29,12 +13,6 @@ export class StripeError extends Error {
   }
 }
 
-/**
- * Encodage `application/x-www-form-urlencoded` **imbriqué**, celui que Stripe
- * attend : `line_items[0][price]=price_123`. Les valeurs `undefined` et `null`
- * sont omises — envoyer `customer=` (vide) à Stripe est une erreur 400, pas un
- * champ absent.
- */
 export function formEncode(
   params: Record<string, unknown>,
   prefix = "",
@@ -60,7 +38,6 @@ export function formEncode(
 
 type StripeObject = Record<string, unknown>;
 
-/** Appel brut à l'API Stripe. `fetchImpl` n'existe que pour les tests. */
 async function call(
   apiKey: string,
   path: string,
@@ -81,8 +58,6 @@ async function call(
   try {
     res = await fetchImpl(url, { method: init.method, headers, body });
   } catch (err) {
-    // Réseau coupé, DNS, TLS : Stripe n'a rien vu, l'appelant doit pouvoir le
-    // dire autrement qu'avec « [object Object] ».
     throw new StripeError(
       `Stripe est injoignable (${err instanceof Error ? err.message : "réseau"}).`,
       0,
@@ -103,23 +78,13 @@ async function call(
   return payload;
 }
 
-/* --------------------------------------------------------------------------
-   Ce qu'on lit chez Stripe, réduit à ce dont le produit a besoin.
-   -------------------------------------------------------------------------- */
-
-/** Le prix affiché, tel que Stripe le détient (jamais recopié dans le code). */
 export type PlanPrice = {
-  /** Montant en plus petite unité (centimes). */
   unitAmount: number;
-  /** Code ISO, minuscule (« eur »). */
   currency: string;
-  /** « month » | « year » … — l'unité de la période. */
   interval: string;
-  /** Nombre d'unités par période (1 mois, 3 mois…). */
   intervalCount: number;
 };
 
-/** L'état d'un abonnement, réduit à ce que la règle du péage consulte. */
 export type SubscriptionSnapshot = {
   id: string;
   customerId: string | null;
@@ -134,13 +99,6 @@ function asDate(value: unknown): Date | null {
     : null;
 }
 
-/**
- * Fin de période d'un abonnement. Stripe a déplacé `current_period_end` de
- * l'abonnement vers ses LIGNES dans les versions récentes de l'API : on lit les
- * deux, et on garde la plus lointaine. Sans ça, la date serait silencieusement
- * nulle selon la version d'API du compte — et une période payée paraîtrait
- * consommée.
- */
 export function periodEndOf(sub: StripeObject): Date | null {
   const direct = asDate(sub.current_period_end);
   const items = ((sub.items as StripeObject | undefined)?.data ?? []) as StripeObject[];
@@ -152,7 +110,6 @@ export function periodEndOf(sub: StripeObject): Date | null {
   return new Date(Math.max(...all.map((d) => d.getTime())));
 }
 
-/** Abonnement Stripe (objet brut) → instantané utile au produit. */
 export function snapshotOf(sub: StripeObject): SubscriptionSnapshot {
   const customer = sub.customer;
   return {
@@ -169,13 +126,8 @@ export function snapshotOf(sub: StripeObject): SubscriptionSnapshot {
   };
 }
 
-/* --------------------------------------------------------------------------
-   Le client.
-   -------------------------------------------------------------------------- */
-
 export type StripeClientOptions = {
   apiKey: string;
-  /** Injecté par les tests ; la production utilise `fetch`. */
   fetchImpl?: typeof fetch;
 };
 
@@ -188,12 +140,6 @@ export class StripeClient {
     this.fetchImpl = fetchImpl ?? fetch;
   }
 
-  /**
-   * LE PRIX N'EST PAS ÉCRIT DANS LE CODE. Il est lu chez Stripe, qui est le
-   * seul endroit où il est vrai : un tarif recopié dans un composant React est
-   * un tarif qui mentira le jour où on le changera dans le tableau de bord —
-   * au pire endroit possible, juste au-dessus du bouton de paiement.
-   */
   async getPrice(priceId: string): Promise<PlanPrice> {
     const price = await call(
       this.apiKey,
@@ -220,15 +166,12 @@ export class StripeClient {
     return snapshotOf(sub);
   }
 
-  /** Page de paiement hébergée par Stripe : on ne touche jamais une carte. */
   async createCheckoutSession(params: {
     priceId: string;
     successUrl: string;
     cancelUrl: string;
-    /** Client Stripe déjà connu du foyer (réabonnement), sinon son e-mail. */
     customerId?: string | null;
     customerEmail?: string | null;
-    /** Repère du foyer, renvoyé tel quel dans le webhook. */
     reference?: string;
   }): Promise<{ id: string; url: string }> {
     const session = await call(
@@ -242,11 +185,8 @@ export class StripeClient {
           success_url: params.successUrl,
           cancel_url: params.cancelUrl,
           client_reference_id: params.reference,
-          // L'un OU l'autre : Stripe refuse les deux ensemble.
           customer: params.customerId ?? undefined,
           customer_email: params.customerId ? undefined : (params.customerEmail ?? undefined),
-          // Un code promo est le seul levier d'acquisition d'un studio d'une
-          // personne : la case doit exister sans redéploiement.
           allow_promotion_codes: true,
           locale: "fr",
         },
@@ -259,12 +199,6 @@ export class StripeClient {
     return { id: String(session.id ?? ""), url };
   }
 
-  /**
-   * Portail client Stripe : changer de carte, télécharger une facture,
-   * RÉSILIER. On ne réimplémente aucun de ces trois écrans — et surtout pas le
-   * troisième : une résiliation qu'on doit demander par e-mail est une
-   * résiliation qu'on retient de force.
-   */
   async createPortalSession(params: {
     customerId: string;
     returnUrl: string;
@@ -279,11 +213,6 @@ export class StripeClient {
           customer: params.customerId,
           return_url: params.returnUrl,
           locale: "fr",
-          // Sans `configuration`, Stripe habille la session avec la config PAR
-          // DÉFAUT DU COMPTE — celle d'un autre produit quand le compte en
-          // porte plusieurs, titre compris. On la passe donc explicitement dès
-          // qu'on en a une, plutôt que de dépendre d'un réglage de tableau de
-          // bord qu'un autre produit peut déplacer sans nous prévenir.
           ...(params.configurationId
             ? { configuration: params.configurationId }
             : {}),
@@ -297,7 +226,6 @@ export class StripeClient {
     return { url };
   }
 
-  /** Session de paiement relue après le retour du client (customer + abonnement). */
   async getCheckoutSession(
     id: string,
   ): Promise<{
@@ -328,11 +256,6 @@ export class StripeClient {
   }
 }
 
-/* --------------------------------------------------------------------------
-   La signature des webhooks : la seule chose qui distingue Stripe d'un inconnu
-   qui poste `{"status":"active"}` sur une URL publique.
-   -------------------------------------------------------------------------- */
-
 export class WebhookSignatureError extends Error {
   constructor(message: string) {
     super(message);
@@ -340,21 +263,8 @@ export class WebhookSignatureError extends Error {
   }
 }
 
-/** Tolérance d'horloge par défaut : cinq minutes, comme le SDK officiel. */
 export const WEBHOOK_TOLERANCE_SECONDS = 300;
 
-/**
- * Vérifie l'en-tête `Stripe-Signature` sur le corps BRUT de la requête, et rend
- * l'événement analysé.
- *
- * Trois pièges, tous mortels, tous couverts ici :
- *  · le corps doit être les OCTETS REÇUS — un `JSON.stringify(req.body)` change
- *    l'ordre ou les espaces et la signature ne correspond plus jamais ;
- *  · la comparaison est à temps constant (`timingSafeEqual`) : un `===` sur une
- *    chaîne fuit, caractère par caractère, la signature attendue ;
- *  · l'horodatage est vérifié, sinon une requête légitime capturée aujourd'hui
- *    peut être rejouée dans six mois pour rouvrir un abonnement résilié.
- */
 export function constructEvent(
   rawBody: Buffer | string,
   signatureHeader: string | undefined,

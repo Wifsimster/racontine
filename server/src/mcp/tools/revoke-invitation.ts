@@ -2,12 +2,6 @@ import { z } from "zod";
 import type { McpTool } from "../protocol.js";
 import { errorContent, jsonContent } from "../protocol.js";
 
-/**
- * Révoque une invitation en attente : le lien cesse d'ouvrir le carnet. La
- * garde se vérifie APRÈS avoir retrouvé l'invitation — c'est elle qui dit de
- * quel carnet elle relève —, et l'absence n'est pas une erreur : révoquer deux
- * fois doit valoir une fois.
- */
 export const revokeInvitationTool: McpTool = {
   name: "revoke_invitation",
   register(server, ctx) {
@@ -38,8 +32,6 @@ export const revokeInvitationTool: McpTool = {
         );
         if (!verdict.ok) return errorContent(verdict.error);
 
-        // Une invitation déjà acceptée n'est plus un lien : c'est un membre.
-        // La « révoquer » ne retirerait rien — il faut retirer le membre.
         if (invitation.status === "accepted")
           return errorContent(
             "Cette invitation a déjà été acceptée : le proche fait partie du cercle. Pour lui retirer l'accès, utilisez `remove_member`.",

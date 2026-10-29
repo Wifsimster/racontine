@@ -12,21 +12,18 @@ import type {
   GlossaryStore,
 } from "../ports.js";
 
-/** Clés d'API stockées chiffrées, une par utilisateur. */
 export class EncryptedApiKeyStore implements ApiKeyStore {
   getKey(userId: string): Promise<string | null> {
     return getUserAnthropicKey(userId);
   }
 }
 
-/** Vocabulaire confirmé d'un enfant, constitué au fil des relectures. */
 export class CorrectionsGlossaryStore implements GlossaryStore {
   forChild(childId: string): Promise<GlossaryEntry[]> {
     return getChildGlossary(childId);
   }
 }
 
-/** Droits par enfant, lus dans les adhésions. */
 export class MembershipAccessPolicy implements AccessPolicy {
   accessibleChildIds(userId: string): Promise<string[]> {
     return accessibleChildIds(userId);
@@ -43,7 +40,6 @@ export class MembershipAccessPolicy implements AccessPolicy {
   }
 }
 
-/** Nom d'un enfant, pour les phrases de notification. */
 export class DrizzleChildDirectory implements ChildDirectory {
   async nameOf(childId: string): Promise<string | null> {
     const [row] = await db

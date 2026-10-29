@@ -1,18 +1,5 @@
 import { api } from "./api";
 
-/**
- * Web Push côté client : abonnement de l'appareil courant aux notifications
- * navigateur. Le push est global à l'appareil/utilisateur (pas par enfant) :
- * une fois activé, l'abonné reçoit une notification système pour chaque
- * timeline qu'il suit, même app fermée.
- */
-
-/**
- * Convertit la clé VAPID (base64url) en Uint8Array pour `subscribe()`. On
- * adosse la vue à un `ArrayBuffer` explicite (et non `ArrayBufferLike`) : depuis
- * TS 5.7, `BufferSource` exige un `ArrayBufferView<ArrayBuffer>`, sinon
- * `applicationServerKey` refuse le type.
- */
 function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
@@ -22,7 +9,6 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
   return output;
 }
 
-/** True si le navigateur supporte le Web Push (SW + PushManager + Notification). */
 export function pushSupported(): boolean {
   return (
     "serviceWorker" in navigator &&
@@ -32,13 +18,12 @@ export function pushSupported(): boolean {
 }
 
 export type PushState =
-  | "unsupported" // navigateur sans Web Push
-  | "unavailable" // serveur sans clés VAPID
-  | "denied" // permission refusée par l'utilisateur
+  | "unsupported"
+  | "unavailable"
+  | "denied"
   | "subscribed"
   | "unsubscribed";
 
-/** État courant de l'abonnement push de cet appareil. */
 export async function getPushState(): Promise<PushState> {
   if (!pushSupported()) return "unsupported";
   const { publicKey } = await api.getPushPublicKey();
@@ -49,10 +34,6 @@ export async function getPushState(): Promise<PushState> {
   return sub ? "subscribed" : "unsubscribed";
 }
 
-/**
- * Demande la permission, s'abonne auprès du navigateur et enregistre
- * l'abonnement côté serveur. Lève un message lisible en cas d'échec.
- */
 export async function enablePush(): Promise<void> {
   if (!pushSupported())
     throw new Error("Notifications non supportées par ce navigateur.");
@@ -88,7 +69,6 @@ export async function enablePush(): Promise<void> {
   });
 }
 
-/** Désabonne cet appareil (navigateur + serveur). Best-effort. */
 export async function disablePush(): Promise<void> {
   if (!pushSupported()) return;
   const reg = await navigator.serviceWorker.ready;

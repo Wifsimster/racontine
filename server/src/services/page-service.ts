@@ -6,7 +6,6 @@ import type {
   PageRepository,
 } from "../ports.js";
 
-/** Refus métier, portant déjà son code HTTP. */
 export type PageRejection = { ok: false; httpCode: number; error: string };
 
 const NOT_FOUND: PageRejection = {
@@ -22,28 +21,9 @@ export type PageDeps = {
   logger: Logger;
 };
 
-/**
- * LES PAGES PHOTOGRAPHIÉES — les voir, les tourner, les retirer.
- *
- * Quatre règles y tiennent, et elles vivaient toutes dans des gestionnaires
- * HTTP, entre deux jointures SQL :
- *  · un lecteur ne voit les pages que d'une journée publiée ;
- *  · tourner une page exige contributor+ — c'est une écriture sur le fichier
- *    source — mais reste possible APRÈS publication : l'orientation ne change
- *    rien à ce que le carnet dit, et c'est justement une fois publiée qu'on
- *    relit la journée ;
- *  · on ne retire pas une page d'une journée publiée : les photos sources
- *    restent la preuve du récit ;
- *  · une journée garde toujours au moins une page.
- */
 export class PageService {
   constructor(private readonly deps: PageDeps) {}
 
-  /**
-   * La page à servir, si l'appelant a le droit de la voir. Rend le chemin
-   * relatif (miniature si demandée et disponible) et son type ; `null` couvre
-   * l'absence comme le refus — on ne révèle pas l'existence d'une page.
-   */
   async openForRead(
     userId: string,
     attachmentId: string,
@@ -62,12 +42,6 @@ export class PageService {
     };
   }
 
-  /**
-   * Tourne une page d'un ou plusieurs quarts de tour horaires, POUR DE BON.
-   *
-   * Un quart de tour nul ne touche à rien : réencoder pour rien dégraderait le
-   * JPEG et invaliderait le cache sans qu'aucun pixel n'ait bougé.
-   */
   async rotate(params: {
     userId: string;
     attachmentId: string;
@@ -104,7 +78,6 @@ export class PageService {
     try {
       size = await this.deps.images.rotate(page, quarter);
     } catch (err) {
-      // La cause exacte est pour l'exploitant, pas pour l'écran.
       this.deps.logger.error("Rotation impossible", {
         attachmentId: page.id,
         err: err instanceof Error ? err.message : err,
@@ -119,7 +92,6 @@ export class PageService {
     return { ok: true, id: page.id, rotation, ...size };
   }
 
-  /** Retire une page du carnet (et son fichier), sous ses deux conditions. */
   async remove(
     userId: string,
     attachmentId: string,

@@ -22,14 +22,6 @@ import {
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-/**
- * Verrouille le cercle d'un enfant jusqu'à la fin de la transaction.
- *
- * La règle du dernier administrateur est un « lire puis écrire » : sans verrou,
- * deux administrateurs qui se rétrogradent l'un l'autre au même instant voient
- * chacun deux administrateurs, passent tous deux, et l'enfant n'en a plus
- * aucun. Toute modification du cercle passe donc par ce verrou de ligne.
- */
 export async function lockCircle(tx: Tx, childId: string): Promise<void> {
   await tx
     .select({ id: children.id })
@@ -46,7 +38,6 @@ async function countAdmins(tx: Tx, childId: string): Promise<number> {
   return row?.n ?? 0;
 }
 
-/** Les adhésions au cercle d'un enfant, en Postgres. */
 export class DrizzleMembershipRepository implements MembershipRepository {
   async listMembers(childId: string): Promise<MemberRow[]> {
     const rows = await db
@@ -132,9 +123,6 @@ export class DrizzleMembershipRepository implements MembershipRepository {
             eq(subscriptions.userId, userId),
           ),
         );
-      // Une invitation encore en attente pour cette adresse rouvrirait la
-      // porte qu'on vient de fermer (lien envoyé deux fois, ou préparé avant
-      // le retrait) : elle tombe avec l'adhésion.
       await tx
         .update(invitations)
         .set({ status: "revoked" })
@@ -169,8 +157,6 @@ export class DrizzleMembershipRepository implements MembershipRepository {
     name: string,
   ): Promise<"ok" | "missing" | "named"> {
     if (!(await this.isMember(childId, userId))) return "missing";
-    // Condition dans le WHERE : deux admins qui nomment en même temps, un seul
-    // gagne, et un nom choisi entre-temps par la personne n'est pas écrasé.
     const updated = await db
       .update(user)
       .set({ name, updatedAt: new Date() })
@@ -191,7 +177,6 @@ export class DrizzleMembershipRepository implements MembershipRepository {
   }
 }
 
-/** Les invitations, en Postgres. */
 export class DrizzleInvitationRepository implements InvitationRepository {
   async listPending(childId: string): Promise<InvitationRow[]> {
     return db
@@ -249,8 +234,6 @@ export class DrizzleInvitationRepository implements InvitationRepository {
   }
 
   async revoke(id: string): Promise<boolean> {
-    // Seule une invitation EN ATTENTE se révoque : réécrire une invitation
-    // acceptée en « revoked » mentirait sur l'historique sans rien retirer.
     const rows = await db
       .update(invitations)
       .set({ status: "revoked" })
@@ -273,9 +256,6 @@ export class DrizzleInvitationRepository implements InvitationRepository {
   }
 
   async acceptIfPending(invitationId: string, userId: string): Promise<boolean> {
-    // Acceptation atomique : l'adhésion n'est créée que si l'invitation est
-    // TOUJOURS « pending » au moment du commit (garde contre le double usage
-    // concurrent). `returning()` vide ⇒ quelqu'un l'a acceptée entre-temps.
     return db.transaction(async (tx) => {
       const [inv] = await tx
         .update(invitations)
@@ -290,9 +270,6 @@ export class DrizzleInvitationRepository implements InvitationRepository {
         .returning({ childId: invitations.childId, role: invitations.role });
       if (!inv) return false;
       await lockCircle(tx, inv.childId);
-      // Une invitation AJOUTE des droits, elle n'en retire jamais : un vieux
-      // lien « lecteur » ouvert par l'administrateur en titre le rétrograderait
-      // — et pourrait laisser l'enfant sans administrateur.
       const [current] = await tx
         .select({ role: memberships.role })
         .from(memberships)
@@ -322,7 +299,6 @@ export class DrizzleInvitationRepository implements InvitationRepository {
   }
 }
 
-/** Les comptes, par adresse e-mail. */
 export class DrizzleUserDirectory implements UserDirectory {
   async findIdByEmail(email: string): Promise<string | null> {
     const [row] = await db
@@ -334,14 +310,6 @@ export class DrizzleUserDirectory implements UserDirectory {
   }
 }
 
-/**
- * La remise d'un lien de capacité (e-mail ou webhook), jamais par les logs.
- *
- * Ce port ne sert qu'à UNE chose dans le produit : inviter quelqu'un au carnet
- * d'un enfant (`sharing-service`). Le genre est donc posé ici, et non remonté
- * dans la signature du port : le service de partage n'a pas à connaître le
- * vocabulaire des e-mails pour inviter une grand-mère.
- */
 export class NotifyLinkDelivery implements LinkDelivery {
   deliver(to: string, subject: string, url: string): Promise<void> {
     return deliverLink(to, subject, url, "invitation");
