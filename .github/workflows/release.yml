@@ -30,7 +30,7 @@ jobs:
           node-version: 24
 
       - name: Semantic release
-        uses: cycjimmy/semantic-release-action@v6
+        uses: cycjimmy/semantic-release-action@v8
         with:
           extra_plugins: |
             @semantic-release/changelog
