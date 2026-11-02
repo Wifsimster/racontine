@@ -341,7 +341,7 @@ export default function Administration() {
 
   if (loading)
     return (
-      <PageShell>
+      <PageShell className="lg:max-w-[64rem] lg:px-10 lg:pt-8 lg:pb-12">
         {header}
         <PageSkeleton label="Racontine rassemble les cercles" rows={3} />
       </PageShell>
@@ -349,7 +349,7 @@ export default function Administration() {
 
   if (forbidden)
     return (
-      <PageShell>
+      <PageShell className="lg:max-w-[64rem] lg:px-10 lg:pt-8 lg:pb-12">
         {header}
         <PageState
           icon={ShieldAlert}
@@ -372,7 +372,7 @@ export default function Administration() {
 
   if (!data)
     return (
-      <PageShell>
+      <PageShell className="lg:max-w-[64rem] lg:px-10 lg:pt-8 lg:pb-12">
         {header}
         <PageState
           icon={CloudOff}
@@ -389,7 +389,7 @@ export default function Administration() {
     );
 
   return (
-    <PageShell>
+    <PageShell className="lg:max-w-[64rem] lg:px-10 lg:pt-8 lg:pb-12">
       {header}
 
       {error && (
@@ -409,90 +409,96 @@ export default function Administration() {
         />
       </section>
 
-      <section className="flex flex-col gap-1">
-        <SectionLabel className="px-1">
-          Les carnets ({data.children.length})
-        </SectionLabel>
-        <ul className="flex flex-col gap-2">
-          {data.children.map((c) => (
-            <ChildCard
-              key={c.id}
-              child={c}
-              onDeleted={() => {
-                void refresh().catch(() => {});
-              }}
-            />
-          ))}
-        </ul>
-      </section>
-
-      {data.invitations.length > 0 && (
-        <section className="flex flex-col gap-1">
-          <SectionLabel className="px-1">
-            En attente ({data.invitations.length})
-          </SectionLabel>
-          <ul className="flex flex-col gap-2">
-            {data.invitations.map((inv) => (
-              <li
-                key={inv.id}
-                className="flex items-center gap-2 rounded-2xl border bg-card p-3 pl-4 shadow-card"
-              >
-                <div className="flex min-w-0 flex-1 flex-col">
-                  <span className="truncate text-ui font-bold">{inv.email}</span>
-                  <span className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-meta text-muted-foreground">
-                    <Mail className="size-3.5 shrink-0" aria-hidden="true" />
-                    {ROLE_LABELS[inv.role]} · {inv.childName}
-                    {inv.expired && (
-                      <Badge variant="warning">
-                        <TriangleAlert aria-hidden="true" />
-                        expirée
-                      </Badge>
-                    )}
-                  </span>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={`Révoquer l'invitation de ${inv.email}`}
-                  className="text-destructive hover:bg-destructive-soft hover:text-destructive"
-                  onClick={async () => {
-                    try {
-                      await api.revokeInvitation(inv.id);
-                      await refresh();
-                    } catch (e) {
-                      setError(e instanceof Error ? e.message : "Échec");
-                    }
+      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-10">
+        <div className="flex flex-col gap-6">
+          <section className="flex flex-col gap-1">
+            <SectionLabel className="px-1">
+              Les carnets ({data.children.length})
+            </SectionLabel>
+            <ul className="flex flex-col gap-2">
+              {data.children.map((c) => (
+                <ChildCard
+                  key={c.id}
+                  child={c}
+                  onDeleted={() => {
+                    void refresh().catch(() => {});
                   }}
-                >
-                  <Trash2 />
-                </Button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+                />
+              ))}
+            </ul>
+          </section>
+        </div>
 
-      <section className="flex flex-col gap-1">
-        <SectionLabel className="px-1">
-          Les proches ({data.people.length})
-        </SectionLabel>
-        {data.people.length === 0 ? (
-          <p className="rounded-2xl border bg-card p-5 text-meta text-muted-foreground shadow-card">
-            Aucun proche n'a encore de rôle sur ces carnets.
-          </p>
-        ) : (
-          <ul className="flex flex-col gap-2">
-            {data.people.map((p) => (
-              <PersonCard
-                key={p.userId}
-                person={p}
-                onChange={refresh}
-                onError={setError}
-              />
-            ))}
-          </ul>
-        )}
-      </section>
+        <div className="flex flex-col gap-6">
+          {data.invitations.length > 0 && (
+            <section className="flex flex-col gap-1">
+              <SectionLabel className="px-1">
+                En attente ({data.invitations.length})
+              </SectionLabel>
+              <ul className="flex flex-col gap-2">
+                {data.invitations.map((inv) => (
+                  <li
+                    key={inv.id}
+                    className="flex items-center gap-2 rounded-2xl border bg-card p-3 pl-4 shadow-card"
+                  >
+                    <div className="flex min-w-0 flex-1 flex-col">
+                      <span className="truncate text-ui font-bold">{inv.email}</span>
+                      <span className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-meta text-muted-foreground">
+                        <Mail className="size-3.5 shrink-0" aria-hidden="true" />
+                        {ROLE_LABELS[inv.role]} · {inv.childName}
+                        {inv.expired && (
+                          <Badge variant="warning">
+                            <TriangleAlert aria-hidden="true" />
+                            expirée
+                          </Badge>
+                        )}
+                      </span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label={`Révoquer l'invitation de ${inv.email}`}
+                      className="text-destructive hover:bg-destructive-soft hover:text-destructive"
+                      onClick={async () => {
+                        try {
+                          await api.revokeInvitation(inv.id);
+                          await refresh();
+                        } catch (e) {
+                          setError(e instanceof Error ? e.message : "Échec");
+                        }
+                      }}
+                    >
+                      <Trash2 />
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          <section className="flex flex-col gap-1">
+            <SectionLabel className="px-1">
+              Les proches ({data.people.length})
+            </SectionLabel>
+            {data.people.length === 0 ? (
+              <p className="rounded-2xl border bg-card p-5 text-meta text-muted-foreground shadow-card">
+                Aucun proche n'a encore de rôle sur ces carnets.
+              </p>
+            ) : (
+              <ul className="flex flex-col gap-2">
+                {data.people.map((p) => (
+                  <PersonCard
+                    key={p.userId}
+                    person={p}
+                    onChange={refresh}
+                    onError={setError}
+                  />
+                ))}
+              </ul>
+            )}
+          </section>
+        </div>
+      </div>
 
       <div className="flex">
         <Button asChild variant="outline">
