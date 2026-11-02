@@ -218,7 +218,24 @@
 }
 @media (min-width: 64rem) {
   :root {
-    --shell-max: 39rem;
+    --shell-max: 42rem;
+  }
+}
+@media (min-width: 80rem) {
+  :root {
+    --shell-max: 46rem;
+  }
+}
+
+.page-half {
+  --page-half: 13rem;
+}
+.page-half-wide {
+  --page-half: 13rem;
+}
+@media (min-width: 64rem) {
+  .page-half-wide {
+    --page-half: 32rem;
   }
 }
 

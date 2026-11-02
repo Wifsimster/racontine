@@ -1,9 +1,11 @@
 export function LoginBackground({
   rulesFrom = 189,
-  ruleLeft = "max(1.5rem, calc(50% - 13rem + 1.5rem))",
+  ruleLeft = "max(1.5rem, calc(50% - var(--page-half) + 1.5rem))",
+  wide = false,
 }: {
   rulesFrom?: number;
   ruleLeft?: string;
+  wide?: boolean;
 }) {
   const veil =
     `linear-gradient(to bottom,` +
@@ -13,13 +15,13 @@ export function LoginBackground({
 
   const page =
     `linear-gradient(to right,` +
-    ` transparent calc(50% - 17rem), #000 calc(50% - 13rem),` +
-    ` #000 calc(50% + 13rem), transparent calc(50% + 17rem))`;
+    ` transparent calc(50% - var(--page-half) - 4rem), #000 calc(50% - var(--page-half)),` +
+    ` #000 calc(50% + var(--page-half)), transparent calc(50% + var(--page-half) + 4rem))`;
 
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
+      className={`pointer-events-none absolute inset-0 -z-10 overflow-hidden ${wide ? "page-half-wide" : "page-half"}`}
     >
       <div
         data-login-halo

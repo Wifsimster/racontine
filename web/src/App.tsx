@@ -148,7 +148,7 @@ export default function App() {
       </a>
 
       <header className="sticky top-0 z-50 border-b bg-surface-bar px-safe pt-safe backdrop-blur-md">
-        <div className="shell-width flex h-header items-center justify-between gap-2 px-4">
+        <div className="shell-width flex h-header items-center justify-between gap-2 px-4 lg:max-w-[64rem] lg:gap-6 lg:px-10">
           <Link
             to="/"
             className="-ml-1 flex min-h-11 min-w-0 items-center gap-2 rounded-xl px-1 transition-colors dur-fast hover:bg-accent"
@@ -158,10 +158,45 @@ export default function App() {
               {appName}
             </span>
           </Link>
+          <nav
+            aria-label="Navigation principale"
+            className="hidden min-w-0 flex-1 items-center justify-end gap-1 lg:flex"
+          >
+            {items.map(({ to, label, icon: Icon }) => {
+              const active =
+                to === "/"
+                  ? location.pathname === "/"
+                  : location.pathname.startsWith(to);
+              return (
+                <Link
+                  key={to}
+                  to={to}
+                  aria-current={active ? "page" : undefined}
+                  title={label}
+                  className="flex min-h-11 items-center gap-2 rounded-xl px-3 text-ui font-bold text-muted-foreground transition-colors dur-fast hover:bg-accent hover:text-foreground aria-[current=page]:bg-primary-soft aria-[current=page]:text-primary"
+                >
+                  <Icon className="size-4" aria-hidden="true" />
+                  <span className="sr-only xl:not-sr-only">{label}</span>
+                </Link>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() =>
+                signOut().then(() => (window.location.href = "/login"))
+              }
+              aria-label="Se déconnecter"
+              title="Se déconnecter"
+              className="grid size-11 place-items-center rounded-xl text-muted-foreground transition-colors dur-fast hover:bg-accent hover:text-foreground"
+            >
+              <LogOut className="size-4" aria-hidden="true" />
+            </button>
+          </nav>
           <div className="flex shrink-0 items-center gap-1">
             <NotificationsBell />
             <Button
               ref={menuButtonRef}
+              className="lg:hidden"
               variant="ghost"
               size="icon"
               aria-label={menuOpen ? "Fermer le menu" : "Ouvrir le menu"}
@@ -178,14 +213,14 @@ export default function App() {
       {menuOpen && (
         <>
           <div
-            className="fixed inset-0 z-30 bg-overlay"
+            className="fixed inset-0 z-30 bg-overlay lg:hidden"
             onClick={() => setMenuOpen(false)}
             aria-hidden="true"
           />
           <nav
             id="menu-principal"
             aria-label="Navigation principale"
-            className="panel-down fixed inset-x-0 top-header z-40 px-safe"
+            className="panel-down fixed inset-x-0 top-header z-40 px-safe lg:hidden"
           >
             <div className="shell-width px-4">
               <div className="mt-2 rounded-2xl border bg-popover p-2 text-popover-foreground shadow-lift">
