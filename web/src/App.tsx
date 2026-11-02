@@ -151,7 +151,7 @@ export default function App() {
         <div className="shell-width flex h-header items-center justify-between gap-2 px-4 lg:max-w-[64rem] lg:gap-6 lg:px-10">
           <Link
             to="/"
-            className="-ml-1 flex min-h-11 min-w-0 items-center gap-2 rounded-xl px-1 transition-colors dur-fast hover:bg-accent"
+            className="-ml-1 flex min-h-11 min-w-0 shrink-0 items-center gap-2 rounded-xl px-1 transition-colors dur-fast hover:bg-accent"
           >
             <Marque />
             <span className="truncate font-serif text-title font-semibold">
@@ -173,10 +173,10 @@ export default function App() {
                   to={to}
                   aria-current={active ? "page" : undefined}
                   title={label}
-                  className="flex min-h-11 items-center gap-2 rounded-xl px-3 text-ui font-bold text-muted-foreground transition-colors dur-fast hover:bg-accent hover:text-foreground aria-[current=page]:bg-primary-soft aria-[current=page]:text-primary"
+                  className="flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-xl px-3 text-ui font-bold text-muted-foreground transition-colors dur-fast hover:bg-accent hover:text-foreground aria-[current=page]:bg-primary-soft aria-[current=page]:text-primary aria-[current=page]:[&>span]:not-sr-only"
                 >
                   <Icon className="size-4" aria-hidden="true" />
-                  <span className="sr-only xl:not-sr-only">{label}</span>
+                  <span className="sr-only">{label}</span>
                 </Link>
               );
             })}

@@ -49,7 +49,7 @@ export default function Abonnement() {
   }, []);
 
   return (
-    <PageShell>
+    <PageShell className="lg:max-w-[64rem] lg:px-10 lg:pt-8 lg:pb-12">
       <PageHeader
         title="L'abonnement"
         lede="Une seule offre, pour tout le foyer. Lire le journal reste gratuit, toujours."
@@ -63,20 +63,24 @@ export default function Abonnement() {
         </p>
       )}
 
-      {loading && !billing ? (
-        <PageSkeleton label="On ouvre l'abonnement" rows={1} />
-      ) : !billing ? (
-        <p className="rounded-2xl border bg-card px-4 py-3 text-ui text-muted-foreground shadow-card">
-          L'état de l'abonnement n'a pas pu être lu. Votre journal, lui, est
-          intact : réessayez dans un instant.
-        </p>
-      ) : !billing.enabled ? (
-        <SelfHosted />
-      ) : (
-        <Etat billing={billing} />
-      )}
+      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-10">
+        <div className="flex flex-col gap-6">
+          {loading && !billing ? (
+            <PageSkeleton label="On ouvre l'abonnement" rows={1} />
+          ) : !billing ? (
+            <p className="rounded-2xl border bg-card px-4 py-3 text-ui text-muted-foreground shadow-card">
+              L'état de l'abonnement n'a pas pu être lu. Votre journal, lui, est
+              intact : réessayez dans un instant.
+            </p>
+          ) : !billing.enabled ? (
+            <SelfHosted />
+          ) : (
+            <Etat billing={billing} />
+          )}
+        </div>
 
-      {billing?.enabled && <StudioCard />}
+        {billing?.enabled && <StudioCard className="lg:sticky lg:top-[5.5rem]" />}
+      </div>
     </PageShell>
   );
 }
