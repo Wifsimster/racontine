@@ -227,17 +227,20 @@ export default function Login() {
     <div
       className="relative isolate min-h-svh overflow-hidden pt-safe pb-safe [--input:rgb(140_142_152)] dark:[--input:rgb(110_112_120)]"
     >
-      <LoginBackground />
+      <LoginBackground wide />
 
-      <div className="rise-enter mx-auto flex w-full max-w-[26rem] flex-col pt-[5.25rem] pr-5 pb-6 pl-10">
-        <p className="surtitre text-muted-foreground">Carnet de liaison</p>
-        <h1 className="mt-4 font-serif text-display font-semibold text-foreground">
-          {appName}
-        </h1>
-        <p className="carnet-story mt-4 text-foreground">
-          {"Photographiez le carnet : la journée s’écrit, les proches la lisent."}
-        </p>
+      <div className="rise-enter mx-auto flex w-full max-w-[26rem] flex-col pt-[5.25rem] pr-5 pb-6 pl-10 lg:grid lg:max-w-[64rem] lg:grid-cols-[minmax(0,1fr)_26rem] lg:grid-rows-[auto_1fr] lg:items-start lg:gap-x-16 lg:px-10 lg:pt-32 lg:pb-16 xl:gap-x-24">
+        <div className="lg:col-start-1 lg:row-start-1 lg:pt-4">
+          <p className="surtitre text-muted-foreground">Carnet de liaison</p>
+          <h1 className="mt-4 font-serif text-display font-semibold text-foreground lg:text-[3.25rem] lg:leading-[1.05]">
+            {appName}
+          </h1>
+          <p className="carnet-story mt-4 text-foreground lg:max-w-[22ch] lg:text-[1.375rem] lg:leading-9">
+            {"Photographiez le carnet : la journée s’écrit, les proches la lisent."}
+          </p>
+        </div>
 
+        <div className="flex flex-col lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:-mt-7">
         {sentTo ? (
           <LinkSent
             kind={sentKind}
@@ -427,15 +430,19 @@ export default function Login() {
           </div>
         )}
 
-        <p className="mt-4 flex items-start gap-2 text-meta text-muted-foreground">
-          <ShieldCheck className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-          <span>
-            {"Instance privée : tout reste sur votre serveur."}
-          </span>
-        </p>
+        </div>
 
-        <MarqueSignature className="mt-6" />
-        <StudioSignature className="mt-1" />
+        <div className="lg:col-start-1 lg:row-start-2 lg:self-start">
+          <p className="mt-4 flex items-start gap-2 text-meta text-muted-foreground lg:max-w-[34ch]">
+            <ShieldCheck className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+            <span>
+              {"Instance privée : tout reste sur votre serveur."}
+            </span>
+          </p>
+
+          <MarqueSignature className="mt-6" />
+          <StudioSignature className="mt-1" />
+        </div>
       </div>
     </div>
   );
