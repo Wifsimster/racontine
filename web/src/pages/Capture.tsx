@@ -261,105 +261,172 @@ export default function Capture() {
   if (billing?.enabled && !billing.access.open)
     return <CapturePaused billing={billing} />;
 
+  const actions = (
+    <>
+      {phase === "sending" && (
+        <Button size="lg" disabled className="shadow-lift">
+          {stage === "prep" ? "Préparation…" : "Envoi…"}
+        </Button>
+      )}
+
+      {phase === "error" && (
+        <>
+          <Button size="lg" onClick={submit} className="shadow-lift">
+            <RotateCcw aria-hidden="true" />
+            Réessayer l’envoi
+          </Button>
+          <Button asChild variant="outline">
+            <Link to="/">Revenir au journal</Link>
+          </Button>
+        </>
+      )}
+
+      {phase === "idle" && hasPages && (
+        <>
+          <Button
+            size="lg"
+            onClick={submit}
+            disabled={offline}
+            className="shadow-lift"
+          >
+            <ScanLine aria-hidden="true" />
+            Raconter la journée
+          </Button>
+          <p className="text-center text-meta text-muted-foreground">
+            Vous relirez la journée avant qu’elle ne parte aux proches.
+          </p>
+        </>
+      )}
+
+      {phase === "idle" && !hasPages && (
+        <>
+          <Button
+            size="lg"
+            onClick={() => cameraRef.current?.click()}
+            className="shadow-lift"
+          >
+            <Camera aria-hidden="true" />
+            Photographier le carnet
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => albumRef.current?.click()}
+          >
+            <Images aria-hidden="true" />
+            Importer depuis l’album
+          </Button>
+        </>
+      )}
+    </>
+  );
+
   return (
-    <div className="shell-width flex flex-col gap-4 px-4 pt-4 pb-40">
+    <div className="shell-width flex flex-col gap-4 px-4 pt-4 pb-40 lg:max-w-[64rem] lg:px-10 lg:pt-8 lg:pb-12">
       <h1 aria-label="Photographier le carnet" />
 
       <CaptureSteps steps={steps} />
 
-      {offline && (
-        <p className="flex items-start gap-3 rounded-xl bg-warning-bg px-4 py-3 text-meta text-warning">
-          <CloudOff className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-          <span>
-            <span className="font-bold">Hors ligne.</span> Les pages restent
-            enregistrées sur l’appareil ; l’envoi partira dès le retour du
-            réseau.
-          </span>
-        </p>
-      )}
-
-      {restored && hasPages && phase === "idle" && (
-        <div className="flex items-start gap-3 rounded-xl bg-warning-bg px-4 py-3 text-warning">
-          <Layers className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-          <div className="flex min-w-0 flex-col items-start gap-2">
-            <p className="text-meta">
-              <span className="font-bold">Journée non envoyée retrouvée.</span>{" "}
-              Ses {pageCount(shots.length)} sont encore là. Terminez l’envoi, ou
-              repartez de zéro.
+      <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-10">
+        <div className="flex flex-col gap-4">
+          {offline && (
+            <p className="flex items-start gap-3 rounded-xl bg-warning-bg px-4 py-3 text-meta text-warning">
+              <CloudOff className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+              <span>
+                <span className="font-bold">Hors ligne.</span> Les pages restent
+                enregistrées sur l’appareil ; l’envoi partira dès le retour du
+                réseau.
+              </span>
             </p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setConfirmReset(true)}
-            >
-              Repartir de zéro
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {phase === "sending" ? (
-        <SendingPanel
-          shots={shots}
-          stage={stage}
-          prepDone={prepDone}
-          onCancel={cancelSend}
-        />
-      ) : (
-        <>
-          <DayRow
-            kids={children}
-            childId={childId}
-            onChildId={setChildId}
-            source={source}
-            onSource={setSource}
-          />
-
-          {phase === "error" && (
-            <SendError
-              message={error}
-              shots={shots}
-              childName={childName}
-              source={source}
-            />
           )}
 
-          {hasPages ? (
-            <>
-              <PageGrid shots={shots} onRemove={removeShot} />
-
-              <div className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">
+          {restored && hasPages && phase === "idle" && (
+            <div className="flex items-start gap-3 rounded-xl bg-warning-bg px-4 py-3 text-warning">
+              <Layers className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+              <div className="flex min-w-0 flex-col items-start gap-2">
+                <p className="text-meta">
+                  <span className="font-bold">Journée non envoyée retrouvée.</span>{" "}
+                  Ses {pageCount(shots.length)} sont encore là. Terminez l’envoi, ou
+                  repartez de zéro.
+                </p>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => cameraRef.current?.click()}
+                  onClick={() => setConfirmReset(true)}
                 >
-                  <Camera aria-hidden="true" />
-                  Photographier
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => albumRef.current?.click()}
-                >
-                  <Images aria-hidden="true" />
-                  Depuis l’album
+                  Repartir de zéro
                 </Button>
               </div>
+            </div>
+          )}
 
-              {shots.length > 1 && (
-                <p className="flex items-start gap-2 text-meta text-muted-foreground">
-                  <Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-                  Si ces pages couvrent plusieurs jours, chaque journée sera
-                  détectée et relue séparément.
-                </p>
+          {phase === "sending" ? (
+            <SendingPanel
+              shots={shots}
+              stage={stage}
+              prepDone={prepDone}
+              onCancel={cancelSend}
+            />
+          ) : (
+            <>
+              <DayRow
+                kids={children}
+                childId={childId}
+                onChildId={setChildId}
+                source={source}
+                onSource={setSource}
+              />
+
+              {phase === "error" && (
+                <SendError
+                  message={error}
+                  shots={shots}
+                  childName={childName}
+                  source={source}
+                />
+              )}
+
+              {hasPages ? (
+                <>
+                  <PageGrid shots={shots} onRemove={removeShot} />
+
+                  <div className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => cameraRef.current?.click()}
+                    >
+                      <Camera aria-hidden="true" />
+                      Photographier
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => albumRef.current?.click()}
+                    >
+                      <Images aria-hidden="true" />
+                      Depuis l’album
+                    </Button>
+                  </div>
+
+                  {shots.length > 1 && (
+                    <p className="flex items-start gap-2 text-meta text-muted-foreground">
+                      <Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+                      Si ces pages couvrent plusieurs jours, chaque journée sera
+                      détectée et relue séparément.
+                    </p>
+                  )}
+                </>
+              ) : (
+                phase === "idle" && <CaptureEmpty />
               )}
             </>
-          ) : (
-            phase === "idle" && <CaptureEmpty />
           )}
-        </>
-      )}
+        </div>
+
+        <aside className="hidden flex-col gap-2 rounded-2xl border bg-card p-5 shadow-card lg:sticky lg:top-[5.5rem] lg:flex">
+          {actions}
+        </aside>
+      </div>
 
       <input
         ref={cameraRef}
@@ -379,67 +446,14 @@ export default function Capture() {
         onChange={onPick}
       />
 
-      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20">
+      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 lg:hidden">
         <div
           aria-hidden="true"
           className="h-12 bg-gradient-to-t from-background to-transparent"
         />
         <div className="flex justify-center bg-background px-4 pb-safe-6">
           <div className="action-width pointer-events-auto flex flex-col gap-2">
-            {phase === "sending" && (
-              <Button size="lg" disabled className="shadow-lift">
-                {stage === "prep" ? "Préparation…" : "Envoi…"}
-              </Button>
-            )}
-
-            {phase === "error" && (
-              <>
-                <Button size="lg" onClick={submit} className="shadow-lift">
-                  <RotateCcw aria-hidden="true" />
-                  Réessayer l’envoi
-                </Button>
-                <Button asChild variant="outline">
-                  <Link to="/">Revenir au journal</Link>
-                </Button>
-              </>
-            )}
-
-            {phase === "idle" && hasPages && (
-              <>
-                <Button
-                  size="lg"
-                  onClick={submit}
-                  disabled={offline}
-                  className="shadow-lift"
-                >
-                  <ScanLine aria-hidden="true" />
-                  Raconter la journée
-                </Button>
-                <p className="text-center text-meta text-muted-foreground">
-                  Vous relirez la journée avant qu’elle ne parte aux proches.
-                </p>
-              </>
-            )}
-
-            {phase === "idle" && !hasPages && (
-              <>
-                <Button
-                  size="lg"
-                  onClick={() => cameraRef.current?.click()}
-                  className="shadow-lift"
-                >
-                  <Camera aria-hidden="true" />
-                  Photographier le carnet
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => albumRef.current?.click()}
-                >
-                  <Images aria-hidden="true" />
-                  Importer depuis l’album
-                </Button>
-              </>
-            )}
+            {actions}
           </div>
         </div>
       </div>
