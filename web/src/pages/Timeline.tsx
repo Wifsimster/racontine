@@ -344,7 +344,7 @@ export default function Timeline() {
       [...roleByChild.values()].some((r) => canWrite(r)));
 
   return (
-    <div className="shell-width flex flex-col gap-4 px-4 pt-4 pb-8">
+    <div className="shell-width flex flex-col gap-4 px-4 pt-4 pb-8 lg:max-w-[64rem] lg:px-10 lg:pt-8">
       <header>
         <h1 className="font-serif text-display font-semibold">Le journal</h1>
       </header>
@@ -391,7 +391,7 @@ export default function Timeline() {
           <section key={m.key} aria-label={m.label}>
             <div
               className={cn(
-                "sticky top-header -mx-4 bg-surface-bar px-4 backdrop-blur-md",
+                "sticky top-header -mx-4 bg-surface-bar px-4 backdrop-blur-md lg:-mx-10 lg:px-10",
                 moisOuvert === m.key ? "z-40" : "z-10",
               )}
             >
@@ -417,7 +417,9 @@ export default function Timeline() {
             <ol
               className={cn(
                 "mt-4 flex flex-col",
-                mode === "lire" ? "gap-4" : "gap-1.5",
+                mode === "lire"
+                  ? "gap-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-6"
+                  : "gap-1.5",
               )}
             >
               {m.entries.map((e) => (
