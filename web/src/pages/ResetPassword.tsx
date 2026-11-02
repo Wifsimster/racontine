@@ -94,8 +94,7 @@ export default function ResetPassword() {
       : "Choisissez un nouveau mot de passe : il ouvrira le carnet dès la prochaine connexion.";
 
   const frame = (children: React.ReactNode) => (
-    <DoorPage>
-      <DoorHeading appName={appName}>{lede}</DoorHeading>
+    <DoorPage intro={<DoorHeading appName={appName}>{lede}</DoorHeading>}>
       {children}
     </DoorPage>
   );

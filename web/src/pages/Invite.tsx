@@ -231,17 +231,22 @@ export default function Invite() {
   );
 
   const frame = (children: React.ReactNode) => (
-    <DoorPage>
-      <DoorHeading appName={appName}>{lede}</DoorHeading>
-      {offline && (
-        <p className="mt-5 flex items-start gap-3 rounded-xl bg-warning-bg px-4 py-3 text-meta text-warning">
-          <CloudOff className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-          <span>
-            <span className="font-bold">Hors ligne.</span> L’invitation vous
-            attend : elle s’ouvrira dès le retour du réseau.
-          </span>
-        </p>
-      )}
+    <DoorPage
+      intro={
+        <>
+          <DoorHeading appName={appName}>{lede}</DoorHeading>
+          {offline && (
+            <p className="mt-5 flex items-start gap-3 rounded-xl bg-warning-bg px-4 py-3 text-meta text-warning">
+              <CloudOff className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+              <span>
+                <span className="font-bold">Hors ligne.</span> L’invitation vous
+                attend : elle s’ouvrira dès le retour du réseau.
+              </span>
+            </p>
+          )}
+        </>
+      }
+    >
       {children}
     </DoorPage>
   );
