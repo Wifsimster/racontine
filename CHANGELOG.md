@@ -2,6 +2,13 @@
 
 Toutes les versions notables de Racontine. Format issu des messages de commit conventionnels (`feat`, `fix`, …).
 
+# [1.33.0](https://github.com/Wifsimster/racontine/compare/v1.32.0...v1.33.0) (2026-11-02)
+
+
+### Features
+
+* **web:** page de connexion adaptée au desktop ([#120](https://github.com/Wifsimster/racontine/issues/120)) ([f3e3165](https://github.com/Wifsimster/racontine/commit/f3e3165a67a401a7000126f23fc8092bf4a5c0ad))
+
 # [1.32.0](https://github.com/Wifsimster/racontine/compare/v1.31.1...v1.32.0) (2026-11-02)
 
 
