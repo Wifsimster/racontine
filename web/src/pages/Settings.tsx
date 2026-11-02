@@ -174,7 +174,7 @@ export default function Settings() {
 
   if (loading)
     return (
-      <PageShell>
+      <PageShell className="lg:max-w-[64rem] lg:px-10 lg:pt-8">
         {header}
         <PageSkeleton label="Racontine ouvre les réglages" rows={3} />
       </PageShell>
@@ -182,7 +182,7 @@ export default function Settings() {
 
   if (forbidden)
     return (
-      <PageShell>
+      <PageShell className="lg:max-w-[64rem] lg:px-10 lg:pt-8">
         {header}
         <PageState
           icon={ShieldAlert}
@@ -198,7 +198,7 @@ export default function Settings() {
 
   if (!settings || !meta)
     return (
-      <PageShell>
+      <PageShell className="lg:max-w-[64rem] lg:px-10 lg:pt-8">
         {header}
         <PageState
           icon={CloudOff}
@@ -219,141 +219,147 @@ export default function Settings() {
   );
 
   return (
-    <PageShell className="pb-8">
+    <PageShell className="pb-8 lg:max-w-[64rem] lg:px-10 lg:pt-8">
       {header}
 
-      <Section label="L'instance">
-        <Row
-          icon={SettingsIcon}
-          title="Nom de l'instance"
-          hint="Affiché dans l'en-tête et sur l'écran de connexion."
-          htmlFor="appName"
-        >
-          <Input
-            id="appName"
-            value={settings.appName}
-            maxLength={60}
-            onChange={(e) => patch("appName", e.target.value)}
-            className="w-full sm:w-48"
-          />
-        </Row>
-      </Section>
-
-      <Section label="Accès & partage">
-        <Row
-          icon={UserPlus}
-          title="Inscriptions ouvertes"
-          hint="Autorise la création de comptes email/mot de passe. À fermer une fois le foyer créé — les proches invités par lien restent acceptés."
-          htmlFor="signupEnabled"
-          inline
-        >
-          <Toggle
-            id="signupEnabled"
-            checked={settings.signupEnabled}
-            onChange={(v) => patch("signupEnabled", v)}
-          />
-        </Row>
-        <Row
-          icon={Clock}
-          title="Validité des invitations"
-          hint="Durée avant expiration d'un lien d'invitation."
-          htmlFor="invitationTtlDays"
-        >
-          <div className="flex items-center gap-2">
-            <Input
-              id="invitationTtlDays"
-              type="number"
-              min={1}
-              max={365}
-              value={settings.invitationTtlDays}
-              onChange={(e) =>
-                patch(
-                  "invitationTtlDays",
-                  Math.max(1, Math.min(365, Number(e.target.value) || 1)),
-                )
-              }
-              className="w-20"
-            />
-            <span className="text-meta text-muted-foreground">jours</span>
-          </div>
-        </Row>
-      </Section>
-
-      <Section label="Notifications">
-        <Row
-          icon={Bell}
-          title="E-mails de notification"
-          hint={
-            meta.mailConfigured
-              ? "Envoie un e-mail aux abonnés à chaque journée publiée."
-              : "SMTP non configuré : les e-mails sont désactivés quoi qu'il arrive (notifications dans l'app seules)."
-          }
-          htmlFor="emailNotificationsEnabled"
-          inline
-        >
-          <Toggle
-            id="emailNotificationsEnabled"
-            checked={settings.emailNotificationsEnabled}
-            disabled={!meta.mailConfigured}
-            onChange={(v) => patch("emailNotificationsEnabled", v)}
-          />
-        </Row>
-      </Section>
-
-      <Section label="Lecture des carnets">
-        <Row
-          icon={Sparkles}
-          title="Modèle d'extraction"
-          hint="Modèle Claude vision utilisé pour lire les carnets, avec la clé API de chaque contributeur."
-          htmlFor="vlmModel"
-        >
-          <Select
-            id="vlmModel"
-            value={settings.vlmModel}
-            onChange={(e) => patch("vlmModel", e.target.value)}
-            className="w-full sm:w-auto"
-          >
-            {models.map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
-          </Select>
-        </Row>
-      </Section>
-
-      <section className="flex flex-col gap-1">
-        <SectionLabel className="px-1">Infrastructure</SectionLabel>
-        <div className="flex flex-col gap-3 rounded-2xl border bg-card p-5 shadow-card">
-          <p className="text-meta text-muted-foreground">
-            Piloté par les variables d'environnement du serveur : ces lignes se
-            lisent, elles ne se modifient pas ici.
-          </p>
-          <div className="flex flex-col gap-2">
-            <StatusPill ok={meta.mailConfigured} label="Serveur e-mail (SMTP)" />
-            <StatusPill
-              ok={meta.webPushConfigured}
-              label="Notifications navigateur (Web Push)"
-            />
-            <StatusPill
-              ok={meta.notifyWebhookConfigured}
-              label="Webhook de notification"
-            />
-            <div className="flex items-center gap-2 rounded-xl border bg-background px-3 py-3">
-              <Link2
-                className="size-4 shrink-0 text-muted-foreground"
-                aria-hidden="true"
+      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-10">
+        <div className="flex flex-col gap-6">
+          <Section label="L'instance">
+            <Row
+              icon={SettingsIcon}
+              title="Nom de l'instance"
+              hint="Affiché dans l'en-tête et sur l'écran de connexion."
+              htmlFor="appName"
+            >
+              <Input
+                id="appName"
+                value={settings.appName}
+                maxLength={60}
+                onChange={(e) => patch("appName", e.target.value)}
+                className="w-full sm:w-48"
               />
-              <span className="min-w-0 flex-1 truncate text-meta">
-                {meta.webBaseUrl}
-              </span>
-              <span className="shrink-0 text-meta text-muted-foreground">
-                URL publique
-              </span>
-            </div>
-          </div>
+            </Row>
+          </Section>
+
+          <Section label="Accès & partage">
+            <Row
+              icon={UserPlus}
+              title="Inscriptions ouvertes"
+              hint="Autorise la création de comptes email/mot de passe. À fermer une fois le foyer créé — les proches invités par lien restent acceptés."
+              htmlFor="signupEnabled"
+              inline
+            >
+              <Toggle
+                id="signupEnabled"
+                checked={settings.signupEnabled}
+                onChange={(v) => patch("signupEnabled", v)}
+              />
+            </Row>
+            <Row
+              icon={Clock}
+              title="Validité des invitations"
+              hint="Durée avant expiration d'un lien d'invitation."
+              htmlFor="invitationTtlDays"
+            >
+              <div className="flex items-center gap-2">
+                <Input
+                  id="invitationTtlDays"
+                  type="number"
+                  min={1}
+                  max={365}
+                  value={settings.invitationTtlDays}
+                  onChange={(e) =>
+                    patch(
+                      "invitationTtlDays",
+                      Math.max(1, Math.min(365, Number(e.target.value) || 1)),
+                    )
+                  }
+                  className="w-20"
+                />
+                <span className="text-meta text-muted-foreground">jours</span>
+              </div>
+            </Row>
+          </Section>
+
+          <Section label="Notifications">
+            <Row
+              icon={Bell}
+              title="E-mails de notification"
+              hint={
+                meta.mailConfigured
+                  ? "Envoie un e-mail aux abonnés à chaque journée publiée."
+                  : "SMTP non configuré : les e-mails sont désactivés quoi qu'il arrive (notifications dans l'app seules)."
+              }
+              htmlFor="emailNotificationsEnabled"
+              inline
+            >
+              <Toggle
+                id="emailNotificationsEnabled"
+                checked={settings.emailNotificationsEnabled}
+                disabled={!meta.mailConfigured}
+                onChange={(v) => patch("emailNotificationsEnabled", v)}
+              />
+            </Row>
+          </Section>
+
+          <Section label="Lecture des carnets">
+            <Row
+              icon={Sparkles}
+              title="Modèle d'extraction"
+              hint="Modèle Claude vision utilisé pour lire les carnets, avec la clé API de chaque contributeur."
+              htmlFor="vlmModel"
+            >
+              <Select
+                id="vlmModel"
+                value={settings.vlmModel}
+                onChange={(e) => patch("vlmModel", e.target.value)}
+                className="w-full sm:w-auto"
+              >
+                {models.map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </Select>
+            </Row>
+          </Section>
         </div>
-      </section>
+
+        <div className="lg:sticky lg:top-[5.5rem]">
+          <section className="flex flex-col gap-1">
+            <SectionLabel className="px-1">Infrastructure</SectionLabel>
+            <div className="flex flex-col gap-3 rounded-2xl border bg-card p-5 shadow-card">
+              <p className="text-meta text-muted-foreground">
+                Piloté par les variables d'environnement du serveur : ces lignes se
+                lisent, elles ne se modifient pas ici.
+              </p>
+              <div className="flex flex-col gap-2">
+                <StatusPill ok={meta.mailConfigured} label="Serveur e-mail (SMTP)" />
+                <StatusPill
+                  ok={meta.webPushConfigured}
+                  label="Notifications navigateur (Web Push)"
+                />
+                <StatusPill
+                  ok={meta.notifyWebhookConfigured}
+                  label="Webhook de notification"
+                />
+                <div className="flex items-center gap-2 rounded-xl border bg-background px-3 py-3">
+                  <Link2
+                    className="size-4 shrink-0 text-muted-foreground"
+                    aria-hidden="true"
+                  />
+                  <span className="min-w-0 flex-1 truncate text-meta">
+                    {meta.webBaseUrl}
+                  </span>
+                  <span className="shrink-0 text-meta text-muted-foreground">
+                    URL publique
+                  </span>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
 
       {error && (
         <InlineError>
@@ -362,7 +368,7 @@ export default function Settings() {
         </InlineError>
       )}
 
-      <div className="sticky bottom-0 -mx-4 flex items-center justify-end gap-3 border-t bg-surface-bar px-4 pt-3 pb-safe-4 backdrop-blur-md">
+      <div className="sticky bottom-0 -mx-4 flex items-center justify-end gap-3 border-t bg-surface-bar px-4 pt-3 lg:-mx-10 lg:px-10 pb-safe-4 backdrop-blur-md">
         {saved && (
           <p
             role="status"
