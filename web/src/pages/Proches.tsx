@@ -30,6 +30,8 @@ import {
   InlineError,
 } from "@/components/PageState";
 
+const SHELL = "lg:max-w-[64rem] lg:px-10 lg:pt-8 lg:pb-12";
+
 type ChildState = {
   status: SubscriptionStatus;
   subscribers: Subscriber[] | null;
@@ -275,7 +277,7 @@ export default function Proches() {
 
   if (error)
     return (
-      <PageShell>
+      <PageShell className={SHELL}>
         {header}
         <PageState
           icon={CloudOff}
@@ -292,14 +294,14 @@ export default function Proches() {
 
   if (children === null)
     return (
-      <PageShell>
+      <PageShell className={SHELL}>
         {header}
         <PageSkeleton label="Racontine ouvre le cercle" rows={2} />
       </PageShell>
     );
 
   return (
-    <PageShell>
+    <PageShell className={SHELL}>
       {header}
 
       <PushCard />
@@ -314,7 +316,7 @@ export default function Proches() {
           <SectionLabel className="px-1">
             Les carnets ({children.length})
           </SectionLabel>
-          <ul className="flex flex-col gap-3">
+          <ul className="flex flex-col gap-3 lg:grid lg:grid-cols-2 lg:items-start lg:gap-6">
             {children.map((c) => (
               <ChildCard key={c.id} child={c} />
             ))}
