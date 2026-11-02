@@ -50,6 +50,16 @@ export default function Bienvenue() {
     <div className="relative isolate min-h-svh overflow-hidden pt-safe pb-safe">
       <LoginBackground wide />
 
+      <header className="absolute inset-x-0 top-0 z-10 pt-safe lg:pt-4">
+        <div className="mx-auto flex h-header w-full max-w-[26rem] items-center justify-end pr-5 lg:max-w-[64rem] lg:px-10">
+          <Button asChild variant="outline" size="sm" className="bg-card">
+            <Link to="/login" onClick={() => mesure("accueil_connexion")}>
+              Se connecter
+            </Link>
+          </Button>
+        </div>
+      </header>
+
       <div className="rise-enter mx-auto flex w-full max-w-[26rem] flex-col pt-[5.25rem] pr-5 pb-6 pl-10 lg:grid lg:max-w-[64rem] lg:grid-cols-[minmax(0,1fr)_26rem] lg:grid-rows-[auto_1fr] lg:items-start lg:gap-x-16 lg:px-10 lg:pt-32 lg:pb-16 xl:gap-x-24">
         <div className="lg:col-start-1 lg:row-start-1 lg:pt-4">
           <p className="surtitre text-muted-foreground">Carnet de liaison</p>
