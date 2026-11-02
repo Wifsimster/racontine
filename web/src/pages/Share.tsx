@@ -39,6 +39,8 @@ import {
 
 const ROLES: MemberRole[] = ["reader", "contributor", "admin"];
 
+const SHELL = "lg:max-w-[64rem] lg:px-10 lg:pt-8 lg:pb-12";
+
 function RoleSelect({
   value,
   onChange,
@@ -221,7 +223,7 @@ export default function Share() {
 
   if (loading)
     return (
-      <PageShell>
+      <PageShell className={SHELL}>
         {header}
         <PageSkeleton label="Racontine ouvre le cercle" rows={2} />
       </PageShell>
@@ -229,7 +231,7 @@ export default function Share() {
 
   if (!children.length)
     return (
-      <PageShell>
+      <PageShell className={SHELL}>
         {header}
         <PageState
           icon={Users}
@@ -255,189 +257,107 @@ export default function Share() {
   const child = children.find((c) => c.id === selected);
 
   return (
-    <PageShell>
+    <PageShell className={SHELL}>
       {header}
 
-      {children.length > 1 && (
-        <div className="flex flex-col gap-1">
-          <SectionLabel className="px-1">Le carnet</SectionLabel>
-          <div className="flex flex-wrap gap-2">
-            {children.map((c) => (
-              <Button
-                key={c.id}
-                variant={c.id === selected ? "default" : "outline"}
-                size="sm"
-                aria-pressed={c.id === selected}
-                onClick={() => setSelected(c.id)}
-              >
-                {c.name}
-              </Button>
-            ))}
-          </div>
-        </div>
-      )}
+      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[22rem_minmax(0,1fr)] lg:items-start lg:gap-10">
+        <div className="flex flex-col gap-6 lg:sticky lg:top-[5.5rem]">
+          {children.length > 1 && (
+            <div className="flex flex-col gap-1">
+              <SectionLabel className="px-1">Le carnet</SectionLabel>
+              <div className="flex flex-wrap gap-2">
+                {children.map((c) => (
+                  <Button
+                    key={c.id}
+                    variant={c.id === selected ? "default" : "outline"}
+                    size="sm"
+                    aria-pressed={c.id === selected}
+                    onClick={() => setSelected(c.id)}
+                  >
+                    {c.name}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
 
-      <form
-        onSubmit={invite}
-        className="flex flex-col gap-4 rounded-2xl border bg-card p-5 shadow-card"
-      >
-        <h2 className="flex items-center gap-2 font-serif text-title font-semibold">
-          <MailPlus className="size-5 shrink-0 text-primary" aria-hidden="true" />
-          Inviter un proche
-        </h2>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="invite-email">Son adresse e-mail</Label>
-          <Input
-            id="invite-email"
-            type="email"
-            autoComplete="email"
-            placeholder="mamie@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="invite-role">Ce qu'elle pourra faire</Label>
-          <RoleSelect value={role} onChange={setRole} />
-          <p className="text-meta text-muted-foreground">{ROLE_HINTS[role]}</p>
-        </div>
-        {error && (
-          <InlineError>
-            <TriangleAlert
-              className="mt-0.5 size-4 shrink-0"
-              aria-hidden="true"
-            />
-            {error}
-          </InlineError>
-        )}
-        <Button type="submit" loading={inviting}>
-          {!inviting && <UserPlus aria-hidden="true" />}
-          Envoyer l'invitation
-        </Button>
-      </form>
+          <form
+            onSubmit={invite}
+            className="flex flex-col gap-4 rounded-2xl border bg-card p-5 shadow-card"
+          >
+            <h2 className="flex items-center gap-2 font-serif text-title font-semibold">
+              <MailPlus className="size-5 shrink-0 text-primary" aria-hidden="true" />
+              Inviter un proche
+            </h2>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="invite-email">Son adresse e-mail</Label>
+              <Input
+                id="invite-email"
+                type="email"
+                autoComplete="email"
+                placeholder="mamie@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="invite-role">Ce qu'elle pourra faire</Label>
+              <RoleSelect value={role} onChange={setRole} />
+              <p className="text-meta text-muted-foreground">{ROLE_HINTS[role]}</p>
+            </div>
+            {error && (
+              <InlineError>
+                <TriangleAlert
+                  className="mt-0.5 size-4 shrink-0"
+                  aria-hidden="true"
+                />
+                {error}
+              </InlineError>
+            )}
+            <Button type="submit" loading={inviting}>
+              {!inviting && <UserPlus aria-hidden="true" />}
+              Envoyer l'invitation
+            </Button>
+          </form>
 
-      {invitations.length > 0 && (
-        <section className="flex flex-col gap-1">
-          <SectionLabel className="px-1">
-            En attente ({invitations.length})
-          </SectionLabel>
-          <ul className="flex flex-col gap-2">
-            {invitations.map((inv) => (
-              <li
-                key={inv.id}
-                className="flex items-center gap-2 rounded-2xl border bg-card p-3 pl-4 shadow-card"
-              >
-                <div className="flex min-w-0 flex-1 flex-col">
-                  <span className="truncate text-ui font-bold">{inv.email}</span>
-                  <span className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-meta text-muted-foreground">
-                    <Clock className="size-3.5 shrink-0" aria-hidden="true" />
-                    {ROLE_LABELS[inv.role]}
-                    {inv.expired && (
-                      <Badge variant="warning">
-                        <TriangleAlert aria-hidden="true" />
-                        expirée
-                      </Badge>
-                    )}
-                  </span>
-                </div>
-                <CopyButton url={inv.url} />
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={`Révoquer l'invitation de ${inv.email}`}
-                  className="text-destructive hover:bg-destructive-soft hover:text-destructive"
-                  onClick={async () => {
-                    try {
-                      await api.revokeInvitation(inv.id);
-                      if (selected) await refresh(selected);
-                    } catch (e) {
-                      setError(e instanceof Error ? e.message : "Échec");
-                    }
-                  }}
-                >
-                  <Trash2 />
-                </Button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+        </div>
 
-      <section className="flex flex-col gap-1">
-        <SectionLabel className="px-1">
-          Le cercle de {child?.name ?? "l'enfant"} ({members.length})
-        </SectionLabel>
-        <ul className="flex flex-col gap-2">
-          {members.map((m) => {
-            const isSelf = m.userId === session?.user.id;
-            const name = m.name?.trim();
-            const label = name || m.email;
-            return (
-              <li
-                key={m.userId}
-                className="flex flex-col gap-3 rounded-2xl border bg-card p-4 shadow-card"
-              >
-                <div className="flex min-w-0 flex-1 flex-col">
-                  <span className="flex min-w-0 items-center gap-1.5 text-ui font-bold">
-                    <span className="truncate">{label}</span>
-                    {m.role === "admin" && (
-                      <ShieldCheck
-                        className="size-4 shrink-0 text-primary"
-                        aria-label="administrateur"
-                      />
-                    )}
-                    {isSelf && <Badge variant="soft">vous</Badge>}
-                  </span>
-                  {(name || isSelf) && (
-                    <span className="truncate text-meta text-muted-foreground">
-                      {[name && m.email, isSelf && ROLE_LABELS[m.role]]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </span>
-                  )}
-                </div>
-                {!name && !isSelf && (
-                  <NameMember
-                    email={m.email}
-                    onSave={async (n) => {
-                      if (!selected) return;
-                      try {
-                        setError(null);
-                        await api.setMemberName(selected, m.userId, n);
-                        await refresh(selected);
-                      } catch (e) {
-                        setError(e instanceof Error ? e.message : "Échec");
-                      }
-                    }}
-                  />
-                )}
-                {!isSelf && (
-                  <div className="flex items-center gap-2">
-                    <RoleSelect
-                      value={m.role}
-                      className="min-w-0 flex-1"
-                      aria-label={`Rôle de ${label}`}
-                      onChange={async (r) => {
-                        if (!selected) return;
-                        try {
-                          await api.setMemberRole(selected, m.userId, r);
-                          await refresh(selected);
-                        } catch (e) {
-                          setError(e instanceof Error ? e.message : "Échec");
-                        }
-                      }}
-                    />
+        <div className="flex flex-col gap-6">
+          {invitations.length > 0 && (
+            <section className="flex flex-col gap-1">
+              <SectionLabel className="px-1">
+                En attente ({invitations.length})
+              </SectionLabel>
+              <ul className="flex flex-col gap-2">
+                {invitations.map((inv) => (
+                  <li
+                    key={inv.id}
+                    className="flex items-center gap-2 rounded-2xl border bg-card p-3 pl-4 shadow-card"
+                  >
+                    <div className="flex min-w-0 flex-1 flex-col">
+                      <span className="truncate text-ui font-bold">{inv.email}</span>
+                      <span className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-meta text-muted-foreground">
+                        <Clock className="size-3.5 shrink-0" aria-hidden="true" />
+                        {ROLE_LABELS[inv.role]}
+                        {inv.expired && (
+                          <Badge variant="warning">
+                            <TriangleAlert aria-hidden="true" />
+                            expirée
+                          </Badge>
+                        )}
+                      </span>
+                    </div>
+                    <CopyButton url={inv.url} />
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      aria-label={`Retirer ${label} du cercle`}
+                      aria-label={`Révoquer l'invitation de ${inv.email}`}
                       className="text-destructive hover:bg-destructive-soft hover:text-destructive"
                       onClick={async () => {
-                        if (!selected) return;
                         try {
-                          await api.removeMember(selected, m.userId);
-                          await refresh(selected);
+                          await api.revokeInvitation(inv.id);
+                          if (selected) await refresh(selected);
                         } catch (e) {
                           setError(e instanceof Error ? e.message : "Échec");
                         }
@@ -445,13 +365,102 @@ export default function Share() {
                     >
                       <Trash2 />
                     </Button>
-                  </div>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      </section>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          <section className="flex flex-col gap-1">
+            <SectionLabel className="px-1">
+              Le cercle de {child?.name ?? "l'enfant"} ({members.length})
+            </SectionLabel>
+            <ul className="flex flex-col gap-2">
+              {members.map((m) => {
+                const isSelf = m.userId === session?.user.id;
+                const name = m.name?.trim();
+                const label = name || m.email;
+                return (
+                  <li
+                    key={m.userId}
+                    className="flex flex-col gap-3 rounded-2xl border bg-card p-4 shadow-card"
+                  >
+                    <div className="flex min-w-0 flex-1 flex-col">
+                      <span className="flex min-w-0 items-center gap-1.5 text-ui font-bold">
+                        <span className="truncate">{label}</span>
+                        {m.role === "admin" && (
+                          <ShieldCheck
+                            className="size-4 shrink-0 text-primary"
+                            aria-label="administrateur"
+                          />
+                        )}
+                        {isSelf && <Badge variant="soft">vous</Badge>}
+                      </span>
+                      {(name || isSelf) && (
+                        <span className="truncate text-meta text-muted-foreground">
+                          {[name && m.email, isSelf && ROLE_LABELS[m.role]]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </span>
+                      )}
+                    </div>
+                    {!name && !isSelf && (
+                      <NameMember
+                        email={m.email}
+                        onSave={async (n) => {
+                          if (!selected) return;
+                          try {
+                            setError(null);
+                            await api.setMemberName(selected, m.userId, n);
+                            await refresh(selected);
+                          } catch (e) {
+                            setError(e instanceof Error ? e.message : "Échec");
+                          }
+                        }}
+                      />
+                    )}
+                    {!isSelf && (
+                      <div className="flex items-center gap-2">
+                        <RoleSelect
+                          value={m.role}
+                          className="min-w-0 flex-1"
+                          aria-label={`Rôle de ${label}`}
+                          onChange={async (r) => {
+                            if (!selected) return;
+                            try {
+                              await api.setMemberRole(selected, m.userId, r);
+                              await refresh(selected);
+                            } catch (e) {
+                              setError(e instanceof Error ? e.message : "Échec");
+                            }
+                          }}
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label={`Retirer ${label} du cercle`}
+                          className="text-destructive hover:bg-destructive-soft hover:text-destructive"
+                          onClick={async () => {
+                            if (!selected) return;
+                            try {
+                              await api.removeMember(selected, m.userId);
+                              await refresh(selected);
+                            } catch (e) {
+                              setError(e instanceof Error ? e.message : "Échec");
+                            }
+                          }}
+                        >
+                          <Trash2 />
+                        </Button>
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        </div>
+      </div>
     </PageShell>
   );
 }
