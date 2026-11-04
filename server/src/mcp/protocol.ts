@@ -74,7 +74,7 @@ export async function collectPages(
 export type McpToolContext = {
   user: McpTokenUser;
   ingest: IngestService;
-  pages: Pick<PageService, "attach">;
+  pages: Pick<PageService, "attach" | "addSouvenirs" | "remove">;
   notes: TranscribedNoteService;
   queries: EntryQueries;
   uploads: StagedUploads;

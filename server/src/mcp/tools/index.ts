@@ -1,6 +1,7 @@
 import type { McpTool } from "../protocol.js";
 import { adminConsoleTool } from "./admin-console.js";
 import { attachDailyNotePagesTool } from "./attach-daily-note-pages.js";
+import { attachDailyNotePhotosTool } from "./attach-daily-note-photos.js";
 import { createDailyNoteTool } from "./create-daily-note.js";
 import { getDailyNoteTool } from "./get-daily-note.js";
 import { instanceStatusTool } from "./instance-status.js";
@@ -9,6 +10,7 @@ import { listCircleTool } from "./list-circle.js";
 import { listChildrenTool } from "./list-children.js";
 import { listDailyNotesTool } from "./list-daily-notes.js";
 import { publishDailyNoteTool } from "./publish-daily-note.js";
+import { removeDailyNotePhotoTool } from "./remove-daily-note-photo.js";
 import { removeMemberTool } from "./remove-member.js";
 import { retryDailyNoteTool } from "./retry-daily-note.js";
 import { revokeInvitationTool } from "./revoke-invitation.js";
@@ -22,6 +24,8 @@ export const MCP_TOOLS: readonly McpTool[] = [
   uploadDailyNoteTool,
   createDailyNoteTool,
   attachDailyNotePagesTool,
+  attachDailyNotePhotosTool,
+  removeDailyNotePhotoTool,
   listDailyNotesTool,
   getDailyNoteTool,
   instanceStatusTool,

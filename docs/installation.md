@@ -315,6 +315,8 @@ moment. Outils exposés, en deux familles.
 | `upload_daily_note` | Téléverse une ou plusieurs pages d'une journée (`images` en base64 **ou** `imageIds` pré-téléversées) → crée un brouillon lu par le VLM, à relire puis publier |
 | `create_daily_note` | Crée une journée à partir d'un contenu **déjà transcrit** (texte + listes structurées), sans photo ni VLM — aucune clé API requise. Brouillon par défaut, ou `publish: true` pour publier directement |
 | `attach_daily_note_pages` | Joint une ou plusieurs photos (`imageIds` **ou** `images`) à une journée existante, brouillon ou publiée, sans relancer le VLM ni notifier les proches |
+| `attach_daily_note_photos` | Joint des photos **souvenirs** de l'enfant (pas des pages) à une journée existante ; affichées en tête de carte, jamais lues par le VLM, 12 max par journée |
+| `remove_daily_note_photo` | Retire une photo souvenir (`photoIds` de `get_daily_note`) ; refuse une page du carnet |
 | `list_daily_notes` | Liste les journées récentes d'un enfant (récupère leur `id`) — un lecteur ne voit que le publié |
 | `get_daily_note` | Détail complet d'une journée : récit, temps fort, repas, siestes, activités, anecdotes, santé, transcription |
 

@@ -1,6 +1,7 @@
 import { and, desc, eq, inArray, or } from "drizzle-orm";
 import { db } from "../db/index.js";
 import {
+  attachments,
   children,
   entries,
   memberships,
@@ -44,6 +45,7 @@ export type NoteDetail = {
     uncertainties: Uncertainty[];
     pageCount: number;
     photoCount: number;
+    photoIds: string[];
   };
   items: { type: ItemType; data: EntryItemData }[];
 };
@@ -57,6 +59,10 @@ export interface EntryQueries {
     limit: number;
   }): Promise<NoteSummary[] | null>;
   findNote(userId: string, entryId: string): Promise<NoteDetail | null>;
+  attachmentKind(
+    userId: string,
+    attachmentId: string,
+  ): Promise<"carnet" | "souvenir" | null>;
 }
 
 export class DrizzleEntryQueries implements EntryQueries {
@@ -120,7 +126,10 @@ export class DrizzleEntryQueries implements EntryQueries {
       with: {
         child: { columns: { name: true } },
         items: { orderBy: (i, { asc }) => [asc(i.position)] },
-        attachments: { columns: { id: true, kind: true } },
+        attachments: {
+          columns: { id: true, kind: true },
+          orderBy: (a, { asc }) => [asc(a.position)],
+        },
       },
     });
     if (!entry) return null;
@@ -157,8 +166,31 @@ export class DrizzleEntryQueries implements EntryQueries {
         pageCount: entry.attachments.filter((a) => a.kind === "carnet").length,
         photoCount: entry.attachments.filter((a) => a.kind === "souvenir")
           .length,
+        photoIds: entry.attachments
+          .filter((a) => a.kind === "souvenir")
+          .map((a) => a.id),
       },
       items: entry.items.map((i) => ({ type: i.type, data: i.data })),
     };
+  }
+
+  async attachmentKind(
+    userId: string,
+    attachmentId: string,
+  ): Promise<"carnet" | "souvenir" | null> {
+    const [row] = await db
+      .select({ kind: attachments.kind })
+      .from(attachments)
+      .innerJoin(entries, eq(entries.id, attachments.entryId))
+      .innerJoin(
+        memberships,
+        and(
+          eq(memberships.childId, entries.childId),
+          eq(memberships.userId, userId),
+        ),
+      )
+      .where(eq(attachments.id, attachmentId))
+      .limit(1);
+    return row?.kind ?? null;
   }
 }
