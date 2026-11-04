@@ -21,6 +21,7 @@ import {
   ModeToggle,
   MonthJump,
   MonthJumpVeil,
+  UnreadBar,
 } from "@/features/journal/browse";
 import { PageViewer } from "@/features/journal/pages";
 import {
@@ -65,8 +66,13 @@ export default function Timeline() {
   const [months, setMonths] = useState<JournalMonth[]>([]);
   const [moisOuvert, setMoisOuvert] = useState<string | null>(null);
 
-  const [repris] = useState(() => filMemorise(enfantMemorise()));
+  const [repris] = useState(() =>
+    filMemorise(enfantMemorise(), modeMemorise()),
+  );
   const [entries, setEntries] = useState<Entry[]>(repris?.entries ?? []);
+  const [unreadCount, setUnreadCount] = useState(repris?.unreadCount ?? 0);
+  const [toutLuEnCours, setToutLuEnCours] = useState(false);
+  const lecteur = mode === "lire";
   const [cursor, setCursor] = useState<string | null>(repris?.nextCursor ?? null);
   const [phase, setPhase] = useState<"loading" | "ready" | "error">(
     repris ? "ready" : "loading",
@@ -103,28 +109,30 @@ export default function Timeline() {
 
   useEffect(() => {
     let ignore = false;
-    void api.timelineMonths(childId).then(
+    void api.timelineMonths(childId, lecteur).then(
       (res) => !ignore && setMonths(res.months),
       () => !ignore && setMonths([]),
     );
     return () => {
       ignore = true;
     };
-  }, [childId]);
+  }, [childId, lecteur]);
 
   const cadrage = useRef(0);
 
   const ouvrir = useCallback(
-    async (child: string | null, depuis: string | null) => {
+    async (child: string | null, depuis: string | null, asReader: boolean) => {
       const mine = cadrage.current;
       const res = await api.timeline({
         childId: child,
         from: depuis,
         limit: PAGE,
+        asReader,
       });
       if (mine !== cadrage.current) return;
       setEntries(res.entries);
       setCursor(res.nextCursor);
+      setUnreadCount(res.unreadCount);
       setPhase("ready");
     },
     [],
@@ -132,8 +140,14 @@ export default function Timeline() {
 
   const rafraichir = useCallback(async () => {
     const mine = cadrage.current;
-    const res = await api.timeline({ childId, from, limit: PAGE });
+    const res = await api.timeline({
+      childId,
+      from,
+      limit: PAGE,
+      asReader: lecteur,
+    });
     if (mine !== cadrage.current) return;
+    setUnreadCount(res.unreadCount);
     setEntries((prev) => {
       if (!prev.length) {
         setCursor(res.nextCursor);
@@ -145,15 +159,16 @@ export default function Timeline() {
       const added = res.entries.filter((e) => !known.has(e.id));
       return added.length ? [...added, ...merged] : merged;
     });
-  }, [childId, from]);
+  }, [childId, from, lecteur]);
 
   useEffect(() => {
     cadrage.current += 1;
-    const cache = filMemorise(childId);
+    const cache = filMemorise(childId, mode);
 
     if (cache && cache.from === from && cache.entries.length > 0) {
       setEntries(cache.entries);
       setCursor(cache.nextCursor);
+      setUnreadCount(cache.unreadCount);
       setPhase("ready");
       void rafraichir().catch(() => {});
       return;
@@ -164,7 +179,7 @@ export default function Timeline() {
     setCursor(null);
     setPhase("loading");
     setMoreError("");
-    ouvrir(childId, from).catch((e) => {
+    ouvrir(childId, from, mode === "lire").catch((e) => {
       if (ignore) return;
       setError(e instanceof Error ? e.message : "Erreur inconnue");
       setPhase("error");
@@ -172,12 +187,17 @@ export default function Timeline() {
     return () => {
       ignore = true;
     };
-  }, [childId, from, ouvrir, rafraichir]);
+  }, [childId, from, mode, ouvrir, rafraichir]);
 
   useEffect(() => {
     if (phase !== "ready") return;
-    memoriserFil(childId, { entries, nextCursor: cursor, from });
-  }, [phase, childId, entries, cursor, from]);
+    memoriserFil(childId, mode, {
+      entries,
+      nextCursor: cursor,
+      from,
+      unreadCount,
+    });
+  }, [phase, childId, mode, entries, cursor, from, unreadCount]);
 
   const reload = useCallback(() => {
     cadrage.current += 1;
@@ -186,11 +206,11 @@ export default function Timeline() {
     setEntries([]);
     setCursor(null);
     oublierFil();
-    ouvrir(childId, from).catch((e) => {
+    ouvrir(childId, from, lecteur).catch((e) => {
       setError(e instanceof Error ? e.message : "Erreur inconnue");
       setPhase("error");
     });
-  }, [childId, from, ouvrir]);
+  }, [childId, from, lecteur, ouvrir]);
 
   const reading = entries.some((e) => e.status === "processing");
 
@@ -226,7 +246,13 @@ export default function Timeline() {
     setMore(true);
     setMoreError("");
     try {
-      const res = await api.timeline({ childId, from, cursor, limit: PAGE });
+      const res = await api.timeline({
+        childId,
+        from,
+        cursor,
+        limit: PAGE,
+        asReader: lecteur,
+      });
       if (mine !== cadrage.current) return;
       let ajoutees = 0;
       setEntries((prev) => {
@@ -246,7 +272,7 @@ export default function Timeline() {
     } finally {
       setMore(false);
     }
-  }, [childId, from, cursor]);
+  }, [childId, from, cursor, lecteur]);
 
   const sentinelle = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -272,8 +298,44 @@ export default function Timeline() {
   }
 
   function choisirMode(m: JournalMode) {
+    if (m === mode) return;
     memoriserMode(m);
     setMode(m);
+    setFrom(null);
+    setMoisOuvert(null);
+  }
+
+  const marquerLu = useCallback(async (entry: Entry, read: boolean) => {
+    if (entry.status !== "published" || entry.read === read) return;
+    const appliquer = (valeur: boolean) => {
+      setEntries((prev) =>
+        prev.map((e) => (e.id === entry.id ? { ...e, read: valeur } : e)),
+      );
+      setUnreadCount((n) => Math.max(0, n + (valeur ? -1 : 1)));
+    };
+    appliquer(read);
+    try {
+      await api.setEntryRead(entry.id, read);
+    } catch {
+      appliquer(!read);
+    }
+  }, []);
+
+  async function toutMarquerLu() {
+    setToutLuEnCours(true);
+    try {
+      await api.markAllRead(childId);
+      setEntries((prev) =>
+        prev.map((e) =>
+          e.status === "published" && !e.read ? { ...e, read: true } : e,
+        ),
+      );
+      setUnreadCount(0);
+      oublierFil();
+    } catch {
+    } finally {
+      setToutLuEnCours(false);
+    }
   }
 
   function sauterAuMois(month: string | null) {
@@ -283,6 +345,7 @@ export default function Timeline() {
   }
 
   function openPages(entry: Entry, index: number, depuis: HTMLElement) {
+    void marquerLu(entry, true);
     openerRef.current = depuis;
     setViewer({ pages: entry.attachments, index, date: entry.date });
   }
@@ -338,6 +401,9 @@ export default function Timeline() {
 
   const carnetOuvert = billing?.access.open !== false;
 
+  const gere =
+    roleByChild !== null && [...roleByChild.values()].some((r) => canWrite(r));
+
   const sellable =
     roleByChild !== null &&
     (roleByChild.size === 0 ||
@@ -353,19 +419,27 @@ export default function Timeline() {
 
       {billing && sellable && <BillingCallout billing={billing} />}
 
-      {phase === "ready" && (children.length > 1 || hasJournal) && (
+      {phase === "ready" && (children.length > 1 || hasJournal || gere) && (
         <div className="flex items-center justify-between gap-3">
           <ChildFilter
             children={children}
             value={childId}
             onChange={choisirEnfant}
           />
-          {hasJournal && (
+          {(hasJournal || gere) && (
             <div className="shrink-0">
               <ModeToggle value={mode} onChange={choisirMode} />
             </div>
           )}
         </div>
+      )}
+
+      {phase === "ready" && unreadCount > 0 && (
+        <UnreadBar
+          count={unreadCount}
+          loading={toutLuEnCours}
+          onMarkAll={() => void toutMarquerLu()}
+        />
       )}
 
       {phase === "loading" && <JournalSkeleton />}
@@ -427,8 +501,9 @@ export default function Timeline() {
                   {mode === "lire" ? (
                     <EntryCard
                       entry={e}
-                      canEdit={canWrite(roleByChild?.get(e.childId))}
+                      canEdit={false}
                       onOpenPages={openPages}
+                      onRead={marquerLu}
                     />
                   ) : (
                     <EntryRow entry={e} />

@@ -270,6 +270,12 @@ export default function Review() {
   const canEditEntry =
     !entry || roles === null ? true : canWrite(roles.get(entry.childId));
 
+  const aMarquerLu =
+    entry?.status === "published" && entry.read === false ? entry.id : null;
+  useEffect(() => {
+    if (aMarquerLu) void api.setEntryRead(aMarquerLu, true).catch(() => {});
+  }, [aMarquerLu]);
+
   useEffect(() => {
     if (!canEditEntry) return;
     function onKey(e: KeyboardEvent) {

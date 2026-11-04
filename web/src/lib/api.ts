@@ -85,10 +85,12 @@ export const api = {
       cursor?: string | null;
       from?: string | null;
       limit?: number;
+      asReader?: boolean;
     } = {},
   ) => {
     const p = new URLSearchParams();
     if (opts.childId) p.set("childId", opts.childId);
+    if (opts.asReader) p.set("view", "reader");
     if (opts.cursor) p.set("cursor", opts.cursor);
     if (opts.from) p.set("from", opts.from);
     if (opts.limit) p.set("limit", String(opts.limit));
@@ -96,10 +98,26 @@ export const api = {
     return req<TimelinePage>(`/api/entries${qs ? `?${qs}` : ""}`);
   },
 
-  timelineMonths: (childId?: string | null) =>
-    req<{ months: JournalMonth[] }>(
-      `/api/entries/months${childId ? `?childId=${encodeURIComponent(childId)}` : ""}`,
-    ),
+  timelineMonths: (childId?: string | null, asReader = false) => {
+    const p = new URLSearchParams();
+    if (childId) p.set("childId", childId);
+    if (asReader) p.set("view", "reader");
+    const qs = p.toString();
+    return req<{ months: JournalMonth[] }>(
+      `/api/entries/months${qs ? `?${qs}` : ""}`,
+    );
+  },
+
+  setEntryRead: (id: string, read: boolean) =>
+    req<{ read: boolean; readAt: string | null }>(`/api/entries/${id}/read`, {
+      method: read ? "POST" : "DELETE",
+    }),
+
+  markAllRead: (childId?: string | null) =>
+    req<{ marked: number }>("/api/entries/read-all", {
+      method: "POST",
+      body: JSON.stringify(childId ? { childId } : {}),
+    }),
 
   getEntry: (id: string) => req<Entry>(`/api/entries/${id}`),
 

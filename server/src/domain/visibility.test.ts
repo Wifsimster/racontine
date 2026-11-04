@@ -46,3 +46,19 @@ test("demander un enfant partagé restreint la portée à lui seul", () => {
     draftableChildIds: [],
   });
 });
+
+test("en vue lecteur, un admin ne voit plus ses brouillons", () => {
+  const scope = timelineScope(
+    [
+      { childId: "c1", role: "admin" },
+      { childId: "c2", role: "contributor" },
+    ],
+    undefined,
+    { asReader: true },
+  );
+  assert.deepEqual(scope, {
+    kind: "scoped",
+    childIds: ["c1", "c2"],
+    draftableChildIds: [],
+  });
+});

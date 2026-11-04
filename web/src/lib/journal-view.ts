@@ -41,18 +41,27 @@ export type FilCharge = {
   entries: Entry[];
   nextCursor: string | null;
   from: string | null;
+  unreadCount: number;
 };
 
 const fil = new Map<string, FilCharge>();
 
-const cle = (childId: string | null) => childId ?? "tous";
+const cle = (childId: string | null, mode: JournalMode) =>
+  `${mode}:${childId ?? "tous"}`;
 
-export function filMemorise(childId: string | null): FilCharge | null {
-  return fil.get(cle(childId)) ?? null;
+export function filMemorise(
+  childId: string | null,
+  mode: JournalMode,
+): FilCharge | null {
+  return fil.get(cle(childId, mode)) ?? null;
 }
 
-export function memoriserFil(childId: string | null, valeur: FilCharge): void {
-  fil.set(cle(childId), valeur);
+export function memoriserFil(
+  childId: string | null,
+  mode: JournalMode,
+  valeur: FilCharge,
+): void {
+  fil.set(cle(childId, mode), valeur);
 }
 
 export function oublierFil(): void {

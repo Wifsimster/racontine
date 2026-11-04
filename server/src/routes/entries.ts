@@ -14,8 +14,16 @@ import {
   listBatch,
   listTimeline,
   listTimelineMonths,
+  markAllRead,
+  readStates,
+  setEntryRead,
 } from "../queries/entry-feed.js";
-import { parseCursor, parseFrom, parseLimit } from "../domain/feed-window.js";
+import {
+  parseCursor,
+  parseFrom,
+  parseLimit,
+  parseView,
+} from "../domain/feed-window.js";
 import { tidyUncertainties } from "../uncertainties.js";
 import { attachmentUrls } from "./attachment-urls.js";
 
@@ -105,6 +113,7 @@ export async function entriesRoutes(app: FastifyInstance) {
       limit?: string;
       cursor?: string;
       from?: string;
+      view?: string;
     };
   }>("/api/entries", async (req, reply) => {
     const page = await listTimeline({
@@ -113,6 +122,7 @@ export async function entriesRoutes(app: FastifyInstance) {
       limit: parseLimit(req.query.limit),
       cursor: parseCursor(req.query.cursor),
       from: parseFrom(req.query.from),
+      asReader: parseView(req.query.view) === "reader",
     });
     if (page.kind === "denied")
       return reply.code(403).send({ error: "accès refusé à cet enfant" });
@@ -126,15 +136,29 @@ export async function entriesRoutes(app: FastifyInstance) {
         })),
       })),
       nextCursor: page.nextCursor,
+      unreadCount: page.unreadCount,
     };
   });
 
-  app.get<{ Querystring: { childId?: string } }>(
+  app.post<{ Body: { childId?: string } }>(
+    "/api/entries/read-all",
+    async (req, reply) => {
+      const childId =
+        typeof req.body?.childId === "string" ? req.body.childId : undefined;
+      const res = await markAllRead(req.user!.id, childId);
+      if (res.kind === "denied")
+        return reply.code(403).send({ error: "accès refusé à cet enfant" });
+      return { marked: res.marked };
+    },
+  );
+
+  app.get<{ Querystring: { childId?: string; view?: string } }>(
     "/api/entries/months",
     async (req, reply) => {
       const res = await listTimelineMonths({
         userId: req.user!.id,
         childId: req.query.childId,
+        asReader: parseView(req.query.view) === "reader",
       });
       if (res.kind === "denied")
         return reply.code(403).send({ error: "accès refusé à cet enfant" });
@@ -154,8 +178,29 @@ export async function entriesRoutes(app: FastifyInstance) {
   app.get<{ Params: { id: string } }>("/api/entries/:id", async (req, reply) => {
     const entry = await findVisibleEntry(req.user!.id, req.params.id);
     if (!entry) return reply.code(404).send({ error: "entrée introuvable" });
-    return serializeEntry(entry);
+    const [withRead] = await readStates(req.user!.id, [entry]);
+    return { ...serializeEntry(entry), read: withRead!.read, readAt: withRead!.readAt };
   });
+
+  for (const [method, read] of [
+    ["POST", true],
+    ["DELETE", false],
+  ] as const) {
+    app.route<{ Params: { id: string } }>({
+      method,
+      url: "/api/entries/:id/read",
+      handler: async (req, reply) => {
+        const res = await setEntryRead(req.user!.id, req.params.id, read);
+        if (res.kind === "not_found")
+          return reply.code(404).send({ error: "entrée introuvable" });
+        if (res.kind === "not_published")
+          return reply
+            .code(409)
+            .send({ error: "seule une journée publiée peut être lue" });
+        return { read: res.read, readAt: res.readAt };
+      },
+    });
+  }
 
   app.patch<{
     Params: { id: string };
