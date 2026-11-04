@@ -1,6 +1,23 @@
-import { and, asc, desc, eq, inArray, lte, or, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  inArray,
+  isNull,
+  lte,
+  notExists,
+  or,
+  sql,
+} from "drizzle-orm";
 import { db } from "../db/index.js";
-import { children, entries, memberships } from "../db/schema.js";
+import {
+  children,
+  entries,
+  entryReads,
+  memberships,
+  notifications,
+} from "../db/schema.js";
 import { childRole } from "../access.js";
 import { timelineScope } from "../domain/visibility.js";
 
@@ -32,12 +49,15 @@ export async function listAccessibleChildren(userId: string) {
     .orderBy(children.createdAt);
 }
 
+export type ReadState = { read: boolean; readAt: Date | null };
+
 export type TimelinePage =
   | { kind: "denied" }
   | {
       kind: "page";
-      entries: NonNullable<FeedEntry>[];
+      entries: (NonNullable<FeedEntry> & ReadState)[];
       nextCursor: string | null;
+      unreadCount: number;
     };
 
 export type TimelineMonths =
@@ -56,12 +76,67 @@ function visibleTo(scope: { childIds: string[]; draftableChildIds: string[] }) {
   );
 }
 
-async function readingScope(userId: string, childId?: string) {
+async function readingScope(
+  userId: string,
+  childId?: string,
+  asReader = false,
+) {
   const mems = await db
     .select({ childId: memberships.childId, role: memberships.role })
     .from(memberships)
     .where(eq(memberships.userId, userId));
-  return timelineScope(mems, childId);
+  return timelineScope(mems, childId, { asReader });
+}
+
+function unreadBy(userId: string, childIds: string[]) {
+  return and(
+    inArray(entries.childId, childIds),
+    eq(entries.status, "published"),
+    sql`${entries.createdBy} is distinct from ${userId}`,
+    notExists(
+      db
+        .select({ one: sql`1` })
+        .from(entryReads)
+        .where(
+          and(
+            eq(entryReads.entryId, entries.id),
+            eq(entryReads.userId, userId),
+          ),
+        ),
+    ),
+  );
+}
+
+async function countUnread(userId: string, childIds: string[]) {
+  const [row] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(entries)
+    .where(unreadBy(userId, childIds));
+  return row?.n ?? 0;
+}
+
+export async function readStates<
+  T extends { id: string; status: string; createdBy: string | null },
+>(userId: string, rows: T[]): Promise<(T & ReadState)[]> {
+  const ids = rows.map((r) => r.id);
+  const reads = ids.length
+    ? await db
+        .select({ entryId: entryReads.entryId, readAt: entryReads.readAt })
+        .from(entryReads)
+        .where(
+          and(eq(entryReads.userId, userId), inArray(entryReads.entryId, ids)),
+        )
+    : [];
+  const byEntry = new Map(reads.map((r) => [r.entryId, r.readAt]));
+  return rows.map((r) => {
+    const readAt = byEntry.get(r.id) ?? null;
+    return {
+      ...r,
+      readAt,
+      read:
+        r.status !== "published" || r.createdBy === userId || readAt !== null,
+    };
+  });
 }
 
 export async function listTimeline(params: {
@@ -70,11 +145,16 @@ export async function listTimeline(params: {
   limit: number;
   cursor?: string | null;
   from?: string | null;
+  asReader?: boolean;
 }): Promise<TimelinePage> {
-  const scope = await readingScope(params.userId, params.childId);
+  const scope = await readingScope(
+    params.userId,
+    params.childId,
+    params.asReader,
+  );
   if (scope.kind === "denied") return { kind: "denied" };
   if (scope.kind === "empty")
-    return { kind: "page", entries: [], nextCursor: null };
+    return { kind: "page", entries: [], nextCursor: null, unreadCount: 0 };
 
   const anchor = params.cursor
     ? (
@@ -107,18 +187,29 @@ export async function listTimeline(params: {
     },
   });
 
+  const [withReads, unreadCount] = await Promise.all([
+    readStates(params.userId, rows),
+    countUnread(params.userId, scope.childIds),
+  ]);
+
   return {
     kind: "page",
-    entries: rows,
+    entries: withReads,
     nextCursor: rows.length === params.limit ? (rows[rows.length - 1]?.id ?? null) : null,
+    unreadCount,
   };
 }
 
 export async function listTimelineMonths(params: {
   userId: string;
   childId?: string;
+  asReader?: boolean;
 }): Promise<TimelineMonths> {
-  const scope = await readingScope(params.userId, params.childId);
+  const scope = await readingScope(
+    params.userId,
+    params.childId,
+    params.asReader,
+  );
   if (scope.kind === "denied") return { kind: "denied" };
   if (scope.kind === "empty") return { kind: "months", months: [] };
 
@@ -170,4 +261,82 @@ export async function listBatch(
     status: e.status,
     title: e.title,
   }));
+}
+
+export type ReadToggle =
+  | { kind: "not_found" }
+  | { kind: "not_published" }
+  | { kind: "done"; read: boolean; readAt: Date | null };
+
+export async function setEntryRead(
+  userId: string,
+  entryId: string,
+  read: boolean,
+): Promise<ReadToggle> {
+  const entry = await findVisibleEntry(userId, entryId);
+  if (!entry) return { kind: "not_found" };
+  if (entry.status !== "published") return { kind: "not_published" };
+
+  if (!read) {
+    await db
+      .delete(entryReads)
+      .where(
+        and(eq(entryReads.userId, userId), eq(entryReads.entryId, entryId)),
+      );
+    return { kind: "done", read: false, readAt: null };
+  }
+
+  const now = new Date();
+  await db.transaction(async (tx) => {
+    await tx
+      .insert(entryReads)
+      .values({ userId, entryId, readAt: now })
+      .onConflictDoNothing();
+    await tx
+      .update(notifications)
+      .set({ readAt: now })
+      .where(
+        and(
+          eq(notifications.userId, userId),
+          eq(notifications.entryId, entryId),
+          isNull(notifications.readAt),
+        ),
+      );
+  });
+  return { kind: "done", read: true, readAt: now };
+}
+
+export async function markAllRead(
+  userId: string,
+  childId?: string,
+): Promise<{ kind: "denied" } | { kind: "done"; marked: number }> {
+  const scope = await readingScope(userId, childId, true);
+  if (scope.kind === "denied") return { kind: "denied" };
+  if (scope.kind === "empty") return { kind: "done", marked: 0 };
+
+  const now = new Date();
+  const marked = await db.transaction(async (tx) => {
+    const unread = await tx
+      .select({ id: entries.id })
+      .from(entries)
+      .where(unreadBy(userId, scope.childIds));
+    if (!unread.length) return 0;
+    const ids = unread.map((u) => u.id);
+    await tx
+      .insert(entryReads)
+      .values(ids.map((entryId) => ({ userId, entryId, readAt: now })))
+      .onConflictDoNothing();
+    await tx
+      .update(notifications)
+      .set({ readAt: now })
+      .where(
+        and(
+          eq(notifications.userId, userId),
+          inArray(notifications.entryId, ids),
+          isNull(notifications.readAt),
+        ),
+      );
+    return ids.length;
+  });
+  return { kind: "done", marked };
 }

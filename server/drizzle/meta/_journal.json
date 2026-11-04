@@ -92,6 +92,13 @@
       "when": 1789300253268,
       "tag": "0012_curly_franklin_storm",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1793782628336,
+      "tag": "0013_add_entry_reads",
+      "breakpoints": true
     }
   ]
 }

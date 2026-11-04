@@ -100,11 +100,14 @@ export type Entry = {
   items: EntryItem[];
   attachments: AttachmentRef[];
   batchId: string | null;
+  read?: boolean;
+  readAt?: string | null;
 };
 
 export type TimelinePage = {
   entries: Entry[];
   nextCursor: string | null;
+  unreadCount: number;
 };
 
 export type JournalMonth = {

@@ -11,6 +11,7 @@ export type VisibilityScope =
 export function timelineScope(
   memberships: readonly Membership[],
   requestedChildId?: string,
+  options: { asReader?: boolean } = {},
 ): VisibilityScope {
   if (!memberships.length) return { kind: "empty" };
 
@@ -26,8 +27,10 @@ export function timelineScope(
   return {
     kind: "scoped",
     childIds,
-    draftableChildIds: childIds.filter((id) =>
-      roleAtLeast(roleByChild.get(id)!, "contributor"),
-    ),
+    draftableChildIds: options.asReader
+      ? []
+      : childIds.filter((id) =>
+          roleAtLeast(roleByChild.get(id)!, "contributor"),
+        ),
   };
 }

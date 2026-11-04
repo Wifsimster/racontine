@@ -1,5 +1,12 @@
 import { useEffect, useRef } from "react";
-import { CalendarDays, Check, ChevronDown, Rows3, X } from "lucide-react";
+import {
+  CalendarDays,
+  Check,
+  CheckCheck,
+  ChevronDown,
+  Rows3,
+  X,
+} from "lucide-react";
 import type { Child, JournalMonth } from "@/lib/types";
 import type { JournalMode } from "@/lib/journal-view";
 import { ChildMark } from "@/components/ChildMark";
@@ -66,6 +73,34 @@ export function ModeToggle({
       <Rows3 aria-hidden="true" />
       {parcourt ? "Lire" : "Parcourir"}
     </Button>
+  );
+}
+
+export function UnreadBar({
+  count,
+  loading,
+  onMarkAll,
+}: {
+  count: number;
+  loading: boolean;
+  onMarkAll: () => void;
+}) {
+  return (
+    <div
+      role="status"
+      className="flex items-center justify-between gap-3 rounded-xl border bg-card px-4 py-2 shadow-card"
+    >
+      <p className="flex items-center gap-2 text-ui">
+        <span aria-hidden="true" className="size-2 shrink-0 rounded-full bg-primary" />
+        <span data-tabular>
+          {count} journée{count > 1 ? "s" : ""} non lue{count > 1 ? "s" : ""}
+        </span>
+      </p>
+      <Button variant="ghost" size="sm" loading={loading} onClick={onMarkAll}>
+        <CheckCheck aria-hidden="true" />
+        Tout marquer comme lu
+      </Button>
+    </div>
   );
 }
 

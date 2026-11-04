@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { type RefObject, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
+  BookCheck,
+  BookOpen,
   ChevronDown,
   ScanLine,
   PenLine,
@@ -72,14 +74,68 @@ export function StatusBadge({
   return null;
 }
 
+export function isUnread(entry: Entry): boolean {
+  return entry.status === "published" && entry.read === false;
+}
+
+export function UnreadBadge() {
+  return (
+    <Badge variant="default">
+      <span aria-hidden="true" className="size-1.5 rounded-full bg-current" />
+      Nouveau
+    </Badge>
+  );
+}
+
+const DWELL_MS = 2500;
+
+function useReadOnDwell(
+  ref: RefObject<HTMLElement | null>,
+  active: boolean,
+  onDwell: () => void,
+) {
+  const onDwellRef = useRef(onDwell);
+  useEffect(() => {
+    onDwellRef.current = onDwell;
+  });
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || !active || typeof IntersectionObserver === "undefined") return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const io = new IntersectionObserver(
+      ([e]) => {
+        if (!e) return;
+        const viewport = e.rootBounds?.height ?? window.innerHeight;
+        const seen =
+          e.intersectionRatio >= 0.6 ||
+          e.intersectionRect.height >= viewport * 0.5;
+        if (seen && !timer && !document.hidden) {
+          timer = setTimeout(() => onDwellRef.current(), DWELL_MS);
+        } else if (!seen && timer) {
+          clearTimeout(timer);
+          timer = undefined;
+        }
+      },
+      { threshold: [0, 0.25, 0.5, 0.6, 0.75, 1] },
+    );
+    io.observe(el);
+    return () => {
+      io.disconnect();
+      if (timer) clearTimeout(timer);
+    };
+  }, [ref, active]);
+}
+
 export function EntryCard({
   entry,
   canEdit,
   onOpenPages,
+  onRead,
 }: {
   entry: Entry;
   canEdit: boolean;
   onOpenPages: (entry: Entry, index: number, from: HTMLElement) => void;
+  onRead?: (entry: Entry, read: boolean) => void;
 }) {
   const dateText = fullDate(entry.date);
   const label = dayLabel(entry.date);
@@ -119,12 +175,27 @@ export function EntryCard({
     };
   }, [entry.story, open]);
 
+  const cardRef = useRef<HTMLElement>(null);
+  const [manuel, setManuel] = useState(false);
+  const unread = isUnread(entry);
+  const trackable = Boolean(onRead) && entry.status === "published";
+  useReadOnDwell(cardRef, trackable && unread && !manuel, () =>
+    onRead?.(entry, true),
+  );
+
+  function basculerLu() {
+    setManuel(true);
+    onRead?.(entry, unread);
+  }
+
   const storyId = `recit-${entry.id}`;
   const detailId = `jour-${entry.id}`;
 
   return (
     <article
+      ref={cardRef}
       id={`carte-${entry.id}`}
+      data-unread={unread || undefined}
       className="relative scroll-mt-28 overflow-hidden rounded-2xl border bg-card shadow-card"
     >
       <span
@@ -153,6 +224,7 @@ export function EntryCard({
               {SOURCE_LABELS[entry.source]}
             </p>
           </div>
+          {unread && trackable && <UnreadBadge />}
           <StatusBadge entry={entry} canEdit={canEdit} />
         </div>
 
@@ -217,7 +289,11 @@ export function EntryCard({
         {hasStory ? (
           <details
             className="border-t"
-            onToggle={(e) => setOpen(e.currentTarget.open)}
+            onToggle={(e) => {
+              const ouvert = e.currentTarget.open;
+              setOpen(ouvert);
+              if (ouvert && unread && !manuel) onRead?.(entry, true);
+            }}
           >
             <summary
               aria-controls={
@@ -277,6 +353,30 @@ export function EntryCard({
           />
         )}
       </div>
+
+      {!action && trackable && (
+        <div className="flex justify-end border-t px-5 py-2 pl-7">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground"
+            aria-pressed={!unread}
+            onClick={basculerLu}
+          >
+            {unread ? (
+              <>
+                <BookCheck aria-hidden="true" />
+                Marquer comme lu
+              </>
+            ) : (
+              <>
+                <BookOpen aria-hidden="true" />
+                Marquer comme non lu
+              </>
+            )}
+          </Button>
+        </div>
+      )}
 
       {action && (
         <div className="border-t px-5 py-3 pl-7">

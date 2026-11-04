@@ -10,6 +10,7 @@ import {
   pgEnum,
   unique,
   index,
+  primaryKey,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
@@ -320,6 +321,23 @@ export const notifications = pgTable(
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (t) => [index("notifications_user_idx").on(t.userId, t.createdAt)],
+);
+
+export const entryReads = pgTable(
+  "entry_reads",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    entryId: uuid("entry_id")
+      .notNull()
+      .references(() => entries.id, { onDelete: "cascade" }),
+    readAt: timestamp("read_at").defaultNow().notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.userId, t.entryId] }),
+    index("entry_reads_entry_idx").on(t.entryId),
+  ],
 );
 
 export const pushSubscriptions = pgTable(

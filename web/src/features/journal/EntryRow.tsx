@@ -4,10 +4,11 @@ import type { Entry } from "@/lib/types";
 import { capitalize, dayMonthShort, fr } from "@/lib/format";
 import { ChildMark } from "@/components/ChildMark";
 import { GlanceStrip, glanceOf, pickGlance } from "./glance";
-import { StatusBadge } from "./EntryCard";
+import { StatusBadge, isUnread } from "./EntryCard";
 
 export function EntryRow({ entry }: { entry: Entry }) {
   const aBadge = entry.status !== "published";
+  const unread = isUnread(entry);
   const shown = pickGlance(glanceOf(entry)).slice(0, aBadge ? 1 : 2);
   return (
     <Link
@@ -28,6 +29,14 @@ export function EntryRow({ entry }: { entry: Entry }) {
           <span className="min-w-0 flex-1 truncate text-ui font-bold">
             {entry.title ? fr(entry.title) : "Journée sans titre"}
           </span>
+          {unread && (
+            <span
+              className="size-2 shrink-0 rounded-full bg-primary"
+              title="Non lue"
+            >
+              <span className="sr-only">Non lue</span>
+            </span>
+          )}
         </span>
         <span className="flex flex-wrap items-center gap-1.5">
           <GlanceStrip stats={shown} />

@@ -24,3 +24,7 @@ export function lastDayOfMonth(month: string): string | null {
   const [year, m] = month.split("-").map(Number) as [number, number];
   return new Date(Date.UTC(year, m, 0)).toISOString().slice(0, 10);
 }
+
+export function parseView(raw: unknown): "reader" | null {
+  return raw === "reader" ? "reader" : null;
+}

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { db } from "../src/db/index.js";
-import { attachments, children, user } from "../src/db/schema.js";
+import { attachments, children, memberships as membershipRows, user } from "../src/db/schema.js";
 import { eq } from "drizzle-orm";
 import {
   DrizzleAttachmentRepository,
@@ -16,7 +16,12 @@ import {
   DrizzleUserDirectory,
 } from "../src/adapters/drizzle-sharing.js";
 import { DrizzleAdminRepository } from "../src/adapters/drizzle-admin.js";
-import { listTimeline, listTimelineMonths } from "../src/queries/entry-feed.js";
+import {
+  listTimeline,
+  listTimelineMonths,
+  markAllRead,
+  setEntryRead,
+} from "../src/queries/entry-feed.js";
 import { DuplicateEntryError, EntryNotReviewableError } from "../src/domain/errors.js";
 
 const ok = (label: string) => console.log("  ok —", label);
@@ -283,6 +288,56 @@ if (months.kind === "months") {
   assert.equal(feb?.count, 2);
 }
 ok("l'index des mois compte les journées visibles, mois par mois");
+
+const asReader = await listTimeline({ userId: owner, limit: 10, asReader: true });
+assert.equal(asReader.kind, "page");
+if (asReader.kind === "page") {
+  assert.ok(asReader.entries.length > 0);
+  assert.ok(asReader.entries.every((e) => e.status === "published"));
+  assert.ok(asReader.entries.every((e) => e.read));
+  assert.equal(asReader.unreadCount, 0);
+}
+ok("en vue lecteur, l'admin ne voit que le publié, et ce qu'il a écrit compte comme lu");
+
+const lecteur = `u-${randomUUID()}`;
+await db.insert(user).values({
+  id: lecteur,
+  name: "Papi",
+  email: `${lecteur}@example.test`,
+  emailVerified: true,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+});
+await db.insert(membershipRows).values({ userId: lecteur, childId: child.id, role: "reader" });
+const fresh = await listTimeline({ userId: lecteur, limit: 10 });
+assert.equal(fresh.kind, "page");
+if (fresh.kind === "page") {
+  assert.ok(fresh.unreadCount > 0);
+  const target = fresh.entries.find((e) => !e.read)!;
+  assert.ok(target);
+  const marked = await setEntryRead(lecteur, target.id, true);
+  assert.equal(marked.kind, "done");
+  const after = await listTimeline({ userId: lecteur, limit: 10 });
+  if (after.kind === "page") {
+    assert.equal(after.unreadCount, fresh.unreadCount - 1);
+    assert.equal(after.entries.find((e) => e.id === target.id)?.read, true);
+  }
+  await setEntryRead(lecteur, target.id, false);
+  const unmarked = await listTimeline({ userId: lecteur, limit: 10 });
+  if (unmarked.kind === "page") assert.equal(unmarked.unreadCount, fresh.unreadCount);
+  const all = await markAllRead(lecteur);
+  assert.deepEqual(all, { kind: "done", marked: fresh.unreadCount });
+  const cleared = await listTimeline({ userId: lecteur, limit: 10 });
+  if (cleared.kind === "page") assert.equal(cleared.unreadCount, 0);
+}
+const drafts = await listTimeline({ userId: owner, limit: 10 });
+if (drafts.kind === "page") {
+  const draft = drafts.entries.find((e) => e.status !== "published");
+  if (draft)
+    assert.equal((await setEntryRead(lecteur, draft.id, true)).kind, "not_found");
+}
+await db.delete(user).where(eq(user.id, lecteur));
+ok("un lecteur marque une journée lue, non lue, puis tout le carnet");
 
 const admin = new DrizzleAdminRepository();
 const administered = await admin.administeredChildren(owner);
