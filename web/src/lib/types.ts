@@ -316,6 +316,14 @@ export type ErasureBlock = {
   carnets: CarnetRef[];
 };
 
+export type CaptureReminder = {
+  childId: string;
+  childName: string;
+  enabled: boolean;
+  time: string;
+  days: number[];
+};
+
 export type TrendPeriod = "4s" | "3m" | "12m";
 
 export type AppetiteLevel = "tout" | "bien" | "partie" | "peu" | "refus" | "autre";

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Camera,
   CloudOff,
@@ -50,6 +50,8 @@ const SOURCES: EntrySource[] = ["nounou", "mam", "creche", "maison"];
 
 export default function Capture() {
   const nav = useNavigate();
+  const [searchParams] = useSearchParams();
+  const askedChild = useRef(searchParams.get("childId"));
   const { billing } = useBilling();
   const cameraRef = useRef<HTMLInputElement>(null);
   const albumRef = useRef<HTMLInputElement>(null);
@@ -77,8 +79,10 @@ export default function Capture() {
         const mine = writableChildren(kids);
         setChildren(mine);
         setAccess(mine.length || kids.length === 0 ? "open" : "reader");
+        const asked = askedChild.current;
         const savedChild = restoredMeta.current?.childId;
-        if (savedChild && mine.some((k) => k.id === savedChild))
+        if (asked && mine.some((k) => k.id === asked)) setChildId(asked);
+        else if (savedChild && mine.some((k) => k.id === savedChild))
           setChildId(savedChild);
         else if (mine.length) setChildId(mine[0].id);
       })

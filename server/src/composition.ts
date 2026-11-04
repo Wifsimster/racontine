@@ -37,6 +37,9 @@ import { EmailChannel } from "./notifications/email-channel.js";
 import { WebPushChannel } from "./notifications/push-channel.js";
 import { NotificationDispatcher } from "./notifications/notification-dispatcher.js";
 import { SubscriberNotifier } from "./notifications/subscriber-notifier.js";
+import { CaptureReminderScheduler } from "./notifications/capture-reminders.js";
+import { DrizzleCaptureReminderStore } from "./notifications/capture-reminder-store.js";
+import { sendPushToUser, webPushEnabled } from "./push.js";
 import { requireChildAdminAccess } from "./access.js";
 import { LiveInstanceOps } from "./instance-ops.js";
 import { DrizzleOpsQueries } from "./mcp/ops-queries.js";
@@ -72,6 +75,13 @@ export const subscriberNotifier = new SubscriberNotifier({
 export const notificationDispatcher = new NotificationDispatcher({
   pending: new DrizzlePendingNotifications(),
   channels: [new WebPushChannel(), new EmailChannel(new DrizzleDayGlance())],
+  webBaseUrl: config.webBaseUrl,
+  logger,
+});
+
+export const captureReminders = new CaptureReminderScheduler({
+  store: new DrizzleCaptureReminderStore(),
+  push: { isEnabled: webPushEnabled, send: sendPushToUser },
   webBaseUrl: config.webBaseUrl,
   logger,
 });

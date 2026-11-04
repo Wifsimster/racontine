@@ -23,6 +23,7 @@ import type {
   McpToken,
   CreatedMcpToken,
   UserLlm,
+  CaptureReminder,
   ErasurePreview,
   TrendPeriod,
   TrendsResponse,
@@ -268,6 +269,18 @@ export const api = {
 
   markAllNotificationsRead: () =>
     req<void>("/api/notifications/read-all", { method: "POST" }),
+
+  listCaptureReminders: () =>
+    req<{ reminders: CaptureReminder[] }>("/api/me/capture-reminders"),
+
+  saveCaptureReminder: (
+    childId: string,
+    changes: { enabled?: boolean; time?: string; days?: number[] },
+  ) =>
+    req<Omit<CaptureReminder, "childName">>(
+      `/api/me/capture-reminders/${childId}`,
+      { method: "PUT", body: JSON.stringify(changes) },
+    ),
 
   getPushPublicKey: () =>
     req<{ publicKey: string | null }>("/api/push/public-key"),

@@ -1,7 +1,7 @@
 import { buildApp } from "./app.js";
 import { config } from "./config.js";
 import { reclaimStuckEntries } from "./ingest.js";
-import { notificationDispatcher } from "./composition.js";
+import { captureReminders, notificationDispatcher } from "./composition.js";
 
 const app = await buildApp();
 
@@ -24,6 +24,7 @@ try {
 }
 
 const stopDispatcher = notificationDispatcher.start();
+const stopReminders = captureReminders.start();
 
 let closing = false;
 for (const signal of ["SIGTERM", "SIGINT"] as const) {
@@ -31,6 +32,7 @@ for (const signal of ["SIGTERM", "SIGINT"] as const) {
     if (closing) return;
     closing = true;
     stopDispatcher();
+    stopReminders();
     app.log.info({ signal }, "Arrêt demandé — fermeture du serveur");
     app
       .close()
