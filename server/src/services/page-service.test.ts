@@ -3,8 +3,11 @@ import { test } from "node:test";
 import type { PageRecord, PageRepository } from "../ports.js";
 import {
   FakeAccessPolicy,
+  FakeAttachmentRepository,
+  FakeEntryRepository,
   FakeImageStore,
   FakeLogger,
+  entryRecord,
 } from "../testing/fakes.js";
 import { PageService } from "./page-service.js";
 
@@ -52,19 +55,26 @@ function build(opts: {
   page?: PageRecord | null;
   siblings?: number;
   role?: "reader" | "contributor" | "admin" | null;
+  entries?: ReturnType<typeof entryRecord>[];
+  existingPages?: Record<string, string[]>;
 } = {}) {
   const pages = new FakePages(
     opts.page === undefined ? page() : opts.page,
     opts.siblings ?? 2,
   );
   const images = new FakeImageStore();
+  const attachments = new FakeAttachmentRepository(opts.existingPages ?? {});
   const service = new PageService({
     pages,
+    entries: new FakeEntryRepository(
+      opts.entries ?? [entryRecord({ id: "e1", status: "published" })],
+    ),
+    attachments,
     images,
     access: new FakeAccessPolicy(["child-1"], opts.role ?? "contributor"),
     logger: new FakeLogger(),
   });
-  return { service, pages, images };
+  return { service, pages, images, attachments };
 }
 
 test("un lecteur ne voit les pages que d'une journée publiée", async () => {
@@ -181,4 +191,79 @@ test("un lecteur ne tourne ni ne retire, et ne l'apprend pas", async () => {
   const removal = await service.remove("u", "att-1");
   assert.equal(removal.ok, false);
   if (!removal.ok) assert.equal(removal.httpCode, 404);
+});
+
+test("joindre des photos à une journée publiée les ajoute après les pages existantes", async () => {
+  const { service, attachments, images } = build({
+    existingPages: { e1: ["old.jpg"] },
+  });
+  const result = await service.attach({
+    userId: "u",
+    entryId: "e1",
+    images: [Buffer.from("a"), Buffer.from("b")],
+  });
+  assert.deepEqual(result, { ok: true, added: 2, total: 3 });
+  assert.equal(images.stored.length, 2);
+  assert.deepEqual(await attachments.pathsFor("e1"), [
+    "old.jpg",
+    images.stored[0]!.originalPath,
+    images.stored[1]!.originalPath,
+  ]);
+});
+
+test("un lecteur ne peut pas joindre de photos", async () => {
+  const { service, images } = build({ role: "reader" });
+  const result = await service.attach({
+    userId: "u",
+    entryId: "e1",
+    images: [Buffer.from("a")],
+  });
+  assert.equal(result.ok, false);
+  assert.equal(!result.ok && result.httpCode, 404);
+  assert.equal(images.stored.length, 0);
+});
+
+test("joindre à une journée inconnue ou en lecture est refusé", async () => {
+  const missing = build();
+  const r1 = await missing.service.attach({
+    userId: "u",
+    entryId: "nope",
+    images: [Buffer.from("a")],
+  });
+  assert.equal(!r1.ok && r1.httpCode, 404);
+
+  const processing = build({
+    entries: [entryRecord({ id: "e1", status: "processing" })],
+  });
+  const r2 = await processing.service.attach({
+    userId: "u",
+    entryId: "e1",
+    images: [Buffer.from("a")],
+  });
+  assert.equal(!r2.ok && r2.httpCode, 409);
+});
+
+test("le plafond de pages par journée est respecté", async () => {
+  const { service, images } = build({
+    existingPages: { e1: Array.from({ length: 19 }, (_, i) => `p${i}.jpg`) },
+  });
+  const result = await service.attach({
+    userId: "u",
+    entryId: "e1",
+    images: [Buffer.from("a"), Buffer.from("b")],
+  });
+  assert.equal(!result.ok && result.httpCode, 413);
+  assert.equal(images.stored.length, 0);
+});
+
+test("une image indécodable ne laisse rien derrière elle", async () => {
+  const { service, images, attachments } = build();
+  images.rejectNext = true;
+  const result = await service.attach({
+    userId: "u",
+    entryId: "e1",
+    images: [Buffer.from("a")],
+  });
+  assert.equal(!result.ok && result.httpCode, 422);
+  assert.deepEqual(await attachments.pathsFor("e1"), []);
 });

@@ -3,7 +3,7 @@ import { SOURCES } from "../../domain/entry-metadata.js";
 import type { McpTool } from "../protocol.js";
 import {
   MAX_PAGES,
-  decodeBase64Image,
+  collectPages,
   errorContent,
   jsonContent,
 } from "../protocol.js";
@@ -52,31 +52,9 @@ export const uploadDailyNoteTool: McpTool = {
         },
       },
       async ({ images, imageIds, childId, date, source }) => {
-        const buffers: Buffer[] = [];
-
-        if (imageIds?.length) {
-          const resolved = await ctx.uploads.resolve(ctx.user.id, imageIds);
-          if (!resolved.ok) return errorContent(resolved.error);
-          buffers.push(...resolved.buffers);
-        }
-        if (images?.length) {
-          for (const [i, img] of images.entries()) {
-            const buf = decodeBase64Image(img);
-            if (!buf)
-              return errorContent(
-                `Image ${i + 1} invalide : chaîne base64 non décodable.`,
-              );
-            buffers.push(buf);
-          }
-        }
-
-        if (!buffers.length)
-          return errorContent(
-            "Aucune page fournie : renseignez `images` (base64) ou `imageIds` (pré-téléversées via POST /api/mcp/uploads).",
-          );
-        if (buffers.length > MAX_PAGES)
-          return errorContent(`Trop de pages (max ${MAX_PAGES} par journée).`);
-
+        const pages = await collectPages(ctx, images, imageIds);
+        if (!pages.ok) return errorContent(pages.error);
+        const buffers = pages.buffers;
         const result = await ctx.ingest.ingest({
           userId: ctx.user.id,
           images: buffers,

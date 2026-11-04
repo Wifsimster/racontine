@@ -1,5 +1,6 @@
 import type { McpTool } from "../protocol.js";
 import { adminConsoleTool } from "./admin-console.js";
+import { attachDailyNotePagesTool } from "./attach-daily-note-pages.js";
 import { createDailyNoteTool } from "./create-daily-note.js";
 import { getDailyNoteTool } from "./get-daily-note.js";
 import { instanceStatusTool } from "./instance-status.js";
@@ -20,6 +21,7 @@ export const MCP_TOOLS: readonly McpTool[] = [
   listChildrenTool,
   uploadDailyNoteTool,
   createDailyNoteTool,
+  attachDailyNotePagesTool,
   listDailyNotesTool,
   getDailyNoteTool,
   instanceStatusTool,
