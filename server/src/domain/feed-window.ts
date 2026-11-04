@@ -28,3 +28,7 @@ export function lastDayOfMonth(month: string): string | null {
 export function parseView(raw: unknown): "reader" | null {
   return raw === "reader" ? "reader" : null;
 }
+
+export function parsePending(raw: unknown): boolean {
+  return raw === "1" || raw === "true";
+}

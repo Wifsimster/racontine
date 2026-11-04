@@ -4,16 +4,19 @@ import type { Entry } from "@/lib/types";
 import { capitalize, dayMonthShort, fr } from "@/lib/format";
 import { ChildMark } from "@/components/ChildMark";
 import { GlanceStrip, glanceOf, pickGlance } from "./glance";
-import { StatusBadge, UnreadDot, isUnread } from "./EntryCard";
+import { StatusBadge, UnreadDot, isUnread, pendingCount } from "./EntryCard";
 
 export function EntryRow({
   entry,
   showChild = false,
+  canEdit = false,
 }: {
   entry: Entry;
   showChild?: boolean;
+  canEdit?: boolean;
 }) {
-  const aBadge = entry.status !== "published";
+  const aBadge =
+    entry.status !== "published" || (canEdit && pendingCount(entry) > 0);
   const unread = isUnread(entry);
   const shown = pickGlance(glanceOf(entry)).slice(0, aBadge ? 1 : 2);
   return (
@@ -40,7 +43,7 @@ export function EntryRow({
         {(shown.length > 0 || aBadge) && (
           <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <GlanceStrip stats={shown} />
-            <StatusBadge entry={entry} canEdit={false} />
+            <StatusBadge entry={entry} canEdit={canEdit} />
           </span>
         )}
       </div>

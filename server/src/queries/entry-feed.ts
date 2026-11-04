@@ -19,7 +19,11 @@ import {
   notifications,
 } from "../db/schema.js";
 import { childRole } from "../access.js";
-import { timelineScope } from "../domain/visibility.js";
+import {
+  reviewQueueChildIds,
+  seesDrafts,
+  timelineScope,
+} from "../domain/visibility.js";
 
 export type FeedEntry = Awaited<ReturnType<typeof findEntryWithRelations>>;
 
@@ -58,6 +62,7 @@ export type TimelinePage =
       entries: (NonNullable<FeedEntry> & ReadState)[];
       nextCursor: string | null;
       unreadCount: number;
+      pendingCount?: number;
     };
 
 export type TimelineMonths =
@@ -74,6 +79,34 @@ function visibleTo(scope: { childIds: string[]; draftableChildIds: string[] }) {
         : undefined,
     ),
   );
+}
+
+const pendingUncertainty = sql`exists (
+  select 1
+  from jsonb_array_elements(
+    case when jsonb_typeof(${entries.uncertainties}) = 'array'
+      then ${entries.uncertainties} else '[]'::jsonb end
+  ) as incertitude(v)
+  where case jsonb_typeof(incertitude.v)
+    when 'string' then btrim(incertitude.v #>> '{}') <> ''
+    when 'object' then
+      btrim(coalesce(incertitude.v ->> 'original', '')) <> ''
+      and coalesce(incertitude.v ->> 'resolved', '') = ''
+    else false
+  end
+)`;
+
+function toVerify(childIds: string[]) {
+  return and(inArray(entries.childId, childIds), pendingUncertainty);
+}
+
+async function countPending(childIds: string[]) {
+  if (!childIds.length) return 0;
+  const [row] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(entries)
+    .where(toVerify(childIds));
+  return row?.n ?? 0;
 }
 
 async function readingScope(
@@ -146,6 +179,7 @@ export async function listTimeline(params: {
   cursor?: string | null;
   from?: string | null;
   asReader?: boolean;
+  pending?: boolean;
 }): Promise<TimelinePage> {
   const scope = await readingScope(
     params.userId,
@@ -155,6 +189,15 @@ export async function listTimeline(params: {
   if (scope.kind === "denied") return { kind: "denied" };
   if (scope.kind === "empty")
     return { kind: "page", entries: [], nextCursor: null, unreadCount: 0 };
+
+  const queue = reviewQueueChildIds(scope);
+  if (params.pending && !queue.length)
+    return {
+      kind: "page",
+      entries: [],
+      nextCursor: null,
+      unreadCount: await countUnread(params.userId, scope.childIds),
+    };
 
   const anchor = params.cursor
     ? (
@@ -169,6 +212,7 @@ export async function listTimeline(params: {
   const rows = await db.query.entries.findMany({
     where: and(
       visibleTo(scope),
+      params.pending ? toVerify(queue) : undefined,
       params.from ? lte(entries.date, params.from) : undefined,
       anchor
         ? sql`(${entries.date}, ${entries.createdAt}, ${entries.id}) < (
@@ -187,9 +231,10 @@ export async function listTimeline(params: {
     },
   });
 
-  const [withReads, unreadCount] = await Promise.all([
+  const [withReads, unreadCount, pendingCount] = await Promise.all([
     readStates(params.userId, rows),
     countUnread(params.userId, scope.childIds),
+    queue.length ? countPending(queue) : undefined,
   ]);
 
   return {
@@ -197,6 +242,7 @@ export async function listTimeline(params: {
     entries: withReads,
     nextCursor: rows.length === params.limit ? (rows[rows.length - 1]?.id ?? null) : null,
     unreadCount,
+    ...(pendingCount === undefined ? {} : { pendingCount }),
   };
 }
 
@@ -204,6 +250,7 @@ export async function listTimelineMonths(params: {
   userId: string;
   childId?: string;
   asReader?: boolean;
+  pending?: boolean;
 }): Promise<TimelineMonths> {
   const scope = await readingScope(
     params.userId,
@@ -212,12 +259,14 @@ export async function listTimelineMonths(params: {
   );
   if (scope.kind === "denied") return { kind: "denied" };
   if (scope.kind === "empty") return { kind: "months", months: [] };
+  const queue = reviewQueueChildIds(scope);
+  if (params.pending && !queue.length) return { kind: "months", months: [] };
 
   const month = sql<string>`to_char(${entries.date}, 'YYYY-MM')`;
   const rows = await db
     .select({ month, count: sql<number>`count(*)::int` })
     .from(entries)
-    .where(visibleTo(scope))
+    .where(and(visibleTo(scope), params.pending ? toVerify(queue) : undefined))
     .groupBy(month)
     .orderBy(sql`1 desc`);
 
@@ -231,6 +280,41 @@ export async function findVisibleEntry(userId: string, entryId: string) {
   if (!role) return null;
   if (role === "reader" && entry.status !== "published") return null;
   return entry;
+}
+
+export type Neighbours = { prevId: string | null; nextId: string | null };
+
+export async function findNeighbours(
+  userId: string,
+  entry: { id: string; childId: string },
+): Promise<Neighbours> {
+  const role = await childRole(userId, entry.childId);
+  if (!role) return { prevId: null, nextId: null };
+  const visible = and(
+    eq(entries.childId, entry.childId),
+    seesDrafts(role) ? undefined : eq(entries.status, "published"),
+  );
+  const position = (op: "<" | ">") =>
+    sql`(${entries.date}, ${entries.createdAt}, ${entries.id}) ${sql.raw(op)} (
+      SELECT repere.date, repere.created_at, repere.id
+      FROM ${entries} AS repere
+      WHERE repere.id = ${entry.id}
+    )`;
+  const [prev, next] = await Promise.all([
+    db
+      .select({ id: entries.id })
+      .from(entries)
+      .where(and(visible, position("<")))
+      .orderBy(desc(entries.date), desc(entries.createdAt), desc(entries.id))
+      .limit(1),
+    db
+      .select({ id: entries.id })
+      .from(entries)
+      .where(and(visible, position(">")))
+      .orderBy(asc(entries.date), asc(entries.createdAt), asc(entries.id))
+      .limit(1),
+  ]);
+  return { prevId: prev[0]?.id ?? null, nextId: next[0]?.id ?? null };
 }
 
 export type BatchSummary = {
