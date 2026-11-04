@@ -2,6 +2,13 @@
 
 Toutes les versions notables de Racontine. Format issu des messages de commit conventionnels (`feat`, `fix`, …).
 
+# [1.49.0](https://github.com/Wifsimster/racontine/compare/v1.48.0...v1.49.0) (2026-11-04)
+
+
+### Features
+
+* **mcp:** joindre et retirer des photos souvenirs ([#140](https://github.com/Wifsimster/racontine/issues/140)) ([4152769](https://github.com/Wifsimster/racontine/commit/4152769a3f8194d93d81f76e59cc61c26f4869df))
+
 # [1.48.0](https://github.com/Wifsimster/racontine/compare/v1.47.0...v1.48.0) (2026-11-04)
 
 
