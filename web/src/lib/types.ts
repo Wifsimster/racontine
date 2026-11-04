@@ -308,3 +308,58 @@ export type ErasureBlock = {
   code?: "subscription_active" | "instance_owner" | "sole_admin";
   carnets: CarnetRef[];
 };
+
+export type TrendPeriod = "4s" | "3m" | "12m";
+
+export type AppetiteLevel = "tout" | "bien" | "partie" | "peu" | "refus" | "autre";
+
+export type NapWeek = {
+  weekStart: string;
+  averageMinutes: number | null;
+  days: number;
+};
+
+export type TrendsResponse = {
+  child: { id: string; name: string };
+  period: TrendPeriod;
+  years: number[];
+  trends: {
+    range: { from: string; to: string };
+    days: number;
+    naps: { weeks: NapWeek[]; averageMinutes: number | null; days: number };
+    appetite: {
+      levels: { level: AppetiteLevel; label: string; count: number }[];
+      unspecified: number;
+    };
+    activities: { label: string; count: number }[];
+    health: { date: string; note: string }[];
+    anecdotes: { date: string; text: string }[];
+  };
+};
+
+export type BookPhoto = {
+  id: string;
+  width: number | null;
+  height: number | null;
+  url: string;
+  thumbUrl: string;
+};
+
+export type BookDay = {
+  id: string;
+  date: string;
+  source: EntrySource;
+  title: string | null;
+  story: string | null;
+  highlight: string | null;
+  mood: string | null;
+  items: { type: ItemType; data: EntryItem["data"] }[];
+  photos: BookPhoto[];
+};
+
+export type BookResponse = {
+  child: { id: string; name: string; birthdate: string | null };
+  year: number;
+  years: number[];
+  months: { month: string; days: BookDay[] }[];
+};

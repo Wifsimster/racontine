@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { db } from "../src/db/index.js";
-import { attachments, children, memberships as membershipRows, user } from "../src/db/schema.js";
+import { attachments, children, entries as entryRows, entryItems, memberships as membershipRows, user } from "../src/db/schema.js";
 import { eq } from "drizzle-orm";
 import {
   DrizzleAttachmentRepository,
@@ -22,6 +22,7 @@ import {
   markAllRead,
   setEntryRead,
 } from "../src/queries/entry-feed.js";
+import { loadTrends, loadYearBook } from "../src/queries/trends.js";
 import { DuplicateEntryError, EntryNotReviewableError } from "../src/domain/errors.js";
 
 const ok = (label: string) => console.log("  ok —", label);
@@ -349,6 +350,44 @@ assert.equal(counts.find((c) => c.status === "draft")?.count, 1);
 assert.equal((await admin.lastPublished([child.id]))[0]?.childId, child.id);
 assert.deepEqual((await admin.members([child.id])).map((m) => m.userId), [owner]);
 ok("la console d'administration ne voit que les carnets qu'on administre");
+
+const tChild = await childRepo.createWithOwner({ name: "Tim", ownerUserId: owner });
+const [pub, brouillon] = await db
+  .insert(entryRows)
+  .values([
+    { childId: tChild.id, date: "2026-10-27", status: "published", title: "Le parc" },
+    { childId: tChild.id, date: "2026-10-28", status: "draft", title: "Brouillon" },
+  ])
+  .returning();
+await db.insert(entryItems).values([
+  { entryId: pub.id, type: "nap", data: { debut: "13h", fin: "15h" }, position: 0 },
+  { entryId: pub.id, type: "meal", data: { moment: "midi", contenu: "purée", appetit: "tout mangé" }, position: 1 },
+  { entryId: pub.id, type: "health", data: { note: "Nez qui coule" }, position: 2 },
+  { entryId: brouillon.id, type: "nap", data: { debut: "9h", fin: "12h" }, position: 0 },
+]);
+await db.insert(attachments).values([
+  { entryId: pub.id, kind: "souvenir", originalPath: "x.jpg", mime: "image/jpeg" },
+  { entryId: pub.id, kind: "carnet", originalPath: "y.jpg", mime: "image/jpeg" },
+]);
+const tendances = await loadTrends({ userId: owner, childId: tChild.id, period: "4s", today: "2026-11-04" });
+assert.equal(tendances.kind, "trends");
+if (tendances.kind === "trends") {
+  assert.equal(tendances.trends.days, 1);
+  assert.equal(tendances.trends.naps.averageMinutes, 120);
+  assert.equal(tendances.trends.appetite.levels[0].count, 1);
+  assert.deepEqual(tendances.trends.health, [{ date: "2026-10-27", note: "Nez qui coule" }]);
+  assert.deepEqual(tendances.years, [2026]);
+}
+assert.equal((await loadTrends({ userId: invitee, childId: tChild.id, period: "4s", today: "2026-11-04" })).kind, "denied");
+const livre = await loadYearBook({ userId: owner, childId: tChild.id, year: 2026 });
+assert.equal(livre.kind, "book");
+if (livre.kind === "book") {
+  assert.deepEqual(livre.entries.map((e) => e.title), ["Le parc"]);
+  assert.equal(livre.entries[0].attachments.length, 1);
+}
+assert.equal((await loadYearBook({ userId: invitee, childId: tChild.id, year: 2026 })).kind, "denied");
+await db.delete(children).where(eq(children.id, tChild.id));
+ok("tendances et livre de l'année ne lisent que le publié, et seulement pour les proches");
 
 const reclaimed = await repo.reclaimProcessing("interrompue");
 console.log("  ok — reclaimProcessing :", reclaimed, "journée(s) orpheline(s)");

@@ -23,6 +23,9 @@ import type {
   CreatedMcpToken,
   UserLlm,
   ErasurePreview,
+  TrendPeriod,
+  TrendsResponse,
+  BookResponse,
 } from "./types";
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
@@ -107,6 +110,16 @@ export const api = {
       `/api/entries/months${qs ? `?${qs}` : ""}`,
     );
   },
+
+  trends: (childId: string, period: TrendPeriod) =>
+    req<TrendsResponse>(
+      `/api/trends?${new URLSearchParams({ childId, period })}`,
+    ),
+
+  yearBook: (childId: string, year: number | null) =>
+    req<BookResponse>(
+      `/api/book?${new URLSearchParams(year ? { childId, annee: String(year) } : { childId })}`,
+    ),
 
   setEntryRead: (id: string, read: boolean) =>
     req<{ read: boolean; readAt: string | null }>(`/api/entries/${id}/read`, {

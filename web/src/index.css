@@ -683,3 +683,86 @@
     display: none;
   }
 }
+
+@page {
+  size: A4;
+  margin: 16mm 15mm 18mm;
+}
+
+@media print {
+  :root:root {
+    color-scheme: light;
+    --background: rgb(249 247 242);
+    --card: rgb(254 253 250);
+    --popover: rgb(254 253 250);
+    --foreground: rgb(36 40 70);
+    --card-foreground: rgb(36 40 70);
+    --popover-foreground: rgb(36 40 70);
+    --muted-foreground: rgb(80 84 104);
+    --primary: rgb(184 40 77);
+    --border: rgb(219 221 232);
+    --destructive: rgb(179 36 31);
+    --warning: rgb(124 86 0);
+    --success: rgb(14 101 63);
+    --rule: rgb(219 222 241);
+    --rule-margin: rgb(184 40 77 / 0.4);
+    --meal: rgb(125 74 30);
+    --nap: rgb(63 78 151);
+    --activity: rgb(14 101 63);
+    --anecdote: rgb(124 59 139);
+    --health: rgb(165 43 30);
+  }
+  html,
+  body {
+    background: #fff;
+  }
+  main {
+    padding: 0 !important;
+  }
+  .livre {
+    max-width: none;
+    padding: 0;
+    gap: 0;
+  }
+  .livre-couverture {
+    min-height: 240mm;
+    justify-content: center;
+    border: 0;
+    break-after: page;
+  }
+  .livre-prenom {
+    font-size: 4.5rem;
+    line-height: 5rem;
+  }
+  .livre-annee {
+    font-size: 2.5rem;
+    line-height: 3rem;
+  }
+  .livre-mois {
+    break-before: page;
+    gap: 0;
+  }
+  .livre-mois > h2 {
+    margin-bottom: 6mm;
+    break-after: avoid;
+  }
+  .livre-jour {
+    break-inside: avoid;
+    padding-top: 5mm;
+    margin-bottom: 5mm;
+  }
+  .livre-jour header {
+    break-after: avoid;
+  }
+  .livre-jour .carnet-story {
+    orphans: 3;
+    widows: 3;
+  }
+  .livre-photos {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    break-inside: avoid;
+  }
+  .livre-photos img {
+    max-height: 60mm;
+  }
+}
