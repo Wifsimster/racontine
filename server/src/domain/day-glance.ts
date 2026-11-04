@@ -3,14 +3,20 @@ import type { ItemType } from "./entry-items.js";
 
 const NBSP = "\u00a0";
 
-function parseTime(s?: string | null): number | null {
+export function parseTime(s?: string | null): number | null {
   if (!s) return null;
-  const m = s.match(/(\d{1,2})\s*[h:]\s*(\d{2})?/);
+  const m = s.match(/(\d{1,2})\s*[h:]\s*(\d{2})?/i);
   if (!m) return null;
   const h = Number(m[1]);
   const min = m[2] ? Number(m[2]) : 0;
   if (h > 23 || min > 59) return null;
   return h * 60 + min;
+}
+
+export function napMinutes(nap: NapData): number | null {
+  const a = parseTime(nap.debut);
+  const b = parseTime(nap.fin);
+  return a !== null && b !== null && b > a ? b - a : null;
 }
 
 function formatDuration(min: number): string {
@@ -45,10 +51,7 @@ export function dayChips(day: {
   if (naps.length > 0) {
     let total = 0;
     for (const n of naps) {
-      const d = n.data as NapData;
-      const a = parseTime(d.debut);
-      const b = parseTime(d.fin);
-      if (a !== null && b !== null && b > a) total += b - a;
+      total += napMinutes(n.data as NapData) ?? 0;
     }
     const noun = naps.length > 1 ? "siestes" : "sieste";
     chips.push({

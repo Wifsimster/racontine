@@ -77,7 +77,7 @@ export function monthYear(iso: string): string {
 
 export function parseTime(s?: string | null): number | null {
   if (!s) return null;
-  const m = s.match(/(\d{1,2})\s*[h:]\s*(\d{2})?/);
+  const m = s.match(/(\d{1,2})\s*[h:]\s*(\d{2})?/i);
   if (!m) return null;
   const h = Number(m[1]);
   const min = m[2] ? Number(m[2]) : 0;
