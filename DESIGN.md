@@ -319,6 +319,7 @@ shadcn `new-york`, `radix-ui`, `lucide-react` (45 imports). Installés :
 | `Highlight` | le temps fort en post-it jaune incliné, étoile `--spark` | `features/journal/EntryCard.tsx` |
 | `NewSticker` | gommette « Nouveau » groseille sur une journée non lue | `features/journal/EntryCard.tsx` |
 | `Avatar` | initiales sur pastille de feutre (teinte stable par nom), posée par défaut dans `MemberRow` | `components/MemberRow.tsx` |
+| `MonthCalendar` | en mode Parcourir, un calendrier par mois sous l'en-tête collant : case groseille douce par journée (fond `warning-bg` si à relire), pastilles `ITEM_DOT` des moments, étoile si temps fort, anneau groseille si non lue ; chaque case est un lien vers la journée | `features/journal/MonthCalendar.tsx` |
 | `CarnetSticker` | le petit carnet dessiné (portes de connexion, capture vide) | `components/CarnetSticker.tsx` |
 | `MemberRow` | ligne de membre partagée (Proches, Partager, Administration), avatar à initiales, rôle verrouillé en texte | `components/MemberRow.tsx` |
 | `Label` | Pas de `leading-none` | `ui/label.tsx` |
