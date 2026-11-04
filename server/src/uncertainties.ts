@@ -121,3 +121,15 @@ export function tidyUncertainties(raw: unknown): Uncertainty[] {
     .filter((u) => u && typeof u.original === "string" && u.original.trim())
     .map(tidyUncertainty);
 }
+
+export function isPendingUncertainty(raw: unknown): boolean {
+  if (typeof raw === "string") return raw.trim() !== "";
+  if (!raw || typeof raw !== "object") return false;
+  const u = raw as { original?: unknown; resolved?: unknown };
+  if (typeof u.original !== "string" || !u.original.trim()) return false;
+  return typeof u.resolved !== "string" || u.resolved === "";
+}
+
+export function pendingUncertaintyCount(raw: unknown): number {
+  return Array.isArray(raw) ? raw.filter(isPendingUncertainty).length : 0;
+}

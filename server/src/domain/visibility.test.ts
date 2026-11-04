@@ -1,6 +1,32 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { timelineScope } from "./visibility.js";
+import {
+  reviewQueueChildIds,
+  seesDrafts,
+  timelineScope,
+} from "./visibility.js";
+
+test("la file « à vérifier » ne couvre que les carnets qu'on peut corriger", () => {
+  const mems = [
+    { childId: "c1", role: "reader" as const },
+    { childId: "c2", role: "contributor" as const },
+    { childId: "c3", role: "admin" as const },
+  ];
+  assert.deepEqual(reviewQueueChildIds(timelineScope(mems)), ["c2", "c3"]);
+  assert.deepEqual(reviewQueueChildIds(timelineScope(mems, "c1")), []);
+  assert.deepEqual(
+    reviewQueueChildIds(timelineScope(mems, undefined, { asReader: true })),
+    [],
+  );
+  assert.deepEqual(reviewQueueChildIds(timelineScope([])), []);
+  assert.deepEqual(reviewQueueChildIds(timelineScope(mems, "c9")), []);
+});
+
+test("seuls contributeur et admin voient les journées non publiées", () => {
+  assert.equal(seesDrafts("reader"), false);
+  assert.equal(seesDrafts("contributor"), true);
+  assert.equal(seesDrafts("admin"), true);
+});
 
 test("sans aucune adhésion, il n'y a rien à voir", () => {
   assert.deepEqual(timelineScope([]), { kind: "empty" });

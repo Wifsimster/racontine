@@ -89,11 +89,13 @@ export const api = {
       from?: string | null;
       limit?: number;
       asReader?: boolean;
+      pending?: boolean;
     } = {},
   ) => {
     const p = new URLSearchParams();
     if (opts.childId) p.set("childId", opts.childId);
     if (opts.asReader) p.set("view", "reader");
+    if (opts.pending) p.set("pending", "1");
     if (opts.cursor) p.set("cursor", opts.cursor);
     if (opts.from) p.set("from", opts.from);
     if (opts.limit) p.set("limit", String(opts.limit));
@@ -101,10 +103,15 @@ export const api = {
     return req<TimelinePage>(`/api/entries${qs ? `?${qs}` : ""}`);
   },
 
-  timelineMonths: (childId?: string | null, asReader = false) => {
+  timelineMonths: (
+    childId?: string | null,
+    asReader = false,
+    pending = false,
+  ) => {
     const p = new URLSearchParams();
     if (childId) p.set("childId", childId);
     if (asReader) p.set("view", "reader");
+    if (pending) p.set("pending", "1");
     const qs = p.toString();
     return req<{ months: JournalMonth[] }>(
       `/api/entries/months${qs ? `?${qs}` : ""}`,
