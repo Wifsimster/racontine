@@ -447,13 +447,13 @@ export default function Timeline() {
       {phase === "error" && (
         <JournalError
           message={error}
-          canCapture={canCapture}
+          canCapture={canCapture && !lecteur}
           onRetry={reload}
         />
       )}
 
       {phase === "ready" && entries.length === 0 && !cadre && (
-        <JournalEmpty canCapture={canCapture} carnetOuvert={carnetOuvert} />
+        <JournalEmpty canCapture={canCapture && !lecteur} carnetOuvert={carnetOuvert} />
       )}
 
       {phase === "ready" && entries.length === 0 && cadre && (
@@ -533,14 +533,14 @@ export default function Timeline() {
         <p
           className={cn(
             "surtitre pt-2 text-center text-muted-foreground",
-            canCapture && carnetOuvert ? "pb-32" : "pb-2",
+            canCapture && carnetOuvert && !lecteur ? "pb-32" : "pb-2",
           )}
         >
           {entries.length} journée{entries.length > 1 ? "s" : ""} dans le carnet
         </p>
       )}
 
-      {hasJournal && canCapture && carnetOuvert && (
+      {hasJournal && canCapture && carnetOuvert && !lecteur && (
         <div
           className={cn(
             "pointer-events-none fixed inset-x-0 bottom-0 z-20 flex justify-center bg-gradient-to-t from-background via-surface-bar to-transparent px-4 pt-8 pb-safe-6",
