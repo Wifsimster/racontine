@@ -41,6 +41,7 @@ export const getDailyNoteTool: McpTool = {
             uncertainties: tidyUncertainties(entry.uncertainties),
             ...itemsToNoteLists(items),
             pageCount: entry.pageCount,
+            photoCount: entry.photoCount,
           },
         });
       },

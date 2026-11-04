@@ -22,7 +22,8 @@ export function folderName(name: string): string {
 
 function claim(taken: Set<string>, stem: string, ext = ""): string {
   let name = `${stem}${ext}`;
-  for (let n = 2; taken.has(name.toLowerCase()); n++) name = `${stem}-${n}${ext}`;
+  for (let n = 2; taken.has(name.toLowerCase()); n++)
+    name = `${stem}-${n}${ext}`;
   taken.add(name.toLowerCase());
   return name;
 }
@@ -39,17 +40,25 @@ export function planExportPhotos(
     const files = new Set<string>();
     return {
       ...carnet,
-      entries: carnet.entries.map((entry) => ({
-        ...entry,
-        pages: entry.pages.map((page, index) => {
-          const storedPath = stored.get(page.id);
-          if (!storedPath) return { ...page, file: null };
-          const ext = `.${EXTENSIONS[page.mime] ?? "bin"}`;
-          const file = `${folder}/${claim(files, `${entry.date}-${index + 1}`, ext)}`;
-          photos.push({ pageId: page.id, file, storedPath });
-          return { ...page, file };
-        }),
-      })),
+      entries: carnet.entries.map((entry) => {
+        const rank = { carnet: 0, souvenir: 0 };
+        return {
+          ...entry,
+          pages: entry.pages.map((page) => {
+            const n = ++rank[page.kind];
+            const storedPath = stored.get(page.id);
+            if (!storedPath) return { ...page, file: null };
+            const ext = `.${EXTENSIONS[page.mime] ?? "bin"}`;
+            const stem =
+              page.kind === "souvenir"
+                ? `${entry.date}-photo-${n}`
+                : `${entry.date}-${n}`;
+            const file = `${folder}/${claim(files, stem, ext)}`;
+            photos.push({ pageId: page.id, file, storedPath });
+            return { ...page, file };
+          }),
+        };
+      }),
     };
   });
 

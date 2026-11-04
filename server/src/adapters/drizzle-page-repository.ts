@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, count, eq } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { attachments, entries } from "../db/schema.js";
 import type { PageRecord, PageRepository } from "../ports.js";
@@ -9,6 +9,7 @@ export class DrizzlePageRepository implements PageRepository {
       .select({
         id: attachments.id,
         entryId: attachments.entryId,
+        kind: attachments.kind,
         originalPath: attachments.originalPath,
         thumbPath: attachments.thumbPath,
         mime: attachments.mime,
@@ -26,11 +27,13 @@ export class DrizzlePageRepository implements PageRepository {
   }
 
   async countSiblings(entryId: string): Promise<number> {
-    const rows = await db
-      .select({ id: attachments.id })
+    const [row] = await db
+      .select({ n: count() })
       .from(attachments)
-      .where(eq(attachments.entryId, entryId));
-    return rows.length;
+      .where(
+        and(eq(attachments.entryId, entryId), eq(attachments.kind, "carnet")),
+      );
+    return row?.n ?? 0;
   }
 
   async saveRotation(

@@ -199,6 +199,7 @@ export class DrizzlePrivacyRepository implements PrivacyRepository {
           })),
           pages: (pagesOf.get(e.id) ?? []).map((p) => ({
             id: p.id,
+            kind: p.kind,
             mime: p.mime,
             width: p.width,
             height: p.height,

@@ -42,6 +42,7 @@ import {
 } from "@/features/review/ReviewActionBar";
 import { ReadOnlyDay } from "@/features/review/ReadOnlyDay";
 import { SourcePage } from "@/features/review/source";
+import { SouvenirsEditor } from "@/features/journal/souvenirs";
 import { SegmentedControl } from "@/components/SegmentedControl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -862,6 +863,20 @@ export default function Review() {
               onChange={(e) => setMood(e.target.value)}
             />
           </div>
+
+          <SouvenirsEditor
+            entryId={entry.id}
+            childName={entry.child?.name}
+            date={entry.date}
+            souvenirs={entry.souvenirs ?? []}
+            onChange={(update) =>
+              setEntry((prev) =>
+                prev
+                  ? { ...prev, souvenirs: update(prev.souvenirs ?? []) }
+                  : prev,
+              )
+            }
+          />
 
           {error && (
             <div

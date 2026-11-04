@@ -99,6 +99,7 @@ export type Entry = {
   publishedAt: string | null;
   items: EntryItem[];
   attachments: AttachmentRef[];
+  souvenirs?: AttachmentRef[];
   batchId: string | null;
   read?: boolean;
   readAt?: string | null;

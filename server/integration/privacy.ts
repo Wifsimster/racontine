@@ -96,6 +96,14 @@ await db.insert(attachments).values([
     thumbPath: null,
     mime: "image/jpeg",
   },
+  {
+    entryId: published!.id,
+    kind: "souvenir",
+    originalPath: "2026/02/s1.jpg",
+    thumbPath: "2026/02/s1_thumb.jpg",
+    mime: "image/jpeg",
+    position: 1,
+  },
 ]);
 await db.insert(wordCorrections).values({
   childId: lou!.id,
@@ -149,9 +157,12 @@ assert.deepEqual(
 const louExport = mine.carnets.find((c) => c.name === "Lou")!;
 assert.equal(louExport.entries.length, 2);
 assert.equal(louExport.entries[0]!.items.length, 1);
-assert.equal(louExport.entries[0]!.pages.length, 1);
+assert.deepEqual(
+  louExport.entries[0]!.pages.map((p) => p.kind),
+  ["carnet", "souvenir"],
+);
 assert.match(louExport.entries[0]!.pages[0]!.url, /\?size=full&v=1$/);
-ok("un administrateur emporte ses carnets, brouillons compris");
+ok("un administrateur emporte ses carnets, brouillons et photos de l'enfant compris");
 
 const pageId = louExport.entries[0]!.pages[0]!.id;
 const pageFiles = await repo.pageFilesOf([pageId]);
@@ -167,6 +178,10 @@ assert.deepEqual(hers.carnets.map((c) => c.name), ["Lou"]);
 assert.deepEqual(
   hers.carnets[0]!.entries.map((e) => e.status),
   ["published"],
+);
+assert.equal(
+  hers.carnets[0]!.entries[0]!.pages.filter((p) => p.kind === "souvenir").length,
+  1,
 );
 ok("une lectrice n'emporte que le journal publié — comme à l'écran");
 
@@ -222,10 +237,10 @@ assert.equal(await repo.standingOn(mamie, anouk!.id), null);
 ok("hors du cercle, un carnet n'a pas d'existence");
 
 const files = await repo.filesOfChildren([lou!.id]);
-assert.equal(files.length, 2);
+assert.equal(files.length, 3);
 assert.deepEqual(
   files.map((f) => f.originalPath).sort(),
-  ["2026/02/p1.jpg", "2026/02/p2.jpg"],
+  ["2026/02/p1.jpg", "2026/02/p2.jpg", "2026/02/s1.jpg"],
 );
 assert.equal(files.find((f) => f.originalPath === "2026/02/p2.jpg")?.thumbPath, null);
 ok("les fichiers d'un carnet se retrouvent tous, miniature absente comprise");

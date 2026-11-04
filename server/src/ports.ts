@@ -3,7 +3,11 @@ import type { Entry, Uncertainty } from "./db/schema.js";
 import type { CarnetDay } from "./domain/carnet.js";
 import type { ItemRow } from "./domain/entry-items.js";
 import type { Source } from "./domain/entry-metadata.js";
-import type { MemberRole, SubscriptionCadence } from "./db/schema.js";
+import type {
+  AttachmentKind,
+  MemberRole,
+  SubscriptionCadence,
+} from "./db/schema.js";
 import type { CarnetStanding, ErasureSnapshot } from "./domain/erasure.js";
 
 export type StoredImage = {
@@ -128,11 +132,13 @@ export interface AttachmentRepository {
   pathsFor(entryId: string): Promise<string[]>;
   idsFor(entryId: string): Promise<string[]>;
   nextPosition(entryId: string): Promise<number>;
+  countOf(entryId: string, kind: AttachmentKind): Promise<number>;
   addMany(
     entryId: string,
     images: StoredImage[],
     startPosition: number,
-  ): Promise<void>;
+    kind?: AttachmentKind,
+  ): Promise<string[]>;
   moveTo(attachmentIds: string[], targetEntryId: string): Promise<void>;
 }
 
@@ -184,6 +190,7 @@ export interface ChildRepository {
 export type PageRecord = {
   id: string;
   entryId: string;
+  kind: AttachmentKind;
   originalPath: string;
   thumbPath: string | null;
   mime: string;
@@ -212,6 +219,7 @@ export type StoredFile = { originalPath: string; thumbPath: string | null };
 
 export type ExportedPage = {
   id: string;
+  kind: AttachmentKind;
   mime: string;
   width: number | null;
   height: number | null;

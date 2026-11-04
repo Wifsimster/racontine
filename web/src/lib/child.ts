@@ -38,3 +38,10 @@ export function ageLabel(
   if (rest === 0) return `${years} ans`;
   return `${years} ans et ${rest} mois`;
 }
+
+export function deName(name: string): string {
+  const clean = name.trim();
+  return /^[aeiouhàâäéèêëîïôöùûüœæ]/i.test(clean)
+    ? `d’${clean}`
+    : `de ${clean}`;
+}
