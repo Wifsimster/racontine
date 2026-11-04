@@ -2,6 +2,32 @@
 
 Toutes les versions notables de Racontine. Format issu des messages de commit conventionnels (`feat`, `fix`, …).
 
+# [1.47.0](https://github.com/Wifsimster/racontine/compare/v1.46.0...v1.47.0) (2026-11-04)
+
+
+### Features
+
+* **tendances:** page Tendances et livre de l'année imprimable ([#138](https://github.com/Wifsimster/racontine/issues/138)) ([2d55ea1](https://github.com/Wifsimster/racontine/commit/2d55ea1b7fd00b088bedcd5ea2d5ece71644d35e))
+
+# [1.46.0](https://github.com/Wifsimster/racontine/compare/v1.45.0...v1.46.0) (2026-11-04)
+
+
+### Features
+
+* **journal:** file « à vérifier » et navigation entre journées en lecture ([#135](https://github.com/Wifsimster/racontine/issues/135)) ([914294b](https://github.com/Wifsimster/racontine/commit/914294b858ecb29382b4bf4e778fa8ccb5c0b0bd))
+* **journal:** photos souvenirs de l'enfant sur une journée ([#137](https://github.com/Wifsimster/racontine/issues/137)) ([3b1f379](https://github.com/Wifsimster/racontine/commit/3b1f37912f15cc7f0a008c198d547b62bd9fab31))
+* **notifications:** abonner les proches et regrouper les envois ([#136](https://github.com/Wifsimster/racontine/issues/136)) ([aa0b620](https://github.com/Wifsimster/racontine/commit/aa0b62060c8a994a72edd9a71f26e8d3fc2b9dba))
+* **web:** refonte « Épure » — une seule surface, des filets, la lecture d'abord ([#134](https://github.com/Wifsimster/racontine/issues/134)) ([134ad3a](https://github.com/Wifsimster/racontine/commit/134ad3a30ef69a53014c27487023ac8d0cd3c35e))
+
+# [1.46.0](https://github.com/Wifsimster/racontine/compare/v1.45.0...v1.46.0) (2026-11-04)
+
+
+### Features
+
+* **journal:** file « à vérifier » et navigation entre journées en lecture ([#135](https://github.com/Wifsimster/racontine/issues/135)) ([914294b](https://github.com/Wifsimster/racontine/commit/914294b858ecb29382b4bf4e778fa8ccb5c0b0bd))
+* **notifications:** abonner les proches et regrouper les envois ([#136](https://github.com/Wifsimster/racontine/issues/136)) ([aa0b620](https://github.com/Wifsimster/racontine/commit/aa0b62060c8a994a72edd9a71f26e8d3fc2b9dba))
+* **web:** refonte « Épure » — une seule surface, des filets, la lecture d'abord ([#134](https://github.com/Wifsimster/racontine/issues/134)) ([134ad3a](https://github.com/Wifsimster/racontine/commit/134ad3a30ef69a53014c27487023ac8d0cd3c35e))
+
 # [1.45.0](https://github.com/Wifsimster/racontine/compare/v1.44.0...v1.45.0) (2026-11-04)
 
 

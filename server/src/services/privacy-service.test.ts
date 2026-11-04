@@ -106,6 +106,7 @@ function build(state: ConstructorParameters<typeof FakePrivacyRepo>[0] = {}) {
 function archiveWithPages(): ExportArchive {
   const page = (id: string) => ({
     id,
+    kind: "carnet" as const,
     mime: "image/jpeg",
     width: 1200,
     height: 1600,

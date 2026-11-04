@@ -15,6 +15,8 @@ import Account from "./pages/Account";
 import Abonnement from "./pages/Abonnement";
 import Settings from "./pages/Settings";
 import Administration from "./pages/Administration";
+import Tendances from "./pages/Tendances";
+import Livre from "./pages/Livre";
 
 const router = createBrowserRouter([
   { path: "/login", element: <Login /> },
@@ -27,6 +29,8 @@ const router = createBrowserRouter([
       { index: true, element: <Timeline /> },
       { path: "capture", element: <Capture /> },
       { path: "entries/:id", element: <Review /> },
+      { path: "tendances", element: <Tendances /> },
+      { path: "livre", element: <Livre /> },
       { path: "partage", element: <Share /> },
       { path: "proches", element: <Proches /> },
       { path: "compte", element: <Account /> },

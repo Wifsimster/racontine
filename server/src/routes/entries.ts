@@ -31,18 +31,30 @@ import { attachmentUrls } from "./attachment-urls.js";
 
 type SerializableEntry = NonNullable<Awaited<ReturnType<typeof findVisibleEntry>>>;
 
+type SerializableAttachment = SerializableEntry["attachments"][number];
+
+function attachmentRef(a: SerializableAttachment) {
+  return {
+    id: a.id,
+    mime: a.mime,
+    width: a.width,
+    height: a.height,
+    ...attachmentUrls(a),
+  };
+}
+
+function splitAttachments(list: SerializableAttachment[]) {
+  return {
+    attachments: list.filter((a) => a.kind === "carnet").map(attachmentRef),
+    souvenirs: list.filter((a) => a.kind === "souvenir").map(attachmentRef),
+  };
+}
+
 function serializeEntry(entry: SerializableEntry) {
   return {
     ...entry,
     uncertainties: tidyUncertainties(entry.uncertainties),
-    attachments: entry.attachments.map((a) => ({
-      id: a.id,
-      kind: a.kind,
-      mime: a.mime,
-      width: a.width,
-      height: a.height,
-      ...attachmentUrls(a),
-    })),
+    ...splitAttachments(entry.attachments),
   };
 }
 
@@ -134,10 +146,7 @@ export async function entriesRoutes(app: FastifyInstance) {
     return {
       entries: page.entries.map((e) => ({
         ...e,
-        attachments: e.attachments.map((a) => ({
-          id: a.id,
-          ...attachmentUrls(a),
-        })),
+        ...splitAttachments(e.attachments),
       })),
       nextCursor: page.nextCursor,
       unreadCount: page.unreadCount,

@@ -15,6 +15,7 @@ import {
   dayMonth,
   fullDate,
 } from "@/lib/format";
+import { deName } from "@/lib/child";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
@@ -80,18 +81,55 @@ export function PageStrip({
   );
 }
 
+export type ViewerKind = "carnet" | "souvenir";
+
+function viewerWords(kind: ViewerKind, childName: string | undefined) {
+  if (kind === "souvenir")
+    return {
+      noun: "photo",
+      dialog: (date: string) =>
+        childName
+          ? `Photos ${deName(childName)} du ${date}`
+          : `Photos du ${date}`,
+      alt: (_: number, date: string) => souvenirAlt(childName, date),
+      zoomIn: "Agrandir la photo",
+      zoomOut: "Ajuster la photo à l’écran",
+      close: "Fermer la photo",
+      hint: "Touchez la photo pour l’agrandir",
+    };
+  return {
+    noun: "page",
+    dialog: (date: string) => `Pages du carnet du ${date}`,
+    alt: (i: number, date: string) => `Page ${i + 1} du carnet du ${date}`,
+    zoomIn: "Agrandir la page du carnet",
+    zoomOut: "Ajuster la page à l’écran",
+    close: "Fermer la page du carnet",
+    hint: "Touchez la page pour l’agrandir",
+  };
+}
+
+export function souvenirAlt(childName: string | undefined, date: string) {
+  return childName
+    ? `Photo ${deName(childName)} le ${date}`
+    : `Photo du ${date}`;
+}
+
 export function PageViewer({
   pages,
   index,
   date,
   onIndex,
   onClose,
+  kind = "carnet",
+  childName,
 }: {
   pages: AttachmentRef[];
   index: number;
   date: string;
   onIndex: (i: number) => void;
   onClose: () => void;
+  kind?: ViewerKind;
+  childName?: string;
 }) {
   const closeRef = useRef<HTMLButtonElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -99,6 +137,7 @@ export function PageViewer({
   const count = pages.length;
   const dateText = fullDate(date);
   const shortDate = dayMonth(date);
+  const words = viewerWords(kind, childName);
 
   const [zoom, setZoom] = useState(false);
   useEffect(() => setZoom(false), [index]);
@@ -157,20 +196,18 @@ export function PageViewer({
       ref={rootRef}
       role="dialog"
       aria-modal="true"
-      aria-label={`Pages du carnet du ${dateText}`}
+      aria-label={words.dialog(dateText)}
       className="page-enter fixed inset-0 z-60 flex flex-col bg-background px-safe"
     >
       <div className="flex h-header shrink-0 items-center justify-between gap-2 border-b px-2 pt-safe">
         <p className="surtitre px-2 text-muted-foreground" data-tabular>
-          {shortDate} · page {index + 1} / {count}
+          {shortDate} · {words.noun} {index + 1} / {count}
         </p>
         <div className="flex shrink-0 items-center">
           <Button
             variant="ghost"
             size="icon"
-            aria-label={
-              zoom ? "Ajuster la page à l’écran" : "Agrandir la page du carnet"
-            }
+            aria-label={zoom ? words.zoomOut : words.zoomIn}
             aria-pressed={zoom}
             onClick={() => setZoom((v) => !v)}
           >
@@ -180,7 +217,7 @@ export function PageViewer({
             ref={closeRef}
             variant="ghost"
             size="icon"
-            aria-label="Fermer la page du carnet"
+            aria-label={words.close}
             onClick={onClose}
           >
             <X className="size-5" />
@@ -198,9 +235,7 @@ export function PageViewer({
         <button
           type="button"
           onClick={() => setZoom((v) => !v)}
-          aria-label={
-            zoom ? "Ajuster la page à l’écran" : "Agrandir la page du carnet"
-          }
+          aria-label={zoom ? words.zoomOut : words.zoomIn}
           aria-pressed={zoom}
           className={cn(
             "flex items-center justify-center rounded-xl",
@@ -211,9 +246,10 @@ export function PageViewer({
         >
           <img
             src={pages[index]?.url}
-            alt={`Page ${index + 1} du carnet du ${dateText}`}
+            alt={words.alt(index, dateText)}
             className={cn(
-              "seam block rounded-xl border border-input",
+              "seam block rounded-xl",
+              kind === "carnet" && "border border-input",
               zoom
                 ? "h-full w-auto max-w-none"
                 : "min-h-0 max-h-full max-w-full object-contain",
@@ -221,7 +257,7 @@ export function PageViewer({
           />
           {!zoom && (
             <span className="shrink-0 text-meta text-muted-foreground">
-              Touchez la page pour l’agrandir
+              {words.hint}
             </span>
           )}
         </button>

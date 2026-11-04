@@ -40,11 +40,13 @@ const README = `Racontine — vos données
 ${EXPORT_JSON}
   Le journal : vos carnets, les journées que vous pouvez lire, leurs moments,
   vos corrections, vos abonnements et vos notifications. Chaque page
-  photographiée y indique, dans « file », où trouver sa photo dans ce dossier.
+  photographiée ou photo de l'enfant y indique son genre dans « kind »
+  (carnet ou souvenir) et, dans « file », où la trouver dans ce dossier.
 
 photos/
   Les pages du carnet, rangées par enfant puis par date
-  (photos/<prénom>/<date>-<n° de page>.jpg).
+  (photos/<prénom>/<date>-<n° de page>.jpg), et les photos de l'enfant
+  ajoutées à une journée (photos/<prénom>/<date>-photo-<n°>.jpg).
 
 Aucun mot de passe, jeton ni clé n'y figure.
 `;

@@ -43,6 +43,7 @@ export type NoteDetail = {
     transcription: string | null;
     uncertainties: Uncertainty[];
     pageCount: number;
+    photoCount: number;
   };
   items: { type: ItemType; data: EntryItemData }[];
 };
@@ -119,7 +120,7 @@ export class DrizzleEntryQueries implements EntryQueries {
       with: {
         child: { columns: { name: true } },
         items: { orderBy: (i, { asc }) => [asc(i.position)] },
-        attachments: { columns: { id: true } },
+        attachments: { columns: { id: true, kind: true } },
       },
     });
     if (!entry) return null;
@@ -153,7 +154,9 @@ export class DrizzleEntryQueries implements EntryQueries {
         highlight: entry.highlight,
         transcription: entry.transcription,
         uncertainties: entry.uncertainties ?? [],
-        pageCount: entry.attachments.length,
+        pageCount: entry.attachments.filter((a) => a.kind === "carnet").length,
+        photoCount: entry.attachments.filter((a) => a.kind === "souvenir")
+          .length,
       },
       items: entry.items.map((i) => ({ type: i.type, data: i.data })),
     };

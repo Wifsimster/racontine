@@ -25,6 +25,9 @@ import type {
   UserLlm,
   CaptureReminder,
   ErasurePreview,
+  TrendPeriod,
+  TrendsResponse,
+  BookResponse,
 } from "./types";
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
@@ -117,6 +120,16 @@ export const api = {
     );
   },
 
+  trends: (childId: string, period: TrendPeriod) =>
+    req<TrendsResponse>(
+      `/api/trends?${new URLSearchParams({ childId, period })}`,
+    ),
+
+  yearBook: (childId: string, year: number | null) =>
+    req<BookResponse>(
+      `/api/book?${new URLSearchParams(year ? { childId, annee: String(year) } : { childId })}`,
+    ),
+
   setEntryRead: (id: string, read: boolean) =>
     req<{ read: boolean; readAt: string | null }>(`/api/entries/${id}/read`, {
       method: read ? "POST" : "DELETE",
@@ -173,6 +186,15 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ quarter }),
     }),
+
+  addSouvenirs: (entryId: string, files: File[]) => {
+    const fd = new FormData();
+    for (const f of files) fd.append("photos", f);
+    return req<{ souvenirs: AttachmentRef[]; total: number }>(
+      `/api/entries/${entryId}/souvenirs`,
+      { method: "POST", body: fd },
+    );
+  },
 
   deleteAttachment: (id: string) =>
     req<void>(`/api/attachments/${id}`, { method: "DELETE" }),

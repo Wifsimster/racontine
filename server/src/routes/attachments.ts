@@ -33,6 +33,44 @@ export async function attachmentsRoutes(app: FastifyInstance) {
     },
   );
 
+  app.post<{ Params: { id: string } }>(
+    "/api/entries/:id/souvenirs",
+    async (req, reply) => {
+      const images: Buffer[] = [];
+      try {
+        for await (const part of req.parts())
+          if (part.type === "file") images.push(await part.toBuffer());
+      } catch (err) {
+        const tooLarge =
+          err instanceof Error &&
+          /file too large|request.*too large/i.test(err.message);
+        return reply.code(tooLarge ? 413 : 400).send({
+          error: tooLarge
+            ? "Photo trop volumineuse (max 20 Mo par photo)."
+            : "Image indécodable (format non supporté ou fichier corrompu).",
+        });
+      }
+
+      const result = await pages.addSouvenirs({
+        userId: req.user!.id,
+        entryId: req.params.id,
+        images,
+      });
+      if (!result.ok)
+        return reply.code(result.httpCode).send({ error: result.error });
+
+      return reply.code(201).send({
+        souvenirs: result.added.map((a) => ({
+          id: a.id,
+          width: a.width,
+          height: a.height,
+          ...attachmentUrls({ id: a.id, rotation: 0 }),
+        })),
+        total: result.total,
+      });
+    },
+  );
+
   app.post<{ Params: { id: string }; Body: { quarter?: number } }>(
     "/api/attachments/:id/rotate",
     async (req, reply) => {

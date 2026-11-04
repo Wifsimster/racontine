@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { ChildMark } from "@/components/ChildMark";
 import { GlanceStrip, ItemLine, glanceOf, pickGlance } from "./glance";
 import { PageStrip } from "./pages";
+import { SouvenirCover } from "./souvenirs";
 
 export function pendingCount(entry: Entry): number {
   if (!Array.isArray(entry.uncertainties)) return 0;
@@ -132,12 +133,14 @@ export function EntryCard({
   entry,
   canEdit,
   onOpenPages,
+  onOpenSouvenirs,
   onRead,
   showChild = false,
 }: {
   entry: Entry;
   canEdit: boolean;
   onOpenPages: (entry: Entry, index: number, from: HTMLElement) => void;
+  onOpenSouvenirs?: (entry: Entry, index: number, from: HTMLElement) => void;
   onRead?: (entry: Entry, read: boolean) => void;
   showChild?: boolean;
 }) {
@@ -219,6 +222,7 @@ export function EntryCard({
     </Button>
   );
 
+  const souvenirs = entry.souvenirs ?? [];
   const rangeeBasse = hasStory || Boolean(bascule) || Boolean(action);
 
   return (
@@ -228,6 +232,16 @@ export function EntryCard({
       data-unread={unread || undefined}
       className="scroll-mt-28 rounded-xl border bg-card"
     >
+      {souvenirs.length > 0 && (
+        <SouvenirCover
+          souvenirs={souvenirs}
+          childName={entry.child?.name}
+          date={entry.date}
+          onOpen={(i, from) =>
+            (onOpenSouvenirs ?? onOpenPages)(entry, i, from)
+          }
+        />
+      )}
       <div
         className={cn(
           "flex flex-col gap-3 px-5 pt-4",

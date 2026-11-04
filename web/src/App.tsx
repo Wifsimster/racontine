@@ -8,6 +8,7 @@ import {
 } from "react-router-dom";
 import {
   BookOpenText,
+  ChartLine,
   CreditCard,
   LogOut,
   Menu,
@@ -86,6 +87,7 @@ export default function App() {
 
   const items: NavItem[] = [
     { to: "/", label: "Le journal", short: "Journal", icon: BookOpenText },
+    { to: "/tendances", label: "Tendances", short: "Tendances", icon: ChartLine },
     { to: "/proches", label: "Les proches", short: "Proches", icon: Users },
     { to: "/partage", label: "Partager", short: "Partager", icon: Share2 },
     { to: "/compte", label: "Mon compte", short: "Compte", icon: CircleUser },
@@ -125,12 +127,12 @@ export default function App() {
     <div className="min-h-svh">
       <a
         href="#contenu"
-        className="fixed top-2 left-4 z-60 -translate-y-24 rounded-xl bg-card px-4 py-3 text-ui font-bold text-foreground shadow-lift transition-transform dur-slow ease-page focus-visible:translate-y-0"
+        className="fixed top-2 left-4 z-60 print:hidden -translate-y-24 rounded-xl bg-card px-4 py-3 text-ui font-bold text-foreground shadow-lift transition-transform dur-slow ease-page focus-visible:translate-y-0"
       >
         Aller au contenu
       </a>
 
-      <header className="sticky top-0 z-50 border-b bg-surface-bar px-safe pt-safe backdrop-blur-md">
+      <header className="sticky top-0 z-50 border-b print:hidden bg-surface-bar px-safe pt-safe backdrop-blur-md">
         <div className="shell-width flex h-header items-center justify-between gap-2 px-4 lg:max-w-[64rem] lg:gap-6 lg:px-10">
           <Link
             to="/"
