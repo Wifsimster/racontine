@@ -1,9 +1,11 @@
 import { Link } from "react-router-dom";
-import { ArrowLeft, ArrowRight, BookOpenText, Check, Smile, Star } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpenText, Check, Smile } from "lucide-react";
 import { type Entry, SOURCE_LABELS } from "@/lib/types";
 import { capitalize, longDate } from "@/lib/format";
 import { itemKind } from "@/lib/items";
-import { ITEM_INK } from "@/lib/ui";
+import { ITEM_CHIP, ITEM_INK } from "@/lib/ui";
+import { TitreCarnet } from "@/components/TitreCarnet";
+import { Highlight } from "@/features/journal/EntryCard";
 import { cn } from "@/lib/utils";
 import { glanceOf, toDraftItems } from "./draft";
 import { Button } from "@/components/ui/button";
@@ -27,9 +29,12 @@ export function ReadOnlyDay({
               .filter(Boolean)
               .join(" · ")}
           </p>
-          <h1 className="mt-1 font-serif text-title font-semibold text-balance">
-            {entry.title || "La journée"}
-          </h1>
+          <TitreCarnet
+            title={entry.title || "La journée"}
+            tone="nap"
+            spark={false}
+            className="mt-1"
+          />
         </div>
         {showPublished && (
           <Badge variant="success" className="mt-0.5">
@@ -48,10 +53,12 @@ export function ReadOnlyDay({
           />
         )}
         {entry.story ? (
-          <div className="paper-ruled pl-10">
-            <p className="carnet-story m-0 whitespace-pre-line text-foreground">
-              {entry.story}
-            </p>
+          <div className="tape tape-blue mt-2 rounded-2xl border bg-card py-4 shadow-card">
+            <div className="paper-ruled pr-5 pl-12">
+              <p className="carnet-story m-0 whitespace-pre-line text-foreground">
+                {entry.story}
+              </p>
+            </div>
           </div>
         ) : (
           <p className="text-ui text-muted-foreground">
@@ -60,32 +67,28 @@ export function ReadOnlyDay({
           </p>
         )}
         {entry.highlight && (
-          <p className="flex items-start gap-2 font-serif text-body italic text-foreground">
-            <Star
-              aria-hidden="true"
-              className="mt-1.5 size-3.5 shrink-0 text-primary"
-            />
-            <span>
-              <span className="sr-only">Le temps fort : </span>
-              {entry.highlight}
-            </span>
-          </p>
+          <Highlight text={entry.highlight} className="-mt-2 ml-auto w-[88%]" />
         )}
       </article>
 
       {(entry.items.length > 0 || entry.mood) && (
-        <ul aria-label="Les moments de la journée" className="mt-6 divide-y border-y">
+        <ul aria-label="Les moments de la journée" className="mt-6 flex flex-col gap-2">
           {toDraftItems(entry.items).map((it, i) => {
             const { label, value } = glanceOf(it);
             const Icon = itemKind(it.type).Icon;
             return (
-              <li key={i} className="flex min-h-14 items-center gap-3 py-2">
-                <Icon
-                  className={cn("size-5 shrink-0", ITEM_INK[it.type])}
+              <li key={i} className="flex min-h-14 items-center gap-3 rounded-2xl border bg-card px-3 py-2.5 shadow-card">
+                <span
                   aria-hidden="true"
-                />
+                  className={cn(
+                    "grid size-10 shrink-0 -rotate-6 place-items-center rounded-xl",
+                    ITEM_CHIP[it.type],
+                  )}
+                >
+                  <Icon className="size-5" />
+                </span>
                 <span className="min-w-0">
-                  <span className="block text-meta font-bold text-muted-foreground">
+                  <span className={cn("block text-meta font-extrabold", ITEM_INK[it.type])}>
                     {label}
                   </span>
                   <span className="block text-ui text-pretty">{value}</span>
@@ -94,11 +97,13 @@ export function ReadOnlyDay({
             );
           })}
           {entry.mood && (
-            <li className="flex min-h-14 items-center gap-3 py-2">
-              <Smile
-                className="size-5 shrink-0 text-foreground"
+            <li className="flex min-h-14 items-center gap-3 rounded-2xl border bg-card px-3 py-2.5 shadow-card">
+              <span
                 aria-hidden="true"
-              />
+                className="grid size-10 shrink-0 -rotate-6 place-items-center rounded-xl bg-postit text-postit-ink"
+              >
+                <Smile className="size-5" />
+              </span>
               <span className="min-w-0">
                 <span className="block text-meta font-bold text-muted-foreground">
                   Humeur
@@ -116,7 +121,7 @@ export function ReadOnlyDay({
             La page du carnet
             {entry.attachments.length > 1 ? ` · ${entry.attachments.length}` : ""}
           </p>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-4 pt-3">
             {entry.attachments.map((a, i) => (
               <a
                 key={a.id}
@@ -124,12 +129,12 @@ export function ReadOnlyDay({
                 target="_blank"
                 rel="noreferrer"
                 aria-label={`Ouvrir la page ${i + 1} en grand`}
-                className="seam block overflow-hidden rounded-xl bg-muted"
+                className={cn("tape polaroid block", i % 2 ? "tilt-r tape-blue" : "tilt-l tape-green")}
               >
                 <img
                   src={a.thumbUrl}
                   alt={`Page ${i + 1} du carnet`}
-                  className="block aspect-square w-full object-cover object-top"
+                  className="seam block aspect-square w-full rounded-[0.25rem] bg-muted object-cover object-top"
                 />
               </a>
             ))}

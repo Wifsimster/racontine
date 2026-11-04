@@ -160,6 +160,7 @@ export default function Tendances() {
     <PageShell className="lg:max-w-[48rem] lg:px-10 lg:pt-8 lg:pb-12">
       <PageHeader
         title="Tendances"
+        tone="nap"
         lede="Ce que racontent les journées publiées, mises bout à bout."
       />
 

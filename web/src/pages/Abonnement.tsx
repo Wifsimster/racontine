@@ -52,6 +52,7 @@ export default function Abonnement() {
     <PageShell className="lg:max-w-[64rem] lg:px-10 lg:pt-8 lg:pb-12">
       <PageHeader
         title="L'abonnement"
+        tone="meal"
         lede="Une seule offre, pour tout le foyer. Lire le journal reste gratuit, toujours."
       />
 

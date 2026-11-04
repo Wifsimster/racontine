@@ -159,6 +159,7 @@ export default function Settings() {
   const header = (
     <PageHeader
       title="Réglages"
+        tone="nap"
       lede="Ils s'appliquent tout de suite à toute l'instance."
     />
   );

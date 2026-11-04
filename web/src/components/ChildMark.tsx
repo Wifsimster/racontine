@@ -22,7 +22,10 @@ export function ChildMark({
       aria-hidden="true"
       className={cn(
         "grid shrink-0 place-items-center font-serif font-semibold",
-        current ? "bg-primary-soft text-primary" : "bg-muted text-foreground",
+        current
+          ? "bg-primary text-primary-foreground"
+          : "bg-postit text-postit-ink",
+        "-rotate-6 shadow-card",
         SIZE[size],
         className,
       )}

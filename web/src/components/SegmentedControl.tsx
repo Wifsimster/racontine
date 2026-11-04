@@ -23,7 +23,10 @@ export function SegmentedControl<T extends string>({
     <div
       role="group"
       aria-label={label}
-      className={cn("inline-flex items-stretch gap-4", className)}
+      className={cn(
+        "inline-flex items-stretch gap-1 rounded-full bg-card p-1 shadow-card ring-1 ring-border",
+        className,
+      )}
     >
       {options.map((o) => {
         const active = o.value === value;
@@ -36,11 +39,10 @@ export function SegmentedControl<T extends string>({
               if (!active) onChange(o.value);
             }}
             className={cn(
-              "relative inline-flex min-h-11 items-center gap-1.5 rounded-md text-ui transition-colors dur-fast outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background [&_svg]:size-4",
-              "after:absolute after:inset-x-0 after:bottom-1.5 after:h-0.5 after:rounded-full after:transition-colors after:dur-fast",
+              "relative inline-flex min-h-11 items-center gap-1.5 rounded-full px-4 text-ui font-bold transition-colors dur-fast outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background [&_svg]:size-4",
               active
-                ? "font-bold text-foreground after:bg-primary"
-                : "text-muted-foreground after:bg-transparent hover:text-foreground",
+                ? "bg-foreground text-background"
+                : "text-muted-foreground hover:bg-accent hover:text-foreground",
             )}
           >
             {o.label}

@@ -302,6 +302,7 @@ export default function Proches() {
   const header = (
     <PageHeader
       title="Les proches"
+        tone="activity"
       lede="Choisissez les carnets dont chaque nouvelle journée vous est signalée."
     />
   );

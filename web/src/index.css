@@ -33,8 +33,30 @@
   src: url("/fonts/nunito-700.woff2") format("woff2");
 }
 
+@font-face {
+  font-family: "Fraunces";
+  font-style: italic;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/fraunces-700-italic.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Nunito";
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url("/fonts/nunito-800.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Caveat";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/caveat-600.woff2") format("woff2");
+}
+
 :root {
-  --radius: 0.75rem;
+  --radius: 1rem;
 
   --rule-pitch: 1.75rem;
 
@@ -124,9 +146,20 @@
   --health: rgb(165 43 30);
   --health-bg: rgb(255 231 224);
 
-  --elev-1: 0 0 #0000;
+  --paper-glow: rgb(251 241 237);
+  --postit: rgb(255 229 138);
+  --postit-ink: rgb(74 52 0);
+  --tape: rgb(184 40 77 / 0.2);
+  --tape-blue: rgb(63 78 151 / 0.18);
+  --tape-green: rgb(14 101 63 / 0.18);
+  --spark: rgb(232 178 30);
+  --polaroid: rgb(255 255 255);
+  --ink-hand: rgb(43 58 138);
+
+  --elev-1:
+    0 1px 2px rgb(36 40 70 / 0.05), 0 14px 30px -18px rgb(36 40 70 / 0.3);
   --elev-2:
-    0 2px 6px -2px rgb(36 40 70 / 0.12), 0 22px 48px -24px rgb(36 40 70 / 0.28);
+    0 2px 6px -2px rgb(36 40 70 / 0.12), 0 22px 48px -20px rgb(36 40 70 / 0.38);
 
   --safe-t: env(safe-area-inset-top, 0px);
   --safe-r: env(safe-area-inset-right, 0px);
@@ -198,7 +231,19 @@
     --health: rgb(245 157 139);
     --health-bg: rgb(64 38 33);
 
-    --elev-1: 0 0 #0000;
+    --paper-glow: rgb(36 26 40);
+    --postit: rgb(78 64 24);
+    --postit-ink: rgb(250 230 170);
+    --tape: rgb(238 125 141 / 0.22);
+    --tape-blue: rgb(166 179 241 / 0.2);
+    --tape-green: rgb(129 206 162 / 0.2);
+    --spark: rgb(240 196 80);
+    --polaroid: rgb(44 47 62);
+    --ink-hand: rgb(176 190 250);
+
+    --elev-1:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.05),
+      0 14px 30px -18px rgb(0 0 0 / 0.8);
     --elev-2:
       inset 0 1px 0 0 rgb(255 255 255 / 0.08),
       0 24px 48px -24px rgb(0 0 0 / 0.85);
@@ -289,11 +334,18 @@
   --color-health: var(--health);
   --color-health-bg: var(--health-bg);
 
+  --color-postit: var(--postit);
+  --color-postit-ink: var(--postit-ink);
+  --color-spark: var(--spark);
+  --color-polaroid: var(--polaroid);
+  --color-ink-hand: var(--ink-hand);
+
   --shadow-card: var(--elev-1);
   --shadow-lift: var(--elev-2);
 
   --font-sans: "Nunito", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Fraunces", Georgia, serif;
+  --font-hand: "Caveat", "Segoe Print", cursive;
 
   --text-overline: 0.6875rem;
   --text-overline--line-height: 1rem;
@@ -362,6 +414,14 @@
   }
 
   body {
+    background-color: var(--background);
+    background-image: linear-gradient(
+      180deg,
+      var(--paper-glow) 0,
+      var(--background) 32rem
+    );
+    background-repeat: no-repeat;
+    min-height: 100svh;
     @apply text-foreground;
     font-family: var(--font-sans);
     font-size: var(--text-ui);
@@ -404,6 +464,98 @@
 }
 
 @layer components {
+  .titre-carnet {
+    font-family: var(--font-sans);
+    font-weight: 800;
+    font-size: var(--text-display);
+    line-height: 2.25rem;
+    letter-spacing: -0.02em;
+  }
+  .titre-accent {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-weight: 700;
+    font-size: 1.12em;
+    letter-spacing: -0.01em;
+  }
+  .font-hand {
+    font-family: var(--font-hand);
+    font-weight: 600;
+  }
+
+  .sticker {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    border-radius: 0.875rem;
+    padding: 0.25rem 0.75rem;
+    font-weight: 800;
+    font-size: var(--text-meta);
+    line-height: 1.25rem;
+    box-shadow:
+      0 0 0 3px var(--polaroid),
+      0 8px 16px -8px rgb(36 40 70 / 0.45);
+  }
+
+  .postit {
+    background: var(--postit);
+    color: var(--postit-ink);
+    border-radius: 0.375rem 1rem 0.5rem 1.25rem;
+    box-shadow: 0 12px 22px -14px rgb(74 52 0 / 0.55);
+  }
+
+  .tape {
+    position: relative;
+  }
+  .tape::before {
+    content: "";
+    position: absolute;
+    top: -0.75rem;
+    left: calc(50% - 2.5rem);
+    width: 5rem;
+    height: 1.5rem;
+    background: var(--tape-color, var(--tape));
+    transform: rotate(var(--tape-angle, -4deg));
+    border-inline: 2px dashed rgb(255 255 255 / 0.55);
+    pointer-events: none;
+    z-index: 1;
+  }
+  .tape-blue {
+    --tape-color: var(--tape-blue);
+  }
+  .tape-green {
+    --tape-color: var(--tape-green);
+  }
+  .tape-right {
+    --tape-angle: 6deg;
+  }
+  .tape-right::before {
+    left: auto;
+    right: 1.5rem;
+  }
+
+  .polaroid {
+    background: var(--polaroid);
+    padding: 0.5rem 0.5rem 1.75rem;
+    border-radius: 0.375rem;
+    box-shadow:
+      0 0 0 1px var(--seam),
+      0 16px 28px -16px rgb(36 40 70 / 0.5);
+  }
+
+  .tilt-l {
+    rotate: -1.5deg;
+  }
+  .tilt-r {
+    rotate: 1.5deg;
+  }
+  .tilt-ll {
+    rotate: -4deg;
+  }
+  .tilt-rr {
+    rotate: 4deg;
+  }
+
   .paper-ruled {
     background-image: linear-gradient(var(--rule) 1px, transparent 1px);
     background-size: 100% var(--rule-pitch);

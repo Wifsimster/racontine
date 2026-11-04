@@ -26,6 +26,7 @@ export default function Account() {
     <PageShell className="lg:max-w-[64rem] lg:px-10 lg:pt-8 lg:pb-12">
       <PageHeader
         title="Mon compte"
+        tone="anecdote"
         lede="Votre rappel du carnet, votre clé de lecture, vos connexions Claude et vos données."
       />
 

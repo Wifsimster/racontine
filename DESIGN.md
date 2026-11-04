@@ -1,5 +1,5 @@
 ---
-name: Racontine — « Le carnet, en vrai »
+name: Racontine — « Le carnet de souvenirs »
 source: web/src/index.css
 mode: light + dark (.dark/.light class wins, else prefers-color-scheme)
 color-format: "sRGB rgb(); OKLCH spec kept in a comment next to each value"
@@ -97,8 +97,9 @@ colors:
     health: "rgb(245 157 139)"
     health-bg: "rgb(64 38 33)"
 typography:
-  sans: "\"Nunito\", ui-sans-serif, system-ui, sans-serif (400, 700)"
-  serif: "\"Fraunces\", Georgia, serif (600)"
+  sans: "\"Nunito\", ui-sans-serif, system-ui, sans-serif (400, 700, 800)"
+  serif: "\"Fraunces\", Georgia, serif (600, 700 italic)"
+  hand: "\"Caveat\", \"Segoe Print\", cursive (600)"
   scale:
     overline: { size: 0.6875rem, line-height: 1rem, tracking: 0.14em, weight: 700, usage: "ChildMark et libellés du stepper seulement" }
     meta: { size: 0.875rem, line-height: 1.25rem }
@@ -150,14 +151,15 @@ couleurs, surfaces hors app). Le sens de chaque teinte vit dans
 ## Overview
 
 Carnet de liaison de la crèche ou de la nounou, photographié puis mis au
-propre. Le langage est **« le carnet, en vrai »** : papier crème réglé, encre
-bleu-nuit, un trait de marge groseille, et des **feutres** — une couleur par
-type de moment. Trois règles tiennent tout (commentaire de tête de
-`index.css`) :
+propre. Le langage est **« le carnet de souvenirs »** (depuis le 2026-11-04,
+après « Épure ») : papier crème réglé, encre bleu-nuit, un trait de marge
+groseille, des **feutres** — une couleur par type de moment — et ce qu'on
+colle dans un carnet : post-it, ruban adhésif, polaroïds, gommettes. Trois
+règles tiennent tout :
 
 1. **Une couleur = un sens.** Chaque teinte est une paire encre / fond, mesurée dans les deux thèmes. Le groseille ne dit qu'une chose : l'action.
 2. **Six crans typographiques**, interlignes multiples de 4 px.
-3. **La structure vient des filets, pas des ombres.** Aucune surface posée n'a d'ombre ; seules les couches flottantes en portent une. La nuit est dessinée, pas inversée.
+3. **Le papier est posé sur la table.** Chaque surface (carte, ligne de moment, polaroïd) porte une ombre douce `shadow-card` ; les objets collés (post-it, page, gommette) sont légèrement inclinés, le texte long jamais. La nuit est dessinée, pas inversée.
 
 Teintes pensées en OKLCH, **écrites en sRGB** pour que tout outil de mesure
 de contraste lise des `rgb()` ; la spécification OKLCH est en commentaire à
@@ -224,8 +226,15 @@ répond à `.dark` / `.light` posé à la main, sinon à `prefers-color-scheme`
 ## Typography
 
 Polices auto-hébergées dans `web/public/fonts/` (hors ligne, cohérentes avec
-le futur export livre), `font-display: swap` : **Nunito** 400 et 700,
-**Fraunces** 600. Le sérif ne sert qu'aux deux crans du haut.
+le futur export livre), `font-display: swap` : **Nunito** 400, 700 et 800,
+**Fraunces** 600 et 700 italique, **Caveat** 600 (écriture manuscrite).
+
+Titre de page : composant `TitreCarnet` (`components/TitreCarnet.tsx`,
+utilisé par `PageHeader`). Le début en Nunito 800 (`.titre-carnet`), le
+dernier mot — ou `accent` — en Fraunces 700 italique coloré (`.titre-accent`,
+`tone` : `primary`, `nap`, `activity`, `anecdote`, `meal`), suivi d'un petit
+trait d'étincelle (`Spark`). Caveat (`.font-hand`) ne sert qu'à ce qui imite
+la main : le mot à vérifier en relecture, la légende des polaroïds.
 
 | Cran | Utilitaire | Taille / interligne | Extra |
 | --- | --- | --- | --- |
@@ -261,16 +270,17 @@ tailles de Button sont `h-11` (sauf `lg` `h-12`).
 
 | Token | Clair | Sombre |
 | --- | --- | --- |
-| `--elev-1` → `shadow-card` | `0 0 #0000` (aucune ombre) | `0 0 #0000` |
+| `--elev-1` → `shadow-card` | `0 1px 2px rgb(36 40 70 / 0.05), 0 14px 30px -18px rgb(36 40 70 / 0.3)` | `inset 0 1px 0 0 rgb(255 255 255 / 0.05), 0 14px 30px -18px rgb(0 0 0 / 0.8)` |
 | `--elev-2` → `shadow-lift` | `0 2px 6px -2px rgb(36 40 70 / 0.12), 0 22px 48px -24px rgb(36 40 70 / 0.28)` | `inset 0 1px 0 0 rgb(255 255 255 / 0.08), 0 24px 48px -24px rgb(0 0 0 / 0.85)` |
 
-Refonte « Épure » (2026-11-04) : les surfaces posées n'ont plus d'ombre, la
-structure vient des filets (`border`, `divide-y`). `shadow-lift` est réservé
-aux couches flottantes (menu, popover, dialogue).
+DA « carnet de souvenirs » (2026-11-04) : toute surface posée porte
+`shadow-card` en plus de son filet ; `shadow-lift` reste réservé aux couches
+flottantes (menu, popover, dialogue). Le fond du `body` a une lueur rosée en
+haut (`--paper-glow` → `--background` sur 32 rem).
 
 ## Shapes
 
-`--radius: 0.75rem`, pas de 4 px (`@theme inline` l. 351–358) :
+`--radius: 1rem`, pas de 4 px (`@theme inline` l. 351–358) :
 
 | Classe | Valeur | Commentaire du code |
 | --- | --- | --- |
@@ -281,8 +291,8 @@ aux couches flottantes (menu, popover, dialogue).
 | `rounded-2xl` | 20 px | La feuille (Card) |
 | `rounded-3xl` | 28 px | Vignette d'état vide |
 
-Composants : Card, carte de journée, Button et Input `rounded-xl`, Button
-`icon` `rounded-full`.
+Composants : Card et carte de journée `rounded-2xl`, Button `rounded-full`
+(pilule), Input `rounded-xl`, tuile de moment `rounded-xl` inclinée de -6°.
 
 ## Motion
 
@@ -301,13 +311,18 @@ shadcn `new-york`, `radix-ui`, `lucide-react` (45 imports). Installés :
 
 | Composant | Conventions | Source |
 | --- | --- | --- |
-| `Button` | `default` / `destructive` : fond plein + `shadow-card`, survol `*-hover` (on fonce, jamais de transparence) ; `outline` sur `bg-card` ; `secondary` bordé ; `link` souligné `decoration-primary/40` ; tailles toutes à 44 px | `ui/button.tsx` |
-| `Card` | `rounded-xl border bg-card py-5`, sans ombre | `ui/card.tsx` |
+| `Button` | pilule `rounded-full` ; `default` : fond groseille + ombre teintée groseille ; `destructive` : fond plein + `shadow-card`, survol `*-hover` (on fonce, jamais de transparence) ; `outline` sur `bg-card` ; `secondary` bordé ; `link` souligné `decoration-primary/40` ; tailles toutes à 44 px | `ui/button.tsx` |
+| `Card` | `rounded-2xl border bg-card py-5 shadow-card` | `ui/card.tsx` |
 | `Input` | `rounded-xl border-input bg-card text-body` | `ui/input.tsx` |
-| `SegmentedControl` | bascule texte (`aria-pressed`), actif gras souligné groseille : Lire/Parcourir, La page/Mot à mot | `components/SegmentedControl.tsx` |
-| `MemberRow` | ligne de membre partagée (Proches, Partager, Administration), rôle verrouillé en texte | `components/MemberRow.tsx` |
+| `SegmentedControl` | pilule sur `bg-card` (`aria-pressed`), segment actif plein encre (`bg-foreground text-background`) : Lire/Parcourir, La page/Mot à mot | `components/SegmentedControl.tsx` |
+| `TitreCarnet` / `PageHeader` | titre de page à mot accentué, voir Typography | `components/TitreCarnet.tsx`, `components/PageState.tsx` |
+| `Highlight` | le temps fort en post-it jaune incliné, étoile `--spark` | `features/journal/EntryCard.tsx` |
+| `NewSticker` | gommette « Nouveau » groseille sur une journée non lue | `features/journal/EntryCard.tsx` |
+| `Avatar` | initiales sur pastille de feutre (teinte stable par nom), posée par défaut dans `MemberRow` | `components/MemberRow.tsx` |
+| `CarnetSticker` | le petit carnet dessiné (portes de connexion, capture vide) | `components/CarnetSticker.tsx` |
+| `MemberRow` | ligne de membre partagée (Proches, Partager, Administration), avatar à initiales, rôle verrouillé en texte | `components/MemberRow.tsx` |
 | `Label` | Pas de `leading-none` | `ui/label.tsx` |
-| Couche `components` | `.paper-ruled` (+ `--plain`), `.carnet-story`, `.measure`, `.surtitre`, `.seam`, `.scrim`, `.skeleton` | `index.css` l. 547+ |
+| Couche `components` | `.titre-carnet`, `.titre-accent`, `.font-hand`, `.sticker`, `.postit`, `.tape` (+ `-blue`, `-green`, `-right`), `.polaroid`, `.tilt-l/r` (±1,5°), `.tilt-ll/rr` (±4°), `.paper-ruled` (+ `--plain`), `.carnet-story`, `.measure`, `.surtitre`, `.seam`, `.scrim`, `.skeleton` | `index.css` |
 
 Focus : `:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px
 }` sur tout élément.
@@ -317,9 +332,11 @@ Focus : `:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px
 **À faire**
 - Une teinte de feutre = un type de moment, toujours en paire encre / fond.
 - Le groseille pour l'action ou la nouveauté (point non lu), et pour rien d'autre.
-- Une journée du journal = une carte bordée sans ombre ; ailleurs, des sections à filets.
-- Moments en encre seule (`ITEM_INK`) ; le fond `ITEM_CHIP` est réservé à l'éditeur.
-- Le papier réglé et le trait de marge ne vivent que sur le récit publié.
+- Une journée du journal = une carte posée (`rounded-2xl`, filet, `shadow-card`) ; le récit sur papier réglé, le temps fort en post-it, la page du carnet en polaroïd scotché.
+- Moments en pastilles ou tuiles teintées (`ITEM_CHIP`), libellé à l'encre du feutre (`ITEM_INK`).
+- Le papier réglé et le trait de marge vivent sur le récit (journal, journée, relecture).
+- Incliner les objets collés (post-it, polaroïd, gommette, tuile d'icône), jamais un paragraphe à lire ni un formulaire.
+- Un titre de page = `PageHeader` / `TitreCarnet`, un seul mot accentué.
 - Un badge seulement s'il appelle une action (À relire, Échec, N à vérifier).
 - Les jetons `*-soft`, `*-bg`, `--surface-bar` pour un fond teinté ou translucide.
 - Rester dans les six crans ; laisser les crans porter leur interligne.
@@ -328,8 +345,9 @@ Focus : `:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px
 - Les modificateurs d'opacité sur un fond (`bg-primary/10`, `bg-background/95`) : ils compilent en `color-mix()` et cassent la mesure de contraste.
 - `leading-none`.
 - Une couleur par enfant (la provenance n'a pas de teinte, `docs/identite.md` §4).
-- Une ombre comme structure : la structure, c'est le filet.
-- Le sérif hors des crans titre et bandeau.
+- Plus d'un mot accentué par titre, ou un accent dans un paragraphe.
+- Caveat pour du texte à lire : il imite la main, il ne raconte pas.
+- Le sérif hors des titres, de l'accent et des cartes de journée.
 - Les capitales espacées (plus de surtitres en majuscules).
 
 ## Responsive

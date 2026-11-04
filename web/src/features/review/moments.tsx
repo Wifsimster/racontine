@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { Textarea } from "@/components/ui/textarea";
 import { glanceOf, type DraftItem } from "./draft";
 import { itemKind } from "@/lib/items";
-import { ITEM_INK } from "@/lib/ui";
+import { ITEM_CHIP, ITEM_INK } from "@/lib/ui";
 
 export function GrowingTextarea({
   value,
@@ -70,12 +70,12 @@ export function MomentsGlance({
         La journée
       </h2>
       {items.length === 0 ? (
-        <p className="rounded-xl border border-dashed px-4 py-3 text-meta text-muted-foreground">
+        <p className="rounded-2xl border-2 border-dashed px-4 py-3 text-meta text-muted-foreground">
           Aucun repas, aucune sieste n'a été relevé sur cette page. Vous pouvez
           en ajouter juste en dessous — ou publier le récit seul.
         </p>
       ) : (
-      <ul className="divide-y border-y">
+      <ul className="flex flex-col gap-2">
         {items.map((it, i) => {
           const { label, value } = glanceOf(it);
           const Icon = itemKind(it.type).Icon;
@@ -84,13 +84,18 @@ export function MomentsGlance({
           return (
             <li
               key={i}
-              className="grid min-h-14 grid-cols-[1.25rem_1fr_auto] items-center gap-x-3 py-2"
+              className="grid min-h-14 grid-cols-[2.5rem_1fr_auto] items-center gap-x-3 rounded-2xl border bg-card px-3 py-2.5 shadow-card"
             >
-              <Icon
-                className={cn("row-span-2 size-5 self-center", ITEM_INK[it.type])}
+              <span
                 aria-hidden="true"
-              />
-              <span className="min-w-0 truncate text-meta font-bold text-muted-foreground">
+                className={cn(
+                  "row-span-2 grid size-10 -rotate-6 place-items-center self-center rounded-xl",
+                  ITEM_CHIP[it.type],
+                )}
+              >
+                <Icon className="size-5" />
+              </span>
+              <span className={cn("min-w-0 truncate text-meta font-extrabold", ITEM_INK[it.type])}>
                 {label}
               </span>
               {flag ? (

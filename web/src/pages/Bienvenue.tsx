@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { DoorTitle } from "@/components/Door";
 import { Link, Navigate } from "react-router-dom";
 import { ArrowRight, BookOpenText, Hourglass, ShieldCheck } from "lucide-react";
 import { api } from "@/lib/api";
@@ -62,9 +63,7 @@ export default function Bienvenue() {
 
       <div className="rise-enter mx-auto flex w-full max-w-[26rem] flex-col pt-[5.25rem] pr-5 pb-6 pl-10 lg:grid lg:max-w-[64rem] lg:grid-cols-[minmax(0,1fr)_26rem] lg:grid-rows-[auto_1fr] lg:items-start lg:gap-x-16 lg:px-10 lg:pt-32 lg:pb-16 xl:gap-x-24">
         <div className="lg:col-start-1 lg:row-start-1 lg:pt-4">
-          <h1 className="font-serif text-display font-semibold text-foreground lg:text-[3.25rem] lg:leading-[1.05]">
-            {appName}
-          </h1>
+          <DoorTitle appName={appName} />
           <p className="carnet-story mt-4 text-foreground lg:max-w-[22ch] lg:text-[1.375rem] lg:leading-9">
             {"Photographiez le carnet : la journée s’écrit, les proches la lisent."}
           </p>
