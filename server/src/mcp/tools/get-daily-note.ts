@@ -42,6 +42,7 @@ export const getDailyNoteTool: McpTool = {
             ...itemsToNoteLists(items),
             pageCount: entry.pageCount,
             photoCount: entry.photoCount,
+            photoIds: entry.photoIds,
           },
         });
       },

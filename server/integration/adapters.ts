@@ -32,6 +32,7 @@ import {
   DrizzleEntryRevisionRepository,
 } from "../src/adapters/drizzle-entry-repository.js";
 import { DrizzlePageRepository } from "../src/adapters/drizzle-page-repository.js";
+import { DrizzleEntryQueries } from "../src/mcp/queries.js";
 import {
   DrizzleInvitationRepository,
   DrizzleMembershipRepository,
@@ -145,6 +146,11 @@ assert.equal(await pages.countOf(created.id, "souvenir"), 1);
 assert.equal(await pages.countOf(created.id, "carnet"), 2);
 assert.equal((await new DrizzlePageRepository().findWithEntry(souvenirIds[0]!))?.kind, "souvenir");
 assert.equal(await new DrizzlePageRepository().countSiblings(created.id), 2);
+const mcpQueries = new DrizzleEntryQueries();
+assert.equal(await mcpQueries.attachmentKind(owner, souvenirIds[0]!), "souvenir");
+assert.equal(await mcpQueries.attachmentKind(owner, (await pages.idsFor(created.id))[0]!), "carnet");
+assert.equal(await mcpQueries.attachmentKind(`u-${randomUUID()}`, souvenirIds[0]!), null);
+assert.deepEqual((await mcpQueries.findNote(owner, created.id))?.entry.photoIds, [souvenirIds[0]]);
 await new DrizzlePageRepository().remove(souvenirIds[0]!);
 ok("une photo de l'enfant reste hors des pages lues, comptée à part");
 
