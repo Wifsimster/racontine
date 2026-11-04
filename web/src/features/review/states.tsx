@@ -62,7 +62,7 @@ export function ReviewSkeleton() {
           </div>
           <div className="skeleton h-6 w-28 rounded-full" />
         </div>
-        <div className="flex items-center gap-3 rounded-2xl border bg-card p-3 shadow-card">
+        <div className="flex items-center gap-3 rounded-xl border bg-card p-3">
           <div className="skeleton size-10 shrink-0" />
           <div className="flex flex-1 flex-col gap-2">
             <div className="skeleton h-4 w-40" />
@@ -79,7 +79,7 @@ export function ReviewSkeleton() {
         </div>
         <div className="flex flex-col gap-2">
           <div className="skeleton h-3 w-20" />
-          <div className="rounded-2xl border bg-card px-4 shadow-card">
+          <div className="rounded-xl border bg-card px-4">
             {[0, 1, 2, 3, 4].map((i) => (
               <div
                 key={i}
@@ -98,7 +98,7 @@ export function ReviewSkeleton() {
             ))}
           </div>
         </div>
-        <div className="flex items-center justify-between gap-3 rounded-2xl border bg-card px-4 py-3 shadow-card">
+        <div className="flex items-center justify-between gap-3 rounded-xl border bg-card px-4 py-3">
           <div className="flex flex-col gap-2">
             <div className="skeleton h-4 w-44" />
             <div className="skeleton h-3 w-56" />
@@ -404,7 +404,7 @@ export function Tip({
   children: React.ReactNode;
 }) {
   return (
-    <li className="flex items-start gap-3 rounded-xl bg-card px-4 py-3 shadow-card">
+    <li className="flex items-start gap-3 rounded-xl bg-card px-4 py-3">
       <span className="grid size-7 shrink-0 place-items-center rounded-md bg-muted text-muted-foreground">
         <Icon className="size-4" aria-hidden="true" />
       </span>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type React from "react";
-import { Images, RotateCw, X } from "lucide-react";
+import { RotateCw, X } from "lucide-react";
 import { type AttachmentRef } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 
 export function Kbd({ children }: { children: React.ReactNode }) {
   return (
-    <kbd className="rounded-md border bg-card px-1.5 font-sans text-overline font-bold leading-5 tracking-normal text-foreground">
+    <kbd className="rounded-md border px-1.5 font-sans text-meta font-bold leading-5 text-foreground">
       {children}
     </kbd>
   );
@@ -119,43 +119,5 @@ export function SourcePage({
         </Button>
       )}
     </figure>
-  );
-}
-
-export function SourceTab({
-  id,
-  panel,
-  selected,
-  onSelect,
-  Icon,
-  children,
-}: {
-  id: string;
-  panel: string;
-  selected: boolean;
-  onSelect: () => void;
-  Icon: typeof Images;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      role="tab"
-      id={id}
-      aria-controls={panel}
-      aria-selected={selected}
-      tabIndex={selected ? 0 : -1}
-      onClick={onSelect}
-      className={cn(
-        "flex h-11 flex-1 items-center justify-center gap-2 rounded-lg text-meta font-bold",
-        "transition-colors dur-fast ease-carnet",
-        selected
-          ? "bg-card text-foreground shadow-card"
-          : "text-muted-foreground hover:text-foreground",
-      )}
-    >
-      <Icon className="size-4" aria-hidden="true" />
-      {children}
-    </button>
   );
 }

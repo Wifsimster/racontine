@@ -1,14 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  Bell,
-  BellOff,
-  BellRing,
-  Mail,
-  Smartphone,
-  Users,
-  CloudOff,
-  TriangleAlert,
-} from "lucide-react";
+import { Users, CloudOff, TriangleAlert } from "lucide-react";
 import { api } from "@/lib/api";
 import type { Child, Subscriber, SubscriptionStatus } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -26,9 +17,9 @@ import {
   PageHeader,
   PageState,
   PageSkeleton,
-  SectionLabel,
   InlineError,
 } from "@/components/PageState";
+import { MemberRow } from "@/components/MemberRow";
 
 const SHELL = "lg:max-w-[64rem] lg:px-10 lg:pt-8 lg:pb-12";
 
@@ -72,38 +63,37 @@ function PushCard() {
   const blocked = state === "denied";
 
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border bg-card p-5 shadow-card">
-      <div className="flex items-start justify-between gap-3">
-        <h2 className="flex items-center gap-2 text-ui font-bold">
-          <Smartphone
-            className="size-4 shrink-0 text-primary"
-            aria-hidden="true"
-          />
-          Notifications sur cet appareil
-        </h2>
-        <Button
-          variant={on ? "default" : "outline"}
-          size="sm"
-          loading={busy}
-          disabled={blocked}
-          onClick={toggle}
-        >
-          {!busy && (on ? <BellRing aria-hidden="true" /> : <BellOff aria-hidden="true" />)}
-          {on ? "Activées" : "Activer"}
-        </Button>
+    <section className="flex flex-col gap-2 py-6 first:pt-0">
+      <h2 className="font-serif text-title font-semibold">Cet appareil</h2>
+      <div className="flex items-center justify-between gap-4 py-3">
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <label htmlFor="push-device" className="text-ui font-bold">
+            Notifications sur cet appareil
+          </label>
+          <p
+            id="push-device-hint"
+            className="max-w-[52ch] text-meta text-pretty text-muted-foreground"
+          >
+            {blocked
+              ? "Bloquées par le navigateur : autorisez-les dans les réglages du site."
+              : "Une alerte à chaque journée publiée, même l'application fermée."}
+          </p>
+        </div>
+        <Toggle
+          id="push-device"
+          checked={on}
+          disabled={blocked || busy}
+          aria-describedby="push-device-hint"
+          onChange={() => void toggle()}
+        />
       </div>
-      <p className="text-meta text-pretty text-muted-foreground">
-        {blocked
-          ? "Notifications bloquées par le navigateur. Autorisez-les dans les réglages du site pour les recevoir ici."
-          : "Recevez une notification directement sur cet appareil à chaque nouvelle journée publiée, même l'application fermée."}
-      </p>
       {error && (
         <InlineError>
           <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
           {error}
         </InlineError>
       )}
-    </div>
+    </section>
   );
 }
 
@@ -165,8 +155,8 @@ function ChildCard({ child }: { child: Child }) {
   const age = ageLabel(child.birthdate);
 
   return (
-    <li className="flex flex-col gap-4 rounded-2xl border bg-card p-5 shadow-card">
-      <div className="flex items-center justify-between gap-3">
+    <li className="flex flex-col gap-2 py-4">
+      <div className="flex items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">
           <ChildMark name={child.name} size="md" />
           <div className="flex min-w-0 flex-col">
@@ -176,37 +166,33 @@ function ChildCard({ child }: { child: Child }) {
             {age && <p className="text-meta text-muted-foreground">{age}</p>}
           </div>
         </div>
-        <Button
-          variant={subscribed ? "default" : "outline"}
-          size="sm"
-          loading={busy}
-          disabled={!state}
-          aria-pressed={subscribed}
-          onClick={toggleSubscribe}
-        >
-          {!busy &&
-            (subscribed ? <Bell aria-hidden="true" /> : <BellOff aria-hidden="true" />)}
-          {subscribed ? "Suivi" : "Suivre"}
-        </Button>
+      </div>
+
+      <div className="flex items-center justify-between gap-4 py-1">
+        <label htmlFor={`suivi-${child.id}`} className="text-ui font-bold">
+          Être prévenu
+        </label>
+        <Toggle
+          id={`suivi-${child.id}`}
+          checked={subscribed}
+          disabled={!state || busy}
+          onChange={() => void toggleSubscribe()}
+        />
       </div>
 
       {state && state.status.subscribed && (
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-4 py-1">
           <label
             htmlFor={`mail-${child.id}`}
-            className="flex min-w-0 items-center gap-2 text-meta"
+            className="min-w-0 text-ui font-bold"
           >
-            <Mail
-              className="size-4 shrink-0 text-muted-foreground"
-              aria-hidden="true"
-            />
-            Recevoir aussi un e-mail à chaque nouvelle journée
+            Aussi par e-mail
           </label>
           <Toggle
             id={`mail-${child.id}`}
             checked={state.status.emailEnabled}
             disabled={busy}
-            onChange={toggleEmail}
+            onChange={() => void toggleEmail()}
           />
         </div>
       )}
@@ -219,29 +205,19 @@ function ChildCard({ child }: { child: Child }) {
       )}
 
       {isAdmin && (
-        <div className="flex flex-col gap-2 border-t pt-4">
-          <p className="surtitre flex items-center gap-1.5 text-muted-foreground">
-            <Users className="size-3.5 shrink-0" aria-hidden="true" />
+        <div className="flex flex-col gap-1 pt-2">
+          <h4 className="text-meta font-bold text-muted-foreground">
             Proches abonnés ({state?.subscribers?.length ?? 0})
-          </p>
+          </h4>
           {state?.subscribers && state.subscribers.length > 0 ? (
-            <ul className="flex flex-col gap-1.5">
+            <ul className="flex flex-col divide-y">
               {state.subscribers.map((s) => (
-                <li
+                <MemberRow
                   key={s.userId}
-                  className="flex items-center justify-between gap-2"
-                >
-                  <span className="min-w-0 truncate text-meta">
-                    {s.name}{" "}
-                    <span className="text-muted-foreground">({s.email})</span>
-                  </span>
-                  {s.emailEnabled && (
-                    <Mail
-                      className="size-3.5 shrink-0 text-muted-foreground"
-                      aria-label="reçoit les e-mails"
-                    />
-                  )}
-                </li>
+                  name={s.name}
+                  meta={s.emailEnabled ? "reçoit les e-mails" : undefined}
+                  detail={s.email}
+                />
               ))}
             </ul>
           ) : (
@@ -271,7 +247,7 @@ export default function Proches() {
   const header = (
     <PageHeader
       title="Les proches"
-      lede="Suivez le carnet d'un enfant pour être prévenu·e — dans l'app et par e-mail — à chaque journée publiée."
+      lede="Choisissez les carnets dont chaque nouvelle journée vous est signalée."
     />
   );
 
@@ -304,24 +280,28 @@ export default function Proches() {
     <PageShell className={SHELL}>
       {header}
 
-      <PushCard />
-
       {children.length === 0 ? (
-        <PageState icon={Users} title="Aucun carnet à suivre">
-          Dès qu'un carnet est partagé avec vous, il apparaît ici et vous pouvez
-          choisir d'en être prévenu·e.
-        </PageState>
+        <>
+          <PushCard />
+          <PageState icon={Users} title="Aucun carnet à suivre">
+            Dès qu'un carnet est partagé avec vous, il apparaît ici et vous
+            pouvez choisir d'en être prévenu·e.
+          </PageState>
+        </>
       ) : (
-        <section className="flex flex-col gap-1">
-          <SectionLabel className="px-1">
-            Les carnets ({children.length})
-          </SectionLabel>
-          <ul className="flex flex-col gap-3 lg:grid lg:grid-cols-2 lg:items-start lg:gap-6">
-            {children.map((c) => (
-              <ChildCard key={c.id} child={c} />
-            ))}
-          </ul>
-        </section>
+        <div className="flex max-w-3xl flex-col divide-y">
+          <section className="flex flex-col gap-2 py-6 first:pt-0">
+            <h2 className="font-serif text-title font-semibold">
+              Les carnets ({children.length})
+            </h2>
+            <ul className="flex flex-col divide-y">
+              {children.map((c) => (
+                <ChildCard key={c.id} child={c} />
+              ))}
+            </ul>
+          </section>
+          <PushCard />
+        </div>
       )}
     </PageShell>
   );

@@ -33,8 +33,7 @@ export function DoorHeading({
 }) {
   return (
     <>
-      <p className="surtitre text-muted-foreground">Carnet de liaison</p>
-      <h1 className="mt-4 font-serif text-display font-semibold text-foreground lg:text-[3.25rem] lg:leading-[1.05]">
+      <h1 className="font-serif text-display font-semibold text-foreground lg:text-[3.25rem] lg:leading-[1.05]">
         {appName}
       </h1>
       <p className="carnet-story mt-4 text-foreground lg:max-w-[22ch] lg:text-[1.375rem] lg:leading-9">
@@ -54,48 +53,16 @@ export function DoorSheet({
   className?: string;
 }) {
   return (
-    <div
-      role={role}
-      className={`relative mt-7 -ml-4 flex flex-col gap-5 rounded-r-2xl border border-l-0 bg-card p-5 pl-4 shadow-card ${className}`}
-    >
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-y-0 left-0 w-[1.5px]"
-        style={{ background: "var(--rule-margin)" }}
-      />
+    <div role={role} className={`mt-7 flex flex-col gap-5 ${className}`}>
       {children}
     </div>
   );
 }
 
-export function DoorSheetTitle({
-  icon: Icon,
-  title,
-  tone = "neutral",
-  id,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  title: string;
-  tone?: "neutral" | "done" | "warn";
-  id?: string;
-}) {
-  const tile =
-    tone === "done"
-      ? "bg-success-bg text-success"
-      : tone === "warn"
-        ? "bg-warning-bg text-warning"
-        : "bg-muted text-muted-foreground";
+export function DoorSheetTitle({ title, id }: { title: string; id?: string }) {
   return (
-    <div className="flex items-center gap-3">
-      <span
-        className={`flex size-9 shrink-0 items-center justify-center rounded-md ${tile}`}
-        aria-hidden="true"
-      >
-        <Icon className="size-4" />
-      </span>
-      <h2 id={id} className="font-serif text-title font-semibold text-balance">
-        {title}
-      </h2>
-    </div>
+    <h2 id={id} className="font-serif text-title font-semibold text-balance">
+      {title}
+    </h2>
   );
 }

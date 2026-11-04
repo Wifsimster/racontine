@@ -85,7 +85,7 @@ export function MarqueSignature({ className }: { className?: string }) {
   return (
     <p className={cn("flex items-center gap-2 text-muted-foreground", className)}>
       <MarqueSilhouette />
-      <span className="surtitre">Propulsé par Racontine</span>
+      <span className="text-meta">Propulsé par Racontine</span>
     </p>
   );
 }

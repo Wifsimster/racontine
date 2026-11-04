@@ -1,49 +1,22 @@
-import { ArrowLeft, Inbox, MailCheck, TriangleAlert } from "lucide-react";
+import { ArrowLeft, Inbox, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { type FieldId, type Problem, PROBLEM_ID } from "./problems";
 
-export const SHEET =
-  "relative mt-7 -ml-4 flex flex-col gap-5 rounded-r-2xl border border-l-0 bg-card p-5 pl-4 shadow-card";
-
-export function MargeRule() {
-  return (
-    <span
-      aria-hidden="true"
-      className="pointer-events-none absolute inset-y-0 left-0 w-[1.5px]"
-      style={{ background: "var(--rule-margin)" }}
-    />
-  );
-}
+export const SHEET = "relative mt-7 flex flex-col gap-5";
 
 export function SheetTitle({
-  icon: Icon,
   title,
-  tone = "neutral",
   id,
 }: {
-  icon: React.ComponentType<{ className?: string }>;
   title: string;
-  tone?: "neutral" | "done";
   id?: string;
 }) {
   return (
-    <div className="flex items-center gap-3">
-      <span
-        className={`flex size-9 shrink-0 items-center justify-center rounded-md ${
-          tone === "done"
-            ? "bg-success-bg text-success"
-            : "bg-muted text-muted-foreground"
-        }`}
-        aria-hidden="true"
-      >
-        <Icon className="size-4" />
-      </span>
-      <h2 id={id} className="font-serif text-title font-semibold">
-        {title}
-      </h2>
-    </div>
+    <h2 id={id} className="font-serif text-title font-semibold text-balance">
+      {title}
+    </h2>
   );
 }
 
@@ -153,8 +126,7 @@ export function LinkSent({
 }) {
   return (
     <div role="status" className={SHEET}>
-      <MargeRule />
-      <SheetTitle icon={MailCheck} title="Le lien est parti" tone="done" />
+      <SheetTitle title="Le lien est parti" />
 
       <p className="carnet-story text-foreground">
         {kind === "forgot"
@@ -180,7 +152,7 @@ export function LinkSent({
         <Button
           type="button"
           variant="outline"
-          className="w-full aria-disabled:cursor-progress aria-disabled:hover:bg-card"
+          className="w-full aria-disabled:cursor-progress aria-disabled:hover:bg-background"
           aria-busy={busy || undefined}
           aria-disabled={busy || undefined}
           onClick={onResend}

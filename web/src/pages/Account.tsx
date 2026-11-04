@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
-import { CircleUser } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { api } from "@/lib/api";
+import { signOut } from "@/lib/auth-client";
 import type { Me } from "@/lib/types";
+import { Button } from "@/components/ui/button";
 import LlmKey from "@/components/LlmKey";
 import McpTokens from "@/components/McpTokens";
 import MesDonnees from "@/components/MesDonnees";
@@ -9,6 +11,7 @@ import { PageShell, PageHeader } from "@/components/PageState";
 
 export default function Account() {
   const [me, setMe] = useState<Me | null>(null);
+  const [leaving, setLeaving] = useState(false);
 
   useEffect(() => {
     api
@@ -22,43 +25,46 @@ export default function Account() {
     <PageShell className="lg:max-w-[64rem] lg:px-10 lg:pt-8 lg:pb-12">
       <PageHeader
         title="Mon compte"
-        lede="Vos réglages personnels : la clé qui lit vos carnets et vos connexions Claude."
+        lede="Votre clé de lecture, vos connexions Claude et vos données."
       />
 
-      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-10">
-        <div className="flex flex-col gap-6">
-          <p className="flex min-w-0 items-center gap-3 rounded-2xl border bg-card p-4 text-meta shadow-card">
+      <div className="-mt-2 flex min-w-0 flex-col text-meta">
+        {me ? (
+          <>
+            <span className="truncate text-ui font-bold">{me.name}</span>
+            <span className="truncate text-muted-foreground">{me.email}</span>
+          </>
+        ) : (
+          <span className="flex min-w-0 flex-col gap-1.5">
             <span
-              aria-hidden="true"
-              className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary"
-            >
-              <CircleUser className="size-5" />
-            </span>
-            {me ? (
-              <span className="flex min-w-0 flex-col">
-                <span className="truncate text-ui font-bold">{me.name}</span>
-                <span className="truncate text-muted-foreground">{me.email}</span>
-              </span>
-            ) : (
-              <span className="flex min-w-0 flex-1 flex-col gap-1.5">
-                <span
-                  className="skeleton h-4 w-32"
-                  role="status"
-                  aria-label="On ouvre votre compte"
-                />
-                <span aria-hidden="true" className="skeleton h-3 w-44" />
-              </span>
-            )}
-          </p>
+              className="skeleton h-4 w-32"
+              role="status"
+              aria-label="On ouvre votre compte"
+            />
+            <span aria-hidden="true" className="skeleton h-3 w-44" />
+          </span>
+        )}
+      </div>
 
-          <LlmKey />
-        </div>
-
-        <div className="flex flex-col gap-6">
-          <McpTokens />
-
-          <MesDonnees email={me?.email} />
-        </div>
+      <div className="flex max-w-3xl flex-col divide-y border-t">
+        <LlmKey />
+        <McpTokens />
+        <MesDonnees email={me?.email} />
+        <section className="flex flex-col gap-2 py-6">
+          <h2 className="font-serif text-title font-semibold">Session</h2>
+          <Button
+            variant="outline"
+            className="self-start"
+            loading={leaving}
+            onClick={() => {
+              setLeaving(true);
+              signOut().then(() => (window.location.href = "/login"));
+            }}
+          >
+            {!leaving && <LogOut aria-hidden="true" />}
+            Se déconnecter
+          </Button>
+        </section>
       </div>
     </PageShell>
   );

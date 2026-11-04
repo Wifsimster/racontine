@@ -73,7 +73,7 @@ export function ReviewActionBar({
               : "La journée part aux proches, qui en sont prévenus."}
           </p>
         )}
-        <p className="flex shrink-0 items-center gap-2 text-meta text-muted-foreground">
+        <p className="hidden shrink-0 items-center gap-2 text-meta text-muted-foreground [@media(pointer:fine)]:flex">
           <Kbd>⌘/Ctrl</Kbd>
           <Kbd>⏎</Kbd>
           publier

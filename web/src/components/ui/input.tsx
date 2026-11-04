@@ -2,11 +2,11 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 export const fieldBase = [
-  "min-w-0 rounded-xl border border-input bg-card text-body text-foreground shadow-card",
+  "min-w-0 rounded-xl border border-input bg-card text-body text-foreground",
   "placeholder:text-muted-foreground",
   "transition-[color,background-color,border-color,box-shadow] dur-chip ease-carnet",
   "focus-visible:border-ring focus-visible:bg-primary-soft",
-  "disabled:cursor-not-allowed disabled:border-transparent disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none",
+  "disabled:cursor-not-allowed disabled:border-transparent disabled:bg-muted disabled:text-muted-foreground",
   "aria-invalid:border-destructive aria-invalid:shadow-[inset_0_0_0_1px_var(--destructive)]",
 ].join(" ");
 

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { ArrowLeft, KeyRound, Mail, NotebookPen, RotateCcwKey, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Mail, ShieldCheck } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { api } from "@/lib/api";
 import { mesure } from "@/lib/mesure";
@@ -19,7 +19,6 @@ import {
 import {
   Field,
   LinkSent,
-  MargeRule,
   ProblemNote,
   SHEET,
   SheetTitle,
@@ -231,8 +230,7 @@ export default function Login() {
 
       <div className="rise-enter mx-auto flex w-full max-w-[26rem] flex-col pt-[5.25rem] pr-5 pb-6 pl-10 lg:grid lg:max-w-[64rem] lg:grid-cols-[minmax(0,1fr)_26rem] lg:grid-rows-[auto_1fr] lg:items-start lg:gap-x-16 lg:px-10 lg:pt-32 lg:pb-16 xl:gap-x-24">
         <div className="lg:col-start-1 lg:row-start-1 lg:pt-4">
-          <p className="surtitre text-muted-foreground">Carnet de liaison</p>
-          <h1 className="mt-4 font-serif text-display font-semibold text-foreground lg:text-[3.25rem] lg:leading-[1.05]">
+          <h1 className="font-serif text-display font-semibold text-foreground lg:text-[3.25rem] lg:leading-[1.05]">
             {appName}
           </h1>
           <p className="carnet-story mt-4 text-foreground lg:max-w-[22ch] lg:text-[1.375rem] lg:leading-9">
@@ -262,20 +260,7 @@ export default function Login() {
             aria-labelledby="feuille-titre"
             noValidate
           >
-            <MargeRule />
-            <SheetTitle
-              id="feuille-titre"
-              icon={
-                door === "forgot"
-                  ? RotateCcwKey
-                  : door === "magic"
-                    ? Mail
-                    : door === "signup"
-                      ? NotebookPen
-                      : KeyRound
-              }
-              title={heading}
-            />
+            <SheetTitle id="feuille-titre" title={heading} />
 
             {door === "magic" && (
               <p className="text-meta text-muted-foreground">
@@ -372,9 +357,9 @@ export default function Login() {
             {door === "password" ? (
               <>
                 <div className="flex items-center gap-3">
-                  <span className="h-px flex-1 bg-rule" aria-hidden="true" />
-                  <span className="surtitre text-muted-foreground">ou</span>
-                  <span className="h-px flex-1 bg-rule" aria-hidden="true" />
+                  <span className="h-px flex-1 bg-border" aria-hidden="true" />
+                  <span className="text-meta text-muted-foreground">ou</span>
+                  <span className="h-px flex-1 bg-border" aria-hidden="true" />
                 </div>
                 <div className="flex flex-col gap-2">
                   <p className="text-meta text-muted-foreground">
@@ -447,13 +432,3 @@ export default function Login() {
     </div>
   );
 }
-
-/* ------------------------------------------------------------------ pièces --- */
-
-/**
- * La FEUILLE : décalée de 16 px à gauche pour que son bord vienne se poser sur
- * le trait de marge, coin gauche carré (une page reliée n'a pas de coin arrondi
- * du côté de la couture), retrait intérieur gauche de 16 px pour que son contenu
- * retombe sur l'axe de texte à 40 px — le même que celui du bandeau et du pied
- * de page. `relative` parce que le trait de marge est redessiné à l'intérieur.
- */

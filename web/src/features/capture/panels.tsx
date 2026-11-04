@@ -43,7 +43,7 @@ export function SendingPanel({
 
   return (
     <section className="rise-enter flex flex-col gap-4">
-      <div className="rounded-2xl border bg-card p-4 shadow-card">
+      <div className="rounded-xl border bg-card p-4">
         <div className="flex items-baseline justify-between gap-3">
           <h2 className="surtitre text-muted-foreground">Envoi du carnet</h2>
           <p className="text-meta text-muted-foreground" data-tabular>
@@ -106,7 +106,7 @@ export function SendingPanel({
         </div>
       </div>
 
-      <div className="rounded-2xl border bg-card p-4 shadow-card">
+      <div className="rounded-xl border bg-card p-4">
         <h2 className="surtitre text-muted-foreground">
           Ce que Racontine cherche
         </h2>
@@ -116,12 +116,10 @@ export function SendingPanel({
               key={key}
               className="flex items-center gap-3 border-t py-3 first:border-t-0"
             >
-              <span
+              <Icon
                 aria-hidden="true"
-                className="grid size-7 shrink-0 place-items-center rounded-md bg-muted text-muted-foreground"
-              >
-                <Icon className="size-4" />
-              </span>
+                className="size-4 shrink-0 text-muted-foreground"
+              />
               <span className="flex min-w-0 flex-1 flex-col gap-1">
                 <span className="surtitre text-muted-foreground">{label}</span>
                 <span
@@ -150,13 +148,8 @@ export function SendError({
 }) {
   const bytes = shots.reduce((n, s) => n + s.file.size, 0);
   return (
-    <section className="rise-enter flex flex-col gap-4 rounded-2xl border bg-card p-5 shadow-card">
-      <span
-        aria-hidden="true"
-        className="grid size-16 place-items-center rounded-3xl bg-destructive-soft text-destructive"
-      >
-        <CloudOff className="size-7" />
-      </span>
+    <section className="rise-enter flex flex-col gap-4 rounded-xl border bg-card p-5">
+      <CloudOff aria-hidden="true" className="size-8 text-destructive" />
 
       <div className="flex flex-col gap-2">
         <h2 className="font-serif text-title font-semibold">

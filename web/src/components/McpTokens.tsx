@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import {
-  Plug,
   KeyRound,
   Plus,
   Trash2,
@@ -111,17 +110,15 @@ export default function McpTokens({ webBaseUrl }: { webBaseUrl?: string }) {
   }
 
   return (
-    <section className="flex flex-col rounded-2xl border bg-card px-5 shadow-card">
-      <h2 className="flex items-center gap-2 border-b py-4 text-ui font-bold">
-        <Plug className="size-4 shrink-0 text-primary" aria-hidden="true" />
+    <section className="flex flex-col gap-2 py-6">
+      <h2 className="font-serif text-title font-semibold">
         Connexion MCP (session Claude)
       </h2>
 
-      <div className="flex flex-col gap-4 py-4">
-        <p className="text-meta text-pretty text-muted-foreground">
-          Connectez une session Claude (cloud, Desktop ou Claude Code) à cette
-          instance pour téléverser des photos de carnet à la voix ou par
-          glisser-déposer. Créez un jeton, puis ajoutez ce serveur MCP à Claude.
+      <div className="flex flex-col gap-4">
+        <p className="max-w-[52ch] text-meta text-pretty text-muted-foreground">
+          Envoyez des pages de carnet depuis une session Claude : créez un
+          jeton, puis ajoutez ce serveur MCP à Claude.
         </p>
 
         <div className="flex flex-col gap-1.5">
@@ -206,17 +203,14 @@ export default function McpTokens({ webBaseUrl }: { webBaseUrl?: string }) {
             <div className="skeleton h-12 w-full" />
           </div>
         ) : tokens.length === 0 ? (
-          <p className="rounded-xl border border-dashed px-3 py-4 text-center text-meta text-muted-foreground">
+          <p className="rounded-xl border border-dashed px-3 py-3 text-meta text-muted-foreground">
             Aucun jeton pour l'instant : créez-en un ci-dessus pour relier une
             session Claude à ce carnet.
           </p>
         ) : (
-          <ul className="flex flex-col gap-2">
+          <ul className="flex flex-col divide-y border-y">
             {tokens.map((t) => (
-              <li
-                key={t.id}
-                className="flex items-center gap-3 rounded-xl border bg-background py-2 pr-2 pl-3"
-              >
+              <li key={t.id} className="flex min-h-11 items-center gap-3 py-2">
                 <KeyRound className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                 <div className="flex min-w-0 flex-1 flex-col">
                   <span className="truncate text-ui font-bold">{t.name}</span>
@@ -229,7 +223,7 @@ export default function McpTokens({ webBaseUrl }: { webBaseUrl?: string }) {
                 <Button
                   variant="ghost"
                   size="icon-sm"
-                  className="shrink-0 text-destructive hover:bg-destructive-soft hover:text-destructive"
+                  className="shrink-0 text-muted-foreground hover:bg-destructive-soft hover:text-destructive"
                   onClick={() => setToRevoke(t)}
                   aria-label={`Révoquer le jeton ${t.name}`}
                 >

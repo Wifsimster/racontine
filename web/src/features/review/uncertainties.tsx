@@ -83,7 +83,7 @@ export function CollapsedReading({
       aria-label={`Trancher la lecture « ${word} »${
         phrase ? `, dans « ${phrase} »` : ""
       }`}
-      className="tap flex min-h-14 w-full items-center gap-3 rounded-xl border border-warning bg-warning-bg px-3 py-2 text-left transition-colors dur-fast ease-carnet hover:bg-card"
+      className="tap flex min-h-14 w-full items-center gap-3 rounded-xl border-l-4 border-warning bg-warning-bg px-3 py-2 text-left transition-colors dur-fast ease-carnet outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
     >
       <TriangleAlert aria-hidden="true" className="size-4 shrink-0 text-warning" />
       <span className="min-w-0 flex-1">
@@ -147,7 +147,7 @@ export function UncertaintyCard({
       tabIndex={-1}
       role="group"
       aria-label={`Lecture à vérifier : ${word}${phrase ? `, dans « ${phrase} »` : ""}`}
-      className="flex flex-col gap-2 rounded-xl border border-warning bg-warning-bg p-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-warning"
+      className="flex flex-col gap-2 rounded-xl border-l-4 border-warning bg-warning-bg p-3 outline-none"
     >
       <p className="surtitre flex items-center gap-2 text-warning">
         <TriangleAlert aria-hidden="true" className="size-4" />

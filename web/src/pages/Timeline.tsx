@@ -14,11 +14,11 @@ import {
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { SegmentedControl } from "@/components/SegmentedControl";
 import { EntryCard } from "@/features/journal/EntryCard";
 import { EntryRow } from "@/features/journal/EntryRow";
 import {
   ChildFilter,
-  ModeToggle,
   MonthJump,
   MonthJumpVeil,
   UnreadBar,
@@ -48,10 +48,10 @@ import { useDefilementDescendant } from "@/lib/scroll";
 
 const PAGE = 20;
 
-
-
-
-
+const MODES = [
+  { value: "lire", label: "Lire" },
+  { value: "parcourir", label: "Parcourir" },
+] as const;
 
 type Viewer = { pages: AttachmentRef[]; index: number; date: string };
 
@@ -409,36 +409,46 @@ export default function Timeline() {
     (roleByChild.size === 0 ||
       [...roleByChild.values()].some((r) => canWrite(r)));
 
+  const plusieursEnfants = children.length > 1;
+  const boutonCapture = hasJournal && canCapture && carnetOuvert && !lecteur;
+
   return (
-    <div className="shell-width flex flex-col gap-4 px-4 pt-4 pb-8 lg:max-w-[64rem] lg:px-10 lg:pt-8">
-      <header>
-        <h1 className="font-serif text-display font-semibold">Le journal</h1>
+    <div
+      className={cn(
+        "read-width flex flex-col gap-4 px-4 pt-4 lg:pt-8",
+        boutonCapture ? "pb-32" : "pb-8",
+      )}
+    >
+      <header className="flex flex-col gap-1">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+          <h1 className="font-serif text-display font-semibold">Le journal</h1>
+          {phase === "ready" && (hasJournal || gere) && (
+            <SegmentedControl
+              label="Affichage du journal"
+              value={mode}
+              options={MODES}
+              onChange={choisirMode}
+            />
+          )}
+        </div>
+        {phase === "ready" && unreadCount > 0 && (
+          <UnreadBar
+            count={unreadCount}
+            loading={toutLuEnCours}
+            onMarkAll={() => void toutMarquerLu()}
+          />
+        )}
       </header>
 
       {flash && <Receipt flash={flash} onClose={() => setFlash(null)} />}
 
       {billing && sellable && <BillingCallout billing={billing} />}
 
-      {phase === "ready" && (children.length > 1 || hasJournal || gere) && (
-        <div className="flex items-center justify-between gap-3">
-          <ChildFilter
-            children={children}
-            value={childId}
-            onChange={choisirEnfant}
-          />
-          {(hasJournal || gere) && (
-            <div className="shrink-0">
-              <ModeToggle value={mode} onChange={choisirMode} />
-            </div>
-          )}
-        </div>
-      )}
-
-      {phase === "ready" && unreadCount > 0 && (
-        <UnreadBar
-          count={unreadCount}
-          loading={toutLuEnCours}
-          onMarkAll={() => void toutMarquerLu()}
+      {phase === "ready" && plusieursEnfants && (
+        <ChildFilter
+          children={children}
+          value={childId}
+          onChange={choisirEnfant}
         />
       )}
 
@@ -447,13 +457,13 @@ export default function Timeline() {
       {phase === "error" && (
         <JournalError
           message={error}
-          canCapture={canCapture}
+          canCapture={canCapture && !lecteur}
           onRetry={reload}
         />
       )}
 
       {phase === "ready" && entries.length === 0 && !cadre && (
-        <JournalEmpty canCapture={canCapture} carnetOuvert={carnetOuvert} />
+        <JournalEmpty canCapture={canCapture && !lecteur} carnetOuvert={carnetOuvert} />
       )}
 
       {phase === "ready" && entries.length === 0 && cadre && (
@@ -462,14 +472,14 @@ export default function Timeline() {
 
       {phase === "ready" &&
         groupes.map((m) => (
-          <section key={m.key} aria-label={m.label}>
+          <section key={m.key} aria-labelledby={`mois-${m.key}`}>
             <div
               className={cn(
-                "sticky top-header -mx-4 bg-surface-bar px-4 backdrop-blur-md lg:-mx-10 lg:px-10",
+                "sticky top-header -mx-4 bg-surface-bar px-4 backdrop-blur-md",
                 moisOuvert === m.key ? "z-40" : "z-10",
               )}
             >
-              <div className="relative flex h-11 items-stretch justify-between gap-3 border-b">
+              <div className="relative flex min-h-11 items-center gap-1.5">
                 <MonthJump
                   id={`mois-${m.key}`}
                   months={months}
@@ -480,20 +490,16 @@ export default function Timeline() {
                   onClose={() => setMoisOuvert(null)}
                   onJump={sauterAuMois}
                 />
-                <p
-                  className="surtitre self-end pb-2 text-muted-foreground"
-                  data-tabular
-                >
+                <p className="text-meta text-muted-foreground" data-tabular>
+                  <span aria-hidden="true">· </span>
                   {m.entries.length} journée{m.entries.length > 1 ? "s" : ""}
                 </p>
               </div>
             </div>
             <ol
               className={cn(
-                "mt-4 flex flex-col",
-                mode === "lire"
-                  ? "gap-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-6"
-                  : "gap-1.5",
+                "mt-2 flex flex-col",
+                mode === "lire" ? "gap-4" : "divide-y border-y",
               )}
             >
               {m.entries.map((e) => (
@@ -504,9 +510,10 @@ export default function Timeline() {
                       canEdit={false}
                       onOpenPages={openPages}
                       onRead={marquerLu}
+                      showChild={plusieursEnfants}
                     />
                   ) : (
-                    <EntryRow entry={e} />
+                    <EntryRow entry={e} showChild={plusieursEnfants} />
                   )}
                 </li>
               ))}
@@ -529,18 +536,7 @@ export default function Timeline() {
         </>
       )}
 
-      {hasJournal && (
-        <p
-          className={cn(
-            "surtitre pt-2 text-center text-muted-foreground",
-            canCapture && carnetOuvert ? "pb-32" : "pb-2",
-          )}
-        >
-          {entries.length} journée{entries.length > 1 ? "s" : ""} dans le carnet
-        </p>
-      )}
-
-      {hasJournal && canCapture && carnetOuvert && (
+      {boutonCapture && (
         <div
           className={cn(
             "pointer-events-none fixed inset-x-0 bottom-0 z-20 flex justify-center bg-gradient-to-t from-background via-surface-bar to-transparent px-4 pt-8 pb-safe-6",

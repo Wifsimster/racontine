@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import type { DraftItem } from "./draft";
 import { ITEM_TYPES_IN_ORDER, itemKind } from "@/lib/items";
 import { GrowingTextarea } from "./moments";
+import { ITEM_CHIP } from "@/lib/ui";
+import { cn } from "@/lib/utils";
 
 export function ItemEditor({
   items,
@@ -33,7 +35,7 @@ export function ItemEditor({
           <section key={type} className="flex flex-col gap-2">
             <div className="flex items-center justify-between gap-3">
               <h3 className="flex items-center gap-2 text-ui font-bold">
-                <span className="grid size-7 shrink-0 place-items-center rounded-md bg-muted text-muted-foreground">
+                <span className={cn("grid size-7 shrink-0 place-items-center rounded-md", ITEM_CHIP[type])}>
                   <Icon className="size-4" aria-hidden="true" />
                 </span>
                 {itemKind(type).label}

@@ -11,7 +11,7 @@ colors:
     foreground: "rgb(36 40 70)"
     card-foreground: "rgb(36 40 70)"
     popover-foreground: "rgb(36 40 70)"
-    muted-foreground: "rgb(94 98 118)"
+    muted-foreground: "rgb(80 84 104)"
     primary: "rgb(184 40 77)"
     primary-foreground: "rgb(253 252 247)"
     primary-hover: "rgb(164 8 60)"
@@ -57,7 +57,7 @@ colors:
     foreground: "rgb(235 232 223)"
     card-foreground: "rgb(235 232 223)"
     popover-foreground: "rgb(235 232 223)"
-    muted-foreground: "rgb(159 160 174)"
+    muted-foreground: "rgb(176 177 190)"
     primary: "rgb(238 125 141)"
     primary-foreground: "rgb(16 18 29)"
     primary-hover: "rgb(254 147 161)"
@@ -100,8 +100,8 @@ typography:
   sans: "\"Nunito\", ui-sans-serif, system-ui, sans-serif (400, 700)"
   serif: "\"Fraunces\", Georgia, serif (600)"
   scale:
-    overline: { size: 0.6875rem, line-height: 1rem, tracking: 0.14em, weight: 700 }
-    meta: { size: 0.8125rem, line-height: 1.25rem }
+    overline: { size: 0.6875rem, line-height: 1rem, tracking: 0.14em, weight: 700, usage: "ChildMark et libellés du stepper seulement" }
+    meta: { size: 0.875rem, line-height: 1.25rem }
     ui: { size: 0.9375rem, line-height: 1.25rem }
     body: { size: 1.0625rem, line-height: 1.75rem }
     title: { size: 1.375rem, line-height: 1.75rem, tracking: -0.012em }
@@ -157,7 +157,7 @@ type de moment. Trois règles tiennent tout (commentaire de tête de
 
 1. **Une couleur = un sens.** Chaque teinte est une paire encre / fond, mesurée dans les deux thèmes. Le groseille ne dit qu'une chose : l'action.
 2. **Six crans typographiques**, interlignes multiples de 4 px.
-3. **La structure vient des filets, pas des ombres.** La nuit est dessinée, pas inversée.
+3. **La structure vient des filets, pas des ombres.** Aucune surface posée n'a d'ombre ; seules les couches flottantes en portent une. La nuit est dessinée, pas inversée.
 
 Teintes pensées en OKLCH, **écrites en sRGB** pour que tout outil de mesure
 de contraste lise des `rgb()` ; la spécification OKLCH est en commentaire à
@@ -177,7 +177,7 @@ répond à `.dark` / `.light` posé à la main, sinon à `prefers-color-scheme`
 | `--card` | `rgb(254 253 250)` | `rgb(29 32 44)` | La feuille |
 | `--popover` | `rgb(254 253 250)` | `rgb(36 39 53)` | Couches flottantes |
 | `--foreground` | `rgb(36 40 70)` | `rgb(235 232 223)` | Encre bleu-nuit / blanc chaud |
-| `--muted-foreground` | `rgb(94 98 118)` | `rgb(159 160 174)` | Encre pâlie |
+| `--muted-foreground` | `rgb(80 84 104)` | `rgb(176 177 190)` | Encre pâlie |
 | `--primary` | `rgb(184 40 77)` | `rgb(238 125 141)` | Groseille : l'action |
 | `--primary-foreground` | `rgb(253 252 247)` | `rgb(16 18 29)` | Texte sur primary |
 | `--primary-hover` | `rgb(164 8 60)` | `rgb(254 147 161)` | Survol : fonce le jour, éclaire la nuit |
@@ -229,8 +229,8 @@ le futur export livre), `font-display: swap` : **Nunito** 400 et 700,
 
 | Cran | Utilitaire | Taille / interligne | Extra |
 | --- | --- | --- | --- |
-| Surtitre | `text-overline` (classe `.surtitre`) | 11 / 16 | `0.14em`, 700 |
-| Méta | `text-meta` | 13 / 20 | |
+| Étiquette | classe `.surtitre` (= `text-meta` en 700, casse normale) | 14 / 20 | 700 |
+| Méta | `text-meta` | 14 / 20 | |
 | Interface | `text-ui` (défaut du `body`) | 15 / 20 | |
 | Récit | `text-body` (`.carnet-story`) | 17 / 28 | interligne = `--rule-pitch` |
 | Titre | `text-title` | 22 / 28 | `-0.012em`, Fraunces 600 |
@@ -248,6 +248,7 @@ balance`, `p` en `pretty`, `time` et `[data-tabular]` en chiffres tabulaires.
 | --- | --- | --- |
 | `--rule-pitch` | `1.75rem` | Une ligne du cahier = l'interligne du récit |
 | `--header-h` | `3.5rem` | Chrome haut |
+| `read-width` | `40rem` | Colonne du journal et de la journée lue |
 | `--shell-max` | `32rem`, `36rem` dès `48rem`, `39rem` dès `64rem` | Colonne de lecture (`shell-width`) |
 | `--measure` | `34rem` | Mesure du récit (`.measure`) |
 | `--action-max` | `32rem` | Largeur max d'une barre d'action |
@@ -260,26 +261,27 @@ tailles de Button sont `h-11` (sauf `lg` `h-12`).
 
 | Token | Clair | Sombre |
 | --- | --- | --- |
-| `--elev-1` → `shadow-card` | `0 1px 2px -1px rgb(36 40 70 / 0.1), 0 10px 28px -18px rgb(36 40 70 / 0.22)` | `inset 0 1px 0 0 rgb(255 255 255 / 0.05), 0 8px 24px -16px rgb(0 0 0 / 0.7)` |
+| `--elev-1` → `shadow-card` | `0 0 #0000` (aucune ombre) | `0 0 #0000` |
 | `--elev-2` → `shadow-lift` | `0 2px 6px -2px rgb(36 40 70 / 0.12), 0 22px 48px -24px rgb(36 40 70 / 0.28)` | `inset 0 1px 0 0 rgb(255 255 255 / 0.08), 0 24px 48px -24px rgb(0 0 0 / 0.85)` |
 
-Deux couches maximum en clair ; en sombre, un liseré haut remplace l'ombre.
-Usages : `shadow-card` ×58, `shadow-lift` ×11.
+Refonte « Épure » (2026-11-04) : les surfaces posées n'ont plus d'ombre, la
+structure vient des filets (`border`, `divide-y`). `shadow-lift` est réservé
+aux couches flottantes (menu, popover, dialogue).
 
 ## Shapes
 
-`--radius: 1rem`, pas de 4 px (`@theme inline` l. 351–358) :
+`--radius: 0.75rem`, pas de 4 px (`@theme inline` l. 351–358) :
 
 | Classe | Valeur | Commentaire du code |
 | --- | --- | --- |
-| `rounded-sm` | 8 px | Puce, pastille |
-| `rounded-md` | 12 px | Tuile d'icône |
-| `rounded-lg` | 16 px | Encart |
-| `rounded-xl` | 20 px | Bouton, champ, image, carte compacte |
-| `rounded-2xl` | 24 px | La feuille (Card) |
-| `rounded-3xl` | 32 px | Vignette d'état vide |
+| `rounded-sm` | 4 px | Puce, pastille |
+| `rounded-md` | 8 px | Tuile d'icône |
+| `rounded-lg` | 12 px | Encart |
+| `rounded-xl` | 16 px | Bouton, champ, image, carte compacte |
+| `rounded-2xl` | 20 px | La feuille (Card) |
+| `rounded-3xl` | 28 px | Vignette d'état vide |
 
-Composants : Card `rounded-2xl`, Button et Input `rounded-xl`, Button
+Composants : Card, carte de journée, Button et Input `rounded-xl`, Button
 `icon` `rounded-full`.
 
 ## Motion
@@ -289,8 +291,7 @@ Composants : Card `rounded-2xl`, Button et Input `rounded-xl`, Button
 Budget : pression 120 ms (`scale(.97)`), survol 140 ms, pastille 160 ms,
 défaut 180 ms, page / panneau 220 ms (`ease-page`). Rien hors 120–260 ms sauf
 deux boucles : squelette 1 200 ms, scanner 1 800 ms. Classes : `.page-enter`,
-`.panel-down`, `.rise-enter`, `.animate-scan-sweep`, `.animate-scan-fade`,
-`.animate-login-drift`.
+`.panel-down`, `.rise-enter`, `.animate-scan-sweep`, `.animate-scan-fade`.
 
 ## Components
 
@@ -301,8 +302,10 @@ shadcn `new-york`, `radix-ui`, `lucide-react` (45 imports). Installés :
 | Composant | Conventions | Source |
 | --- | --- | --- |
 | `Button` | `default` / `destructive` : fond plein + `shadow-card`, survol `*-hover` (on fonce, jamais de transparence) ; `outline` sur `bg-card` ; `secondary` bordé ; `link` souligné `decoration-primary/40` ; tailles toutes à 44 px | `ui/button.tsx` |
-| `Card` | `rounded-2xl border bg-card py-5 shadow-card`, média `seam` + `rounded-t-2xl` | `ui/card.tsx` |
-| `Input` | `rounded-xl border-input bg-card text-body shadow-card` | `ui/input.tsx` |
+| `Card` | `rounded-xl border bg-card py-5`, sans ombre | `ui/card.tsx` |
+| `Input` | `rounded-xl border-input bg-card text-body` | `ui/input.tsx` |
+| `SegmentedControl` | bascule texte (`aria-pressed`), actif gras souligné groseille : Lire/Parcourir, La page/Mot à mot | `components/SegmentedControl.tsx` |
+| `MemberRow` | ligne de membre partagée (Proches, Partager, Administration), rôle verrouillé en texte | `components/MemberRow.tsx` |
 | `Label` | Pas de `leading-none` | `ui/label.tsx` |
 | Couche `components` | `.paper-ruled` (+ `--plain`), `.carnet-story`, `.measure`, `.surtitre`, `.seam`, `.scrim`, `.skeleton` | `index.css` l. 547+ |
 
@@ -313,7 +316,11 @@ Focus : `:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px
 
 **À faire**
 - Une teinte de feutre = un type de moment, toujours en paire encre / fond.
-- Le groseille pour l'action, et pour rien d'autre.
+- Le groseille pour l'action ou la nouveauté (point non lu), et pour rien d'autre.
+- Une journée du journal = une carte bordée sans ombre ; ailleurs, des sections à filets.
+- Moments en encre seule (`ITEM_INK`) ; le fond `ITEM_CHIP` est réservé à l'éditeur.
+- Le papier réglé et le trait de marge ne vivent que sur le récit publié.
+- Un badge seulement s'il appelle une action (À relire, Échec, N à vérifier).
 - Les jetons `*-soft`, `*-bg`, `--surface-bar` pour un fond teinté ou translucide.
 - Rester dans les six crans ; laisser les crans porter leur interligne.
 
@@ -323,6 +330,7 @@ Focus : `:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px
 - Une couleur par enfant (la provenance n'a pas de teinte, `docs/identite.md` §4).
 - Une ombre comme structure : la structure, c'est le filet.
 - Le sérif hors des crans titre et bandeau.
+- Les capitales espacées (plus de surtitres en majuscules).
 
 ## Responsive
 

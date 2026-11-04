@@ -1,19 +1,27 @@
 import { Link } from "react-router-dom";
-import { BookOpenText, Check, Smile, Star } from "lucide-react";
+import { ArrowLeft, Check, Smile, Star } from "lucide-react";
 import { type Entry, SOURCE_LABELS } from "@/lib/types";
 import { capitalize, longDate } from "@/lib/format";
 import { itemKind } from "@/lib/items";
+import { ITEM_INK } from "@/lib/ui";
+import { cn } from "@/lib/utils";
 import { glanceOf, toDraftItems } from "./draft";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
-
-export function ReadOnlyDay({ entry }: { entry: Entry }) {
+export function ReadOnlyDay({
+  entry,
+  reader = true,
+}: {
+  entry: Entry;
+  reader?: boolean;
+}) {
+  const showPublished = !reader && entry.status === "published";
   return (
-    <div className="mx-auto w-full max-w-2xl p-4 pb-12">
-      <header className="mb-4 flex items-start justify-between gap-3">
+    <div className="read-width p-4 pb-12">
+      <header className="mb-6 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="surtitre text-muted-foreground">
+          <p className="text-meta text-muted-foreground">
             {[entry.child?.name, capitalize(longDate(entry.date)), SOURCE_LABELS[entry.source]]
               .filter(Boolean)
               .join(" · ")}
@@ -22,20 +30,20 @@ export function ReadOnlyDay({ entry }: { entry: Entry }) {
             {entry.title || "La journée"}
           </h1>
         </div>
-        <Badge variant="success" className="mt-0.5">
-          <Check aria-hidden="true" />
-          Publiée
-        </Badge>
+        {showPublished && (
+          <Badge variant="success" className="mt-0.5">
+            <Check aria-hidden="true" />
+            Publiée
+          </Badge>
+        )}
       </header>
 
-      <article className="relative overflow-hidden rounded-2xl border bg-card py-4 pr-5 pl-7 shadow-card">
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-y-0 left-5 w-[1.5px] bg-[var(--rule-margin)]"
-        />
+      <article className="flex flex-col gap-5">
         {entry.story ? (
-          <div className="paper-ruled paper-ruled--plain -mr-5 -ml-7 pr-5 pl-7">
-            <p className="carnet-story text-foreground">{entry.story}</p>
+          <div className="paper-ruled pl-10">
+            <p className="carnet-story m-0 whitespace-pre-line text-foreground">
+              {entry.story}
+            </p>
           </div>
         ) : (
           <p className="text-ui text-muted-foreground">
@@ -44,37 +52,32 @@ export function ReadOnlyDay({ entry }: { entry: Entry }) {
           </p>
         )}
         {entry.highlight && (
-          <p className="mt-4 flex items-start gap-3 rounded-xl bg-muted px-4 py-3 text-ui">
+          <p className="flex items-start gap-2 font-serif text-body italic text-foreground">
             <Star
               aria-hidden="true"
-              className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+              className="mt-1.5 size-3.5 shrink-0 text-primary"
             />
             <span>
-              <span className="font-bold">Le temps fort</span> —{" "}
+              <span className="sr-only">Le temps fort : </span>
               {entry.highlight}
             </span>
           </p>
         )}
       </article>
 
-      {entry.items.length > 0 && (
-        <ul className="mt-4 rounded-2xl border bg-card px-4 shadow-card">
+      {(entry.items.length > 0 || entry.mood) && (
+        <ul aria-label="Les moments de la journée" className="mt-6 divide-y border-y">
           {toDraftItems(entry.items).map((it, i) => {
             const { label, value } = glanceOf(it);
             const Icon = itemKind(it.type).Icon;
             return (
-              <li
-                key={i}
-                className="flex min-h-14 items-center gap-3 border-b py-2 last:border-b-0"
-              >
-                <span className="grid size-7 shrink-0 place-items-center rounded-[9px] bg-muted">
-                  <Icon
-                    className="size-4 text-muted-foreground"
-                    aria-hidden="true"
-                  />
-                </span>
+              <li key={i} className="flex min-h-14 items-center gap-3 py-2">
+                <Icon
+                  className={cn("size-5 shrink-0", ITEM_INK[it.type])}
+                  aria-hidden="true"
+                />
                 <span className="min-w-0">
-                  <span className="surtitre block text-muted-foreground">
+                  <span className="block text-meta font-bold text-muted-foreground">
                     {label}
                   </span>
                   <span className="block text-ui text-pretty">{value}</span>
@@ -83,15 +86,13 @@ export function ReadOnlyDay({ entry }: { entry: Entry }) {
             );
           })}
           {entry.mood && (
-            <li className="flex min-h-14 items-center gap-3 border-b py-2 last:border-b-0">
-              <span className="grid size-7 shrink-0 place-items-center rounded-[9px] bg-muted">
-                <Smile
-                  className="size-4 text-muted-foreground"
-                  aria-hidden="true"
-                />
-              </span>
+            <li className="flex min-h-14 items-center gap-3 py-2">
+              <Smile
+                className="size-5 shrink-0 text-foreground"
+                aria-hidden="true"
+              />
               <span className="min-w-0">
-                <span className="surtitre block text-muted-foreground">
+                <span className="block text-meta font-bold text-muted-foreground">
                   Humeur
                 </span>
                 <span className="block text-ui text-pretty">{entry.mood}</span>
@@ -102,7 +103,7 @@ export function ReadOnlyDay({ entry }: { entry: Entry }) {
       )}
 
       {entry.attachments.length > 0 && (
-        <div className="mt-4 flex flex-col gap-2">
+        <div className="mt-6 flex flex-col gap-2">
           <p className="surtitre text-muted-foreground">
             La page du carnet
             {entry.attachments.length > 1 ? ` · ${entry.attachments.length}` : ""}
@@ -128,23 +129,19 @@ export function ReadOnlyDay({ entry }: { entry: Entry }) {
         </div>
       )}
 
-      <p className="mt-5 flex items-start gap-3 rounded-xl bg-muted px-4 py-3 text-meta text-muted-foreground">
-        <BookOpenText className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-        <span>
-          Vous suivez ce carnet en{" "}
-          <span className="font-bold text-foreground">lecture</span> : la
-          journée telle qu’elle a été publiée. La corriger revient à la famille
-          qui tient le carnet.
-        </span>
-      </p>
+      {reader && (
+        <p className="mt-6 text-meta text-muted-foreground">
+          Vous suivez ce carnet en lecture : les corrections reviennent à la
+          famille qui le tient.
+        </p>
+      )}
 
-      <Button asChild className="mt-4 w-full">
+      <Button asChild variant="outline" className="mt-4 min-h-12 w-full">
         <Link to="/">
-          <BookOpenText aria-hidden="true" />
+          <ArrowLeft aria-hidden="true" />
           Revenir au journal
         </Link>
       </Button>
     </div>
   );
 }
-

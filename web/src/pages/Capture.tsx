@@ -264,14 +264,14 @@ export default function Capture() {
   const actions = (
     <>
       {phase === "sending" && (
-        <Button size="lg" disabled className="shadow-lift">
+        <Button size="lg" disabled>
           {stage === "prep" ? "Préparation…" : "Envoi…"}
         </Button>
       )}
 
       {phase === "error" && (
         <>
-          <Button size="lg" onClick={submit} className="shadow-lift">
+          <Button size="lg" onClick={submit}>
             <RotateCcw aria-hidden="true" />
             Réessayer l’envoi
           </Button>
@@ -287,7 +287,7 @@ export default function Capture() {
             size="lg"
             onClick={submit}
             disabled={offline}
-            className="shadow-lift"
+           
           >
             <ScanLine aria-hidden="true" />
             Raconter la journée
@@ -303,7 +303,7 @@ export default function Capture() {
           <Button
             size="lg"
             onClick={() => cameraRef.current?.click()}
-            className="shadow-lift"
+           
           >
             <Camera aria-hidden="true" />
             Photographier le carnet
@@ -322,7 +322,7 @@ export default function Capture() {
 
   return (
     <div className="shell-width flex flex-col gap-4 px-4 pt-4 pb-40 lg:max-w-[64rem] lg:px-10 lg:pt-8 lg:pb-12">
-      <h1 aria-label="Photographier le carnet" />
+      <h1 className="sr-only">Photographier le carnet</h1>
 
       <CaptureSteps steps={steps} />
 
@@ -423,7 +423,7 @@ export default function Capture() {
           )}
         </div>
 
-        <aside className="hidden flex-col gap-2 rounded-2xl border bg-card p-5 shadow-card lg:sticky lg:top-[5.5rem] lg:flex">
+        <aside className="hidden flex-col gap-2 rounded-xl border bg-card p-5 lg:sticky lg:top-[5.5rem] lg:flex">
           {actions}
         </aside>
       </div>

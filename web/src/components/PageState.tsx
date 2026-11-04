@@ -47,9 +47,9 @@ export function SectionLabel({
 }
 
 const TONE = {
-  neutral: "bg-muted text-muted-foreground",
-  locked: "bg-primary-soft text-primary",
-  error: "bg-destructive-soft text-destructive",
+  neutral: "text-muted-foreground",
+  locked: "text-primary",
+  error: "text-destructive",
 } as const;
 
 export function PageState({
@@ -70,12 +70,7 @@ export function PageState({
       role={tone === "error" ? "alert" : undefined}
       className="rise-enter flex min-h-[calc(100svh-16rem)] flex-col items-center justify-center gap-5 text-center"
     >
-      <span
-        aria-hidden="true"
-        className={cn("grid size-16 place-items-center rounded-3xl", TONE[tone])}
-      >
-        <Icon className="size-7" />
-      </span>
+      <Icon aria-hidden="true" className={cn("size-8", TONE[tone])} />
       <div className="flex flex-col items-center gap-2">
         <h2 className="font-serif text-title font-semibold text-balance">
           {title}
@@ -111,7 +106,7 @@ export function PageSkeleton({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex h-11 items-end justify-between gap-3 border-b pb-2">
-        <p role="status" className="surtitre text-muted-foreground">
+        <p role="status" className="text-meta text-muted-foreground">
           {slow ? slowLabel : label}
         </p>
         <span aria-hidden="true" className="skeleton size-2 rounded-full" />
@@ -120,7 +115,7 @@ export function PageSkeleton({
         <div
           key={i}
           aria-hidden="true"
-          className="rounded-2xl border bg-card p-5 shadow-card"
+          className="rounded-xl border bg-card p-5"
         >
           <div className="skeleton h-3 w-24" />
           <div className="skeleton mt-4 h-5 w-44" />

@@ -68,7 +68,7 @@ export function CaptureSteps({
 
             <span
               className={cn(
-                "min-h-4 text-center text-xs",
+                "min-h-5 text-center text-meta",
                 step.state === "current"
                   ? "font-bold text-foreground"
                   : step.state === "failed"

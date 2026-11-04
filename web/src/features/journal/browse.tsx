@@ -1,14 +1,6 @@
 import { useEffect, useRef } from "react";
-import {
-  CalendarDays,
-  Check,
-  CheckCheck,
-  ChevronDown,
-  Rows3,
-  X,
-} from "lucide-react";
+import { CalendarDays, Check, ChevronDown, X } from "lucide-react";
 import type { Child, JournalMonth } from "@/lib/types";
-import type { JournalMode } from "@/lib/journal-view";
 import { ChildMark } from "@/components/ChildMark";
 import { Button } from "@/components/ui/button";
 import { capitalize, monthYear } from "@/lib/format";
@@ -56,26 +48,6 @@ export function ChildFilter({
   );
 }
 
-export function ModeToggle({
-  value,
-  onChange,
-}: {
-  value: JournalMode;
-  onChange: (mode: JournalMode) => void;
-}) {
-  const parcourt = value === "parcourir";
-  return (
-    <Button
-      variant="ghost"
-      size="sm"
-      onClick={() => onChange(parcourt ? "lire" : "parcourir")}
-    >
-      <Rows3 aria-hidden="true" />
-      {parcourt ? "Lire" : "Parcourir"}
-    </Button>
-  );
-}
-
 export function UnreadBar({
   count,
   loading,
@@ -86,18 +58,20 @@ export function UnreadBar({
   onMarkAll: () => void;
 }) {
   return (
-    <div
-      role="status"
-      className="flex items-center justify-between gap-3 rounded-xl border bg-card px-4 py-2 shadow-card"
-    >
-      <p className="flex items-center gap-2 text-ui">
+    <div className="flex flex-wrap items-center gap-x-3 text-meta">
+      <p role="status" className="flex items-center gap-2 text-muted-foreground">
         <span aria-hidden="true" className="size-2 shrink-0 rounded-full bg-primary" />
         <span data-tabular>
-          {count} journée{count > 1 ? "s" : ""} non lue{count > 1 ? "s" : ""}
+          {count} non lue{count > 1 ? "s" : ""}
         </span>
       </p>
-      <Button variant="ghost" size="sm" loading={loading} onClick={onMarkAll}>
-        <CheckCheck aria-hidden="true" />
+      <Button
+        variant="link"
+        size="sm"
+        className="min-h-11 px-0 text-primary"
+        loading={loading}
+        onClick={onMarkAll}
+      >
         Tout marquer comme lu
       </Button>
     </div>
@@ -145,16 +119,16 @@ export function MonthJump({
 
   return (
     <>
-      <h2 id={id} className="relative z-40 flex">
+      <h2 id={id} className="relative z-40 flex items-center">
         <button
           ref={boutonRef}
           type="button"
           aria-expanded={open}
           aria-haspopup="dialog"
           onClick={open ? onClose : onOpen}
-          className="-ml-1 flex h-full items-end gap-1.5 rounded-lg px-1 pb-2 transition-colors dur-fast hover:bg-accent"
+          className="-ml-2 flex min-h-11 items-center gap-1.5 rounded-lg px-2 font-serif text-ui font-semibold text-foreground transition-colors dur-fast outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <span className="surtitre text-muted-foreground">{label}</span>
+          <span>{label}</span>
           <ChevronDown
             className={cn(
               "size-4 shrink-0 text-muted-foreground transition-transform dur-base ease-carnet",
@@ -175,7 +149,7 @@ export function MonthJump({
             aria-label="Aller à un mois du carnet"
             className="panel-down absolute inset-x-0 top-full z-40 mt-1"
           >
-            <div className="max-h-[60svh] overflow-y-auto rounded-2xl border bg-popover p-2 text-popover-foreground shadow-lift">
+            <div className="max-h-[60svh] overflow-y-auto rounded-xl border bg-popover p-2 text-popover-foreground shadow-lift">
               <div className="flex items-center justify-between gap-2 px-2 pb-1">
                 <p className="surtitre text-muted-foreground">
                   {months.length} mois de carnet
@@ -196,9 +170,10 @@ export function MonthJump({
                   onClick={() => onJump(null)}
                   className="flex min-h-11 w-full items-center gap-3 rounded-xl px-2 text-left transition-colors dur-fast hover:bg-accent"
                 >
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                    <CalendarDays className="size-4" aria-hidden="true" />
-                  </span>
+                  <CalendarDays
+                    className="size-4 shrink-0 text-muted-foreground"
+                    aria-hidden="true"
+                  />
                   <span className="flex-1 text-ui font-bold">
                     Les journées les plus récentes
                   </span>

@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useBlocker, useNavigate, useParams } from "react-router-dom";
 import {
   BookOpenText,
-  Check,
   ChevronDown,
   FileText,
   Images,
@@ -42,9 +41,9 @@ import {
   ReviewActionBar,
 } from "@/features/review/ReviewActionBar";
 import { ReadOnlyDay } from "@/features/review/ReadOnlyDay";
-import { SourcePage, SourceTab } from "@/features/review/source";
+import { SourcePage } from "@/features/review/source";
+import { SegmentedControl } from "@/components/SegmentedControl";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
@@ -107,6 +106,7 @@ export default function Review() {
   const [justResolved, setJustResolved] = useState<number | null>(null);
   const [focusField, setFocusField] = useState<UncertaintyField | null>(null);
   const [retrying, setRetrying] = useState(false);
+  const [barHeight, setBarHeight] = useState(0);
   const barRef = useRef<HTMLDivElement>(null);
   const publishAbort = useRef<AbortController | null>(null);
   const focusedReading = useRef<string | null>(null);
@@ -352,6 +352,29 @@ export default function Review() {
     (el as HTMLTextAreaElement).focus({ preventScroll: true });
   }, [focusField, sourceOpen, sourceTab]);
 
+  const showBar =
+    !!entry &&
+    entry.status !== "processing" &&
+    entry.status !== "failed" &&
+    canEditEntry;
+  useEffect(() => {
+    const el = barRef.current;
+    if (!showBar || !el) return;
+    const root = document.documentElement;
+    const apply = () => {
+      const h = el.offsetHeight;
+      setBarHeight(h);
+      root.style.scrollPaddingBottom = `${h + 16}px`;
+    };
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+      root.style.scrollPaddingBottom = "";
+    };
+  }, [showBar]);
+
   async function remove() {
     await api.deleteEntry(id);
     leaving.current = true;
@@ -468,7 +491,7 @@ export default function Review() {
   }
 
   if (!canEditEntry) {
-    return <ReadOnlyDay entry={entry} />;
+    return <ReadOnlyDay entry={entry} reader />;
   }
 
   const attachmentToRemove = entry.attachments.find(
@@ -492,7 +515,10 @@ export default function Review() {
   ];
 
   return (
-    <div className="mx-auto w-full max-w-5xl p-4 pb-32">
+    <div
+      className="mx-auto w-full max-w-5xl p-4"
+      style={{ paddingBottom: barHeight ? barHeight + 24 : 128 }}
+    >
       {!hasStepper && <CaptureSteps steps={steps} className="mb-4 w-full" />}
 
       {hasStepper && (
@@ -505,7 +531,7 @@ export default function Review() {
         </div>
       )}
 
-      <header className="mb-4 flex items-start justify-between gap-3">
+      <header className="mb-4">
         <div className="min-w-0">
           <h1 className="font-serif text-title font-semibold">
             Relire la journée
@@ -517,6 +543,7 @@ export default function Review() {
               SOURCE_LABELS[entry.source],
             ]
               .filter(Boolean)
+              .concat(published ? ["publiée"] : [])
               .map((part, i, all) => (
                 <span key={i}>
                   <span className="whitespace-nowrap">
@@ -528,17 +555,6 @@ export default function Review() {
               ))}
           </p>
         </div>
-        {pending > 0 ? (
-          <Badge variant="warning" className="mt-0.5">
-            <TriangleAlert aria-hidden="true" />
-            {pending} à vérifier
-          </Badge>
-        ) : (
-          <Badge variant="success" className="mt-0.5">
-            <Check aria-hidden="true" />
-            {published ? "Publiée" : "Tout est confirmé"}
-          </Badge>
-        )}
       </header>
 
       <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] md:gap-6">
@@ -551,7 +567,7 @@ export default function Review() {
             onClick={() => setSourceOpen((v) => !v)}
             aria-expanded={sourceOpen}
             aria-controls="rv-source"
-            className="tap flex w-full items-center gap-3 rounded-2xl border bg-card p-2 text-left shadow-card transition-colors dur-fast ease-carnet hover:bg-accent md:hidden"
+            className="tap flex min-h-11 w-full items-center gap-3 rounded-xl border p-2 text-left transition-colors dur-fast ease-carnet outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring md:hidden"
           >
             <span className="flex shrink-0 -space-x-2" aria-hidden="true">
               {entry.attachments.slice(0, 3).map((a) => (
@@ -605,43 +621,36 @@ export default function Review() {
               </span>
             </p>
 
-            <div
-              role="tablist"
-              aria-label="Ce qui est écrit"
-              className="flex gap-1 rounded-xl bg-muted p-1"
-              onKeyDown={(e) => {
-                if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
-                e.preventDefault();
-                const next = sourceTab === "pages" ? "texte" : "pages";
-                setSourceTab(next);
-                document.getElementById(`rv-tab-${next}`)?.focus();
-              }}
-            >
-              <SourceTab
-                id="rv-tab-pages"
-                panel="rv-panel-pages"
-                selected={sourceTab === "pages"}
-                onSelect={() => setSourceTab("pages")}
-                Icon={Images}
-              >
-                La page
-              </SourceTab>
-              <SourceTab
-                id="rv-tab-texte"
-                panel="rv-panel-texte"
-                selected={sourceTab === "texte"}
-                onSelect={() => setSourceTab("texte")}
-                Icon={FileText}
-              >
-                Mot à mot
-              </SourceTab>
-            </div>
+            <SegmentedControl
+              label="Ce qui est écrit"
+              value={sourceTab}
+              onChange={setSourceTab}
+              options={[
+                {
+                  value: "pages",
+                  label: (
+                    <>
+                      <Images aria-hidden="true" />
+                      La page
+                    </>
+                  ),
+                },
+                {
+                  value: "texte",
+                  label: (
+                    <>
+                      <FileText aria-hidden="true" />
+                      Mot à mot
+                    </>
+                  ),
+                },
+              ]}
+            />
 
             {sourceTab === "pages" ? (
               <div
-                role="tabpanel"
                 id="rv-panel-pages"
-                aria-labelledby="rv-tab-pages"
+                aria-label="La page"
                 className="flex flex-col gap-3"
               >
                 {entry.attachments.map((a, i) => (
@@ -660,7 +669,7 @@ export default function Review() {
                   />
                 ))}
                 {entry.attachments.length === 0 && (
-                  <p className="rounded-xl bg-muted px-4 py-3 text-meta text-muted-foreground">
+                  <p className="text-meta text-muted-foreground">
                     Aucune page n'est attachée à cette journée : le récit a été
                     saisi à la main.
                   </p>
@@ -668,9 +677,8 @@ export default function Review() {
               </div>
             ) : (
               <div
-                role="tabpanel"
                 id="rv-panel-texte"
-                aria-labelledby="rv-tab-texte"
+                aria-label="Mot à mot"
                 className="flex flex-col gap-2"
               >
                 <p className="text-meta text-muted-foreground">
@@ -745,9 +753,9 @@ export default function Review() {
           <details
             open={itemsOpen}
             onToggle={(e) => setItemsOpen(e.currentTarget.open)}
-            className="rounded-2xl border bg-card shadow-card"
+            className="-mt-3"
           >
-            <summary className="tap flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
+            <summary className="tap flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-md py-2 outline-none transition-colors dur-fast ease-carnet hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
               <span className="min-w-0">
                 <span className="block text-ui font-bold">
                   Corriger les moments
@@ -766,7 +774,7 @@ export default function Review() {
                 )}
               />
             </summary>
-            <div className="border-t px-4 py-4">
+            <div className="pt-3">
               <ItemEditor
                 items={items}
                 onField={setItemField}

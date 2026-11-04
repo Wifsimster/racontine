@@ -4,20 +4,26 @@ import type { Entry } from "@/lib/types";
 import { capitalize, dayMonthShort, fr } from "@/lib/format";
 import { ChildMark } from "@/components/ChildMark";
 import { GlanceStrip, glanceOf, pickGlance } from "./glance";
-import { StatusBadge, isUnread } from "./EntryCard";
+import { StatusBadge, UnreadDot, isUnread } from "./EntryCard";
 
-export function EntryRow({ entry }: { entry: Entry }) {
+export function EntryRow({
+  entry,
+  showChild = false,
+}: {
+  entry: Entry;
+  showChild?: boolean;
+}) {
   const aBadge = entry.status !== "published";
   const unread = isUnread(entry);
   const shown = pickGlance(glanceOf(entry)).slice(0, aBadge ? 1 : 2);
   return (
     <Link
       to={`/entries/${entry.id}`}
-      className="flex items-center gap-3 rounded-xl border bg-card px-3 py-2.5 shadow-card transition-colors dur-fast hover:bg-accent"
+      className="flex min-h-14 items-center gap-3 px-2 py-3 transition-colors dur-fast outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
     >
       <time
         dateTime={entry.date}
-        className="w-16 shrink-0 text-meta font-bold whitespace-nowrap text-muted-foreground"
+        className="w-14 shrink-0 text-meta whitespace-nowrap text-muted-foreground"
         data-tabular
       >
         {capitalize(dayMonthShort(entry.date))}
@@ -25,23 +31,18 @@ export function EntryRow({ entry }: { entry: Entry }) {
 
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <span className="flex min-w-0 items-center gap-1.5">
-          {entry.child && <ChildMark name={entry.child.name} />}
+          {unread && <UnreadDot className="mr-0.5" />}
+          {showChild && entry.child && <ChildMark name={entry.child.name} />}
           <span className="min-w-0 flex-1 truncate text-ui font-bold">
             {entry.title ? fr(entry.title) : "Journée sans titre"}
           </span>
-          {unread && (
-            <span
-              className="size-2 shrink-0 rounded-full bg-primary"
-              title="Non lue"
-            >
-              <span className="sr-only">Non lue</span>
-            </span>
-          )}
         </span>
-        <span className="flex flex-wrap items-center gap-1.5">
-          <GlanceStrip stats={shown} />
-          <StatusBadge entry={entry} canEdit={false} />
-        </span>
+        {(shown.length > 0 || aBadge) && (
+          <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <GlanceStrip stats={shown} />
+            <StatusBadge entry={entry} canEdit={false} />
+          </span>
+        )}
       </div>
 
       <ChevronRight
