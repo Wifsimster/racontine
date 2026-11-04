@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { db } from "../src/db/index.js";
-import { attachments, children, memberships as membershipRows, user } from "../src/db/schema.js";
+import { attachments, children, entries, memberships as membershipRows, user } from "../src/db/schema.js";
+import { pendingUncertaintyCount } from "../src/uncertainties.js";
 import { eq } from "drizzle-orm";
 import {
   DrizzleAttachmentRepository,
@@ -17,6 +18,7 @@ import {
 } from "../src/adapters/drizzle-sharing.js";
 import { DrizzleAdminRepository } from "../src/adapters/drizzle-admin.js";
 import {
+  findNeighbours,
   listTimeline,
   listTimelineMonths,
   markAllRead,
@@ -338,6 +340,85 @@ if (drafts.kind === "page") {
 }
 await db.delete(user).where(eq(user.id, lecteur));
 ok("un lecteur marque une journée lue, non lue, puis tout le carnet");
+
+const carnet = await childRepo.createWithOwner({
+  name: "Mila",
+  birthdate: "2024-05-02",
+  ownerUserId: owner,
+});
+const pendingWord = { original: "Roueil", contexte: "", suggestions: [], champ: null, resolved: null };
+const [jour1, jour2, jour3, jour4, jour5] = await db
+  .insert(entries)
+  .values([
+    { childId: carnet.id, date: "2026-03-01", source: "nounou", status: "published", createdBy: owner, uncertainties: [pendingWord] },
+    { childId: carnet.id, date: "2026-03-02", source: "nounou", status: "draft", createdBy: owner, createdAt: new Date("2026-03-02T08:00:00Z"), uncertainties: [] },
+    { childId: carnet.id, date: "2026-03-02", source: "maison", status: "published", createdBy: owner, createdAt: new Date("2026-03-02T18:00:00Z"), uncertainties: [{ ...pendingWord, resolved: "Rueil" }] },
+    { childId: carnet.id, date: "2026-03-03", source: "nounou", status: "published", createdBy: owner, uncertainties: ["Pépin" as unknown as typeof pendingWord] },
+    { childId: carnet.id, date: "2026-03-04", source: "nounou", status: "draft", createdBy: owner, uncertainties: [{ ...pendingWord, resolved: "" }] },
+  ])
+  .returning({ id: entries.id });
+
+const queue = await listTimeline({ userId: owner, childId: carnet.id, limit: 10, pending: true });
+assert.equal(queue.kind, "page");
+if (queue.kind === "page") {
+  assert.deepEqual(queue.entries.map((e) => e.id), [jour5!.id, jour4!.id, jour1!.id]);
+  assert.ok(queue.entries.every((e) => pendingUncertaintyCount(e.uncertainties) > 0));
+  assert.equal(queue.pendingCount, 3);
+}
+const queueMonths = await listTimelineMonths({ userId: owner, childId: carnet.id, pending: true });
+if (queueMonths.kind === "months") assert.deepEqual(queueMonths.months, [{ month: "2026-03", count: 3 }]);
+const unfiltered = await listTimeline({ userId: owner, childId: carnet.id, limit: 10 });
+if (unfiltered.kind === "page") {
+  assert.equal(unfiltered.entries.length, 5);
+  assert.equal(unfiltered.pendingCount, 3);
+}
+const readerView = await listTimeline({ userId: owner, childId: carnet.id, limit: 10, asReader: true });
+if (readerView.kind === "page") assert.equal(readerView.pendingCount, undefined);
+const readerQueue = await listTimeline({ userId: owner, childId: carnet.id, limit: 10, asReader: true, pending: true });
+if (readerQueue.kind === "page") {
+  assert.equal(readerQueue.entries.length, 0);
+  assert.equal(readerQueue.pendingCount, undefined);
+}
+ok("la file « à vérifier » ne garde que les journées aux mots non résolus, pour qui peut les corriger");
+
+assert.deepEqual(await findNeighbours(owner, { id: jour3!.id, childId: carnet.id }), {
+  prevId: jour2!.id,
+  nextId: jour4!.id,
+});
+assert.deepEqual(await findNeighbours(owner, { id: jour1!.id, childId: carnet.id }), {
+  prevId: null,
+  nextId: jour2!.id,
+});
+const papi = `u-${randomUUID()}`;
+await db.insert(user).values({
+  id: papi,
+  name: "Papi",
+  email: `${papi}@example.test`,
+  emailVerified: true,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+});
+await db.insert(membershipRows).values({ userId: papi, childId: carnet.id, role: "reader" });
+assert.deepEqual(await findNeighbours(papi, { id: jour3!.id, childId: carnet.id }), {
+  prevId: jour1!.id,
+  nextId: jour4!.id,
+});
+assert.deepEqual(await findNeighbours(papi, { id: jour4!.id, childId: carnet.id }), {
+  prevId: jour3!.id,
+  nextId: null,
+});
+const papiQueue = await listTimeline({ userId: papi, limit: 10, pending: true });
+if (papiQueue.kind === "page") {
+  assert.equal(papiQueue.entries.length, 0);
+  assert.equal(papiQueue.pendingCount, undefined);
+}
+assert.deepEqual(await findNeighbours(invitee, { id: jour3!.id, childId: carnet.id }), {
+  prevId: null,
+  nextId: null,
+});
+await db.delete(user).where(eq(user.id, papi));
+await db.delete(children).where(eq(children.id, carnet.id));
+ok("les journées voisines suivent date puis création, et un lecteur ne saute que de publiée en publiée");
 
 const admin = new DrizzleAdminRepository();
 const administered = await admin.administeredChildren(owner);

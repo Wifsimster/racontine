@@ -5,6 +5,7 @@ import {
   BookOpenText,
   Camera,
   CalendarSearch,
+  CheckCheck,
   ChevronDown,
   CreditCard,
   CloudOff,
@@ -222,6 +223,32 @@ export function JournalFiltered({
       <Button variant="outline" onClick={onReset}>
         <RotateCcw aria-hidden="true" />
         Revoir tout le carnet
+      </Button>
+    </section>
+  );
+}
+
+export function QueueCleared({
+  label,
+  onReset,
+}: {
+  label: string | null;
+  onReset: () => void;
+}) {
+  return (
+    <section className="rise-enter flex flex-col items-center gap-5 py-10 text-center">
+      <CheckCheck aria-hidden="true" className="size-8 text-success" />
+      <div className="flex flex-col items-center gap-2">
+        <h2 className="font-serif text-title font-semibold text-balance">
+          Plus rien à vérifier{label ? ` pour ${label}` : ""}
+        </h2>
+        <p className="max-w-[34ch] text-ui text-pretty text-muted-foreground">
+          Chaque mot sur lequel la lecture hésitait a été tranché.
+        </p>
+      </div>
+      <Button variant="outline" onClick={onReset}>
+        <RotateCcw aria-hidden="true" />
+        Revoir tout le journal
       </Button>
     </section>
   );

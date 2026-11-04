@@ -9,6 +9,7 @@ import { isIsoDate } from "../domain/dates.js";
 import { isSource } from "../domain/entry-metadata.js";
 import { requireUser } from "../plugins/auth.js";
 import {
+  findNeighbours,
   findVisibleEntry,
   listAccessibleChildren,
   listBatch,
@@ -22,6 +23,7 @@ import {
   parseCursor,
   parseFrom,
   parseLimit,
+  parsePending,
   parseView,
 } from "../domain/feed-window.js";
 import { tidyUncertainties } from "../uncertainties.js";
@@ -114,6 +116,7 @@ export async function entriesRoutes(app: FastifyInstance) {
       cursor?: string;
       from?: string;
       view?: string;
+      pending?: string;
     };
   }>("/api/entries", async (req, reply) => {
     const page = await listTimeline({
@@ -123,6 +126,7 @@ export async function entriesRoutes(app: FastifyInstance) {
       cursor: parseCursor(req.query.cursor),
       from: parseFrom(req.query.from),
       asReader: parseView(req.query.view) === "reader",
+      pending: parsePending(req.query.pending),
     });
     if (page.kind === "denied")
       return reply.code(403).send({ error: "accès refusé à cet enfant" });
@@ -137,6 +141,9 @@ export async function entriesRoutes(app: FastifyInstance) {
       })),
       nextCursor: page.nextCursor,
       unreadCount: page.unreadCount,
+      ...(page.pendingCount === undefined
+        ? {}
+        : { pendingCount: page.pendingCount }),
     };
   });
 
@@ -152,13 +159,14 @@ export async function entriesRoutes(app: FastifyInstance) {
     },
   );
 
-  app.get<{ Querystring: { childId?: string; view?: string } }>(
+  app.get<{ Querystring: { childId?: string; view?: string; pending?: string } }>(
     "/api/entries/months",
     async (req, reply) => {
       const res = await listTimelineMonths({
         userId: req.user!.id,
         childId: req.query.childId,
         asReader: parseView(req.query.view) === "reader",
+        pending: parsePending(req.query.pending),
       });
       if (res.kind === "denied")
         return reply.code(403).send({ error: "accès refusé à cet enfant" });
@@ -178,8 +186,16 @@ export async function entriesRoutes(app: FastifyInstance) {
   app.get<{ Params: { id: string } }>("/api/entries/:id", async (req, reply) => {
     const entry = await findVisibleEntry(req.user!.id, req.params.id);
     if (!entry) return reply.code(404).send({ error: "entrée introuvable" });
-    const [withRead] = await readStates(req.user!.id, [entry]);
-    return { ...serializeEntry(entry), read: withRead!.read, readAt: withRead!.readAt };
+    const [[withRead], neighbours] = await Promise.all([
+      readStates(req.user!.id, [entry]),
+      findNeighbours(req.user!.id, entry),
+    ]);
+    return {
+      ...serializeEntry(entry),
+      read: withRead!.read,
+      readAt: withRead!.readAt,
+      ...neighbours,
+    };
   });
 
   for (const [method, read] of [

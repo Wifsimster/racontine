@@ -1,11 +1,42 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  isPendingUncertainty,
+  pendingUncertaintyCount,
   stripOuterQuotes,
   tidyUncertainties,
   tidyUncertainty,
 } from "./uncertainties.js";
 import type { Uncertainty } from "./db/schema.js";
+
+test("une incertitude est en attente tant qu'aucun mot n'a été retenu", () => {
+  const base = { contexte: "", suggestions: [], champ: null };
+  assert.equal(isPendingUncertainty({ ...base, original: "Roueil", resolved: null }), true);
+  assert.equal(isPendingUncertainty({ ...base, original: "Roueil", resolved: "" }), true);
+  assert.equal(isPendingUncertainty({ ...base, original: "Roueil", resolved: "Rueil" }), false);
+  assert.equal(isPendingUncertainty({ ...base, original: "Roueil", resolved: "Roueil" }), false);
+  assert.equal(isPendingUncertainty({ original: "Roueil" }), true);
+  assert.equal(isPendingUncertainty("Roueil"), true);
+  assert.equal(isPendingUncertainty("   "), false);
+  assert.equal(isPendingUncertainty({ ...base, original: "  ", resolved: null }), false);
+  for (const junk of [null, undefined, 42, {}, { resolved: null }])
+    assert.equal(isPendingUncertainty(junk), false);
+});
+
+test("on compte les mots encore à vérifier d'une journée", () => {
+  assert.equal(
+    pendingUncertaintyCount([
+      { original: "Roueil", resolved: null },
+      { original: "Pépin", resolved: "Pépin" },
+      "Margaux",
+      "",
+    ]),
+    2,
+  );
+  assert.equal(pendingUncertaintyCount([]), 0);
+  assert.equal(pendingUncertaintyCount(null), 0);
+  assert.equal(pendingUncertaintyCount("Roueil"), 0);
+});
 
 function u(overrides: Partial<Uncertainty> = {}): Uncertainty {
   return {
