@@ -1,9 +1,24 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { db } from "../src/db/index.js";
-import { attachments, children, entries, entries as entryRows, entryItems, memberships as membershipRows, user } from "../src/db/schema.js";
+import {
+  attachments,
+  children,
+  entries,
+  entries as entryRows,
+  entryItems,
+  memberships as membershipRows,
+  subscriptions as subscriptionRows,
+  user,
+} from "../src/db/schema.js";
 import { pendingUncertaintyCount } from "../src/uncertainties.js";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
+import {
+  DrizzleNotificationLog,
+  DrizzlePendingNotifications,
+  DrizzleSubscriberDirectory,
+} from "../src/notifications/drizzle-stores.js";
+import { SubscriberNotifier } from "../src/notifications/subscriber-notifier.js";
 import {
   DrizzleAttachmentRepository,
   DrizzleChildRepository,
@@ -212,6 +227,63 @@ assert.equal(await invitations.acceptIfPending(inv.id, invitee), true);
 assert.equal(await invitations.acceptIfPending(inv.id, invitee), false);
 assert.equal(await memberships.isMember(child.id, invitee), true);
 ok("une invitation ne s'accepte qu'une fois, et crée l'adhésion");
+
+const [autoSub] = await db
+  .select()
+  .from(subscriptionRows)
+  .where(
+    and(
+      eq(subscriptionRows.userId, invitee),
+      eq(subscriptionRows.childId, child.id),
+    ),
+  );
+assert.equal(autoSub?.emailEnabled, true);
+assert.equal(autoSub?.cadence, "chaque");
+await db
+  .update(subscriptionRows)
+  .set({ emailEnabled: false, cadence: "hebdo" })
+  .where(eq(subscriptionRows.id, autoSub.id));
+ok("accepter une invitation abonne le proche au carnet");
+
+assert.equal((await repo.findById(created.id))?.status, "published");
+const notifier = new SubscriberNotifier({
+  subscribers: new DrizzleSubscriberDirectory(),
+  log: new DrizzleNotificationLog(),
+  webBaseUrl: "https://racontine.test",
+  logger: { info() {}, warn() {}, error() {} },
+});
+await notifier.entryPublished({
+  entryId: created.id,
+  childId: child.id,
+  childName: "Lou",
+  date: "2026-02-01",
+  actorUserId: owner,
+});
+const pendingStore = new DrizzlePendingNotifications();
+const pendingRows = (await pendingStore.pending()).filter(
+  (r) => r.childId === child.id,
+);
+assert.equal(pendingRows.length, 1);
+assert.equal(pendingRows[0].recipient.userId, invitee);
+assert.equal(pendingRows[0].cadence, "hebdo");
+assert.equal(pendingRows[0].recipient.emailEnabled, false);
+assert.equal(pendingRows[0].entry?.entryId, created.id);
+assert.equal(pendingRows[0].childName, "Lou");
+const claimedAt = new Date();
+assert.deepEqual(
+  await pendingStore.claim([pendingRows[0].notificationId], claimedAt),
+  [pendingRows[0].notificationId],
+);
+assert.deepEqual(
+  await pendingStore.claim([pendingRows[0].notificationId], claimedAt),
+  [],
+);
+await pendingStore.markEmailed([pendingRows[0].notificationId], claimedAt);
+assert.equal(
+  (await pendingStore.pending()).filter((r) => r.childId === child.id).length,
+  0,
+);
+ok("une publication notifie les proches abonnés, et chaque notification ne part qu'une fois");
 
 assert.equal(
   await new DrizzleUserDirectory().findIdByEmail(`${invitee}@example.test`),

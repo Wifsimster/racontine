@@ -1,9 +1,20 @@
 import type { FastifyInstance } from "fastify";
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
-import { subscriptions, notifications, user } from "../db/schema.js";
+import {
+  subscriptions,
+  notifications,
+  user,
+  type SubscriptionCadence,
+} from "../db/schema.js";
 import { requireUser } from "../plugins/auth.js";
 import { hasChildRole } from "../access.js";
+
+const CADENCES: readonly SubscriptionCadence[] = ["chaque", "hebdo"];
+
+function isCadence(value: unknown): value is SubscriptionCadence {
+  return typeof value === "string" && (CADENCES as readonly string[]).includes(value);
+}
 
 export async function subscriptionsRoutes(app: FastifyInstance) {
   app.addHook("preHandler", requireUser);
@@ -24,29 +35,42 @@ export async function subscriptionsRoutes(app: FastifyInstance) {
       return {
         subscribed: !!sub,
         emailEnabled: sub?.emailEnabled ?? true,
+        cadence: sub?.cadence ?? "chaque",
       };
     },
   );
 
   app.put<{
     Params: { childId: string };
-    Body: { emailEnabled?: boolean };
+    Body: { emailEnabled?: unknown; cadence?: unknown };
   }>("/api/children/:childId/subscription", async (req, reply) => {
     const { childId } = req.params;
-    const emailEnabled = req.body?.emailEnabled ?? true;
+    const body = req.body ?? {};
+    if (body.emailEnabled !== undefined && typeof body.emailEnabled !== "boolean")
+      return reply.code(400).send({ error: "emailEnabled invalide" });
+    if (body.cadence !== undefined && !isCadence(body.cadence))
+      return reply.code(400).send({ error: "cadence invalide" });
 
     if (!(await hasChildRole(req.user!.id, childId, "reader")))
       return reply.code(404).send({ error: "enfant introuvable" });
 
-    await db
+    const changes: { emailEnabled?: boolean; cadence?: SubscriptionCadence } = {};
+    if (typeof body.emailEnabled === "boolean") changes.emailEnabled = body.emailEnabled;
+    if (isCadence(body.cadence)) changes.cadence = body.cadence;
+
+    const [row] = await db
       .insert(subscriptions)
-      .values({ userId: req.user!.id, childId, emailEnabled })
+      .values({ userId: req.user!.id, childId, ...changes })
       .onConflictDoUpdate({
         target: [subscriptions.userId, subscriptions.childId],
-        set: { emailEnabled },
+        set: Object.keys(changes).length ? changes : { childId },
+      })
+      .returning({
+        emailEnabled: subscriptions.emailEnabled,
+        cadence: subscriptions.cadence,
       });
 
-    return { subscribed: true, emailEnabled };
+    return { subscribed: true, emailEnabled: row.emailEnabled, cadence: row.cadence };
   });
 
   app.delete<{ Params: { childId: string } }>(
@@ -76,6 +100,7 @@ export async function subscriptionsRoutes(app: FastifyInstance) {
           name: user.name,
           email: user.email,
           emailEnabled: subscriptions.emailEnabled,
+          cadence: subscriptions.cadence,
           createdAt: subscriptions.createdAt,
         })
         .from(subscriptions)

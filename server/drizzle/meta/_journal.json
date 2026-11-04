@@ -99,6 +99,20 @@
       "when": 1793782628336,
       "tag": "0013_add_entry_reads",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1793787785654,
+      "tag": "0014_notifications_regroupees",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1793787793726,
+      "tag": "0015_abonner_membres",
+      "breakpoints": true
     }
   ]
 }

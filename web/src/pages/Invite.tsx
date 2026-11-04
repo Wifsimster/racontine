@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import {
+  Bell,
   BookOpenText,
   CloudOff,
   Inbox,
@@ -14,6 +15,7 @@ import { api } from "@/lib/api";
 import { useSession, signIn, signOut } from "@/lib/auth-client";
 import { ROLE_LABELS, ROLE_HINTS, type InvitationPreview } from "@/lib/types";
 import { Button } from "@/components/ui/button";
+import { enablePush, getPushState, type PushState } from "@/lib/push";
 import {
   DoorPage,
   DoorHeading,
@@ -45,6 +47,15 @@ function forgetIntent(token: string) {
   }
 }
 
+function pushStateSoon(ms = 3000): Promise<PushState> {
+  return Promise.race([
+    getPushState().catch((): PushState => "unsupported"),
+    new Promise<PushState>((resolve) =>
+      setTimeout(() => resolve("unsupported"), ms),
+    ),
+  ]);
+}
+
 function sameEmail(a: string | undefined, b: string | undefined): boolean {
   return !!a && !!b && a.trim().toLowerCase() === b.trim().toLowerCase();
 }
@@ -57,7 +68,8 @@ type Phase =
   | "loading"
   | "ready"
   | "sent"
-  | "joining";
+  | "joining"
+  | "push";
 
 export default function Invite() {
   const { token = "" } = useParams();
@@ -140,6 +152,16 @@ export default function Invite() {
     };
   }, []);
 
+  const enterJournal = useCallback(() => {
+    if (!preview) return;
+    void navigate("/", {
+      replace: true,
+      state: {
+        joined: { childName: preview.childName, role: preview.role },
+      },
+    });
+  }, [navigate, preview]);
+
   const accept = useCallback(async () => {
     if (!preview) return;
     setPhase("joining");
@@ -147,17 +169,32 @@ export default function Invite() {
     try {
       await api.acceptInvitation(token);
       forgetIntent(token);
-      navigate("/", {
-        replace: true,
-        state: {
-          joined: { childName: preview.childName, role: preview.role },
-        },
-      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Échec de l'adhésion");
       setPhase("ready");
+      return;
     }
-  }, [navigate, preview, token]);
+    if ((await pushStateSoon()) === "unsubscribed") {
+      setPhase("push");
+      return;
+    }
+    enterJournal();
+  }, [enterJournal, preview, token]);
+
+  async function turnOnPush() {
+    setBusy(true);
+    setError(null);
+    try {
+      await enablePush();
+      enterJournal();
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : "Les notifications n’ont pas pu être activées.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
 
   useEffect(() => {
     if (autoTried.current) return;
@@ -327,6 +364,31 @@ export default function Invite() {
           <Mail aria-hidden="true" />
           Renvoyer le lien
         </Button>
+      </DoorSheet>,
+    );
+  }
+
+  if (phase === "push") {
+    return frame(
+      <DoorSheet>
+        <DoorSheetTitle title={`Vous suivez ${preview.childName}`} />
+        <p className="carnet-story text-foreground">
+          Voulez-vous être prévenu·e sur cet appareil quand une nouvelle journée
+          paraît, même l’application fermée ?
+        </p>
+        {error && <Problem message={error} />}
+        <div className="flex flex-col gap-2">
+          <Button size="lg" loading={busy} onClick={() => void turnOnPush()}>
+            <Bell aria-hidden="true" />
+            Activer les notifications
+          </Button>
+          <Button variant="outline" disabled={busy} onClick={enterJournal}>
+            {error ? "Continuer sans" : "Plus tard"}
+          </Button>
+        </div>
+        <p className="text-meta text-muted-foreground">
+          Vous pourrez changer d’avis à tout moment dans Les proches.
+        </p>
       </DoorSheet>,
     );
   }
