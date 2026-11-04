@@ -129,9 +129,12 @@ export const SOURCE_LABELS: Record<EntrySource, string> = {
   maison: "Maison",
 };
 
+export type SubscriptionCadence = "chaque" | "hebdo";
+
 export type SubscriptionStatus = {
   subscribed: boolean;
   emailEnabled: boolean;
+  cadence: SubscriptionCadence;
 };
 
 export type Subscriber = {

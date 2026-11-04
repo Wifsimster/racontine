@@ -13,6 +13,7 @@ import type {
   InvitationPreview,
   Notification,
   Subscriber,
+  SubscriptionCadence,
   SubscriptionStatus,
   TimelinePage,
   Me,
@@ -211,10 +212,13 @@ export const api = {
   getSubscription: (childId: string) =>
     req<SubscriptionStatus>(`/api/children/${childId}/subscription`),
 
-  subscribe: (childId: string, emailEnabled = true) =>
+  subscribe: (
+    childId: string,
+    changes: { emailEnabled?: boolean; cadence?: SubscriptionCadence } = {},
+  ) =>
     req<SubscriptionStatus>(`/api/children/${childId}/subscription`, {
       method: "PUT",
-      body: JSON.stringify({ emailEnabled }),
+      body: JSON.stringify(changes),
     }),
 
   unsubscribe: (childId: string) =>

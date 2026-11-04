@@ -294,6 +294,12 @@ export class DrizzleInvitationRepository implements InvitationRepository {
               eq(memberships.userId, userId),
             ),
           );
+      await tx
+        .insert(subscriptions)
+        .values({ userId, childId: inv.childId, emailEnabled: true })
+        .onConflictDoNothing({
+          target: [subscriptions.userId, subscriptions.childId],
+        });
       return true;
     });
   }

@@ -1,6 +1,7 @@
-import { and, eq, ne } from "drizzle-orm";
+import { and, eq, inArray, isNull, ne } from "drizzle-orm";
 import { db } from "../db/index.js";
 import {
+  children,
   entries,
   entryItems,
   memberships,
@@ -12,6 +13,8 @@ import { dayChips, type DayChip } from "../domain/day-glance.js";
 import type {
   DayGlance,
   NotificationLog,
+  PendingNotification,
+  PendingNotifications,
   PublicationEvent,
   Recipient,
   SubscriberDirectory,
@@ -73,12 +76,99 @@ export class DrizzleNotificationLog implements NotificationLog {
       .returning({ id: notifications.id });
     return row.id;
   }
+}
 
-  async markDelivered(notificationId: string, at: Date): Promise<void> {
+export class DrizzlePendingNotifications implements PendingNotifications {
+  async pending(): Promise<PendingNotification[]> {
+    const rows = await db
+      .select({
+        id: notifications.id,
+        createdAt: notifications.createdAt,
+        userId: notifications.userId,
+        childId: notifications.childId,
+        email: user.email,
+        name: user.name,
+        emailEnabled: subscriptions.emailEnabled,
+        cadence: subscriptions.cadence,
+        membershipId: memberships.id,
+        childName: children.name,
+        entryId: entries.id,
+        entryDate: entries.date,
+        entryTitle: entries.title,
+        entryHighlight: entries.highlight,
+        entryStatus: entries.status,
+      })
+      .from(notifications)
+      .innerJoin(user, eq(user.id, notifications.userId))
+      .leftJoin(
+        subscriptions,
+        and(
+          eq(subscriptions.userId, notifications.userId),
+          eq(subscriptions.childId, notifications.childId),
+        ),
+      )
+      .leftJoin(
+        memberships,
+        and(
+          eq(memberships.userId, notifications.userId),
+          eq(memberships.childId, notifications.childId),
+        ),
+      )
+      .leftJoin(children, eq(children.id, notifications.childId))
+      .leftJoin(entries, eq(entries.id, notifications.entryId))
+      .where(
+        and(
+          isNull(notifications.dispatchedAt),
+          eq(notifications.type, "entry_published"),
+        ),
+      )
+      .orderBy(notifications.createdAt);
+    return rows.map((r) => ({
+      notificationId: r.id,
+      createdAt: r.createdAt,
+      recipient: {
+        userId: r.userId,
+        email: r.email ?? null,
+        name: r.name ?? "",
+        emailEnabled: r.emailEnabled ?? false,
+      },
+      cadence:
+        r.childId && r.cadence && r.membershipId ? r.cadence : null,
+      childId: r.childId ?? "",
+      childName: r.childName ?? "",
+      entry:
+        r.entryId && r.entryDate && r.entryStatus === "published"
+          ? {
+              entryId: r.entryId,
+              date: r.entryDate,
+              title: r.entryTitle,
+              highlight: r.entryHighlight,
+            }
+          : null,
+    }));
+  }
+
+  async claim(notificationIds: string[], at: Date): Promise<string[]> {
+    if (!notificationIds.length) return [];
+    const rows = await db
+      .update(notifications)
+      .set({ dispatchedAt: at })
+      .where(
+        and(
+          inArray(notifications.id, notificationIds),
+          isNull(notifications.dispatchedAt),
+        ),
+      )
+      .returning({ id: notifications.id });
+    return rows.map((r) => r.id);
+  }
+
+  async markEmailed(notificationIds: string[], at: Date): Promise<void> {
+    if (!notificationIds.length) return;
     await db
       .update(notifications)
       .set({ emailedAt: at })
-      .where(eq(notifications.id, notificationId));
+      .where(inArray(notifications.id, notificationIds));
   }
 }
 
