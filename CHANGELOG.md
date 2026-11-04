@@ -2,6 +2,13 @@
 
 Toutes les versions notables de Racontine. Format issu des messages de commit conventionnels (`feat`, `fix`, …).
 
+## [1.51.1](https://github.com/Wifsimster/racontine/compare/v1.51.0...v1.51.1) (2026-11-04)
+
+
+### Bug Fixes
+
+* **security:** corrige les CVE des dépendances et des images ([#143](https://github.com/Wifsimster/racontine/issues/143)) ([212ea29](https://github.com/Wifsimster/racontine/commit/212ea2974dd9418be3a05a4bf08bc9586127e51f))
+
 # [1.51.0](https://github.com/Wifsimster/racontine/compare/v1.50.0...v1.51.0) (2026-11-04)
 
 
