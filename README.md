@@ -61,7 +61,7 @@ Les grands-parents savent enfin quoi demander au téléphone.
   <img src="docs/screenshots/05-parcourir.png" width="300" alt="Vue compacte du journal, une journée par ligne">
 </p>
 
-Passez en vue compacte pour remonter les semaines, ou sautez directement à un mois.
+Passez en vue compacte : un calendrier par mois montre les journées racontées, il suffit de toucher un jour. Ou sautez directement à un mois.
 Avec plusieurs enfants, chacun a son carnet.
 
 ## Vous choisissez qui lit

@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { SegmentedControl } from "@/components/SegmentedControl";
 import { EntryCard } from "@/features/journal/EntryCard";
 import { EntryRow } from "@/features/journal/EntryRow";
+import { MonthCalendar } from "@/features/journal/MonthCalendar";
 import {
   ChildFilter,
   MonthJump,
@@ -581,6 +582,9 @@ export default function Timeline() {
                 </p>
               </div>
             </div>
+            {mode === "parcourir" && (
+              <MonthCalendar month={m.key} entries={m.entries} />
+            )}
             <ol
               className={cn(
                 "mt-2 flex flex-col",
