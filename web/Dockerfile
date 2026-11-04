@@ -10,6 +10,7 @@ COPY web ./web
 RUN pnpm --filter @racontine/web build
 
 FROM nginx:alpine
+RUN apk upgrade --no-cache
 COPY web/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/web/dist /usr/share/nginx/html
 EXPOSE 80

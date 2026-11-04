@@ -15,7 +15,8 @@ FROM node:26-alpine
 WORKDIR /app
 ENV NODE_ENV=production
 
-RUN apk add --no-cache su-exec
+RUN apk upgrade --no-cache && apk add --no-cache su-exec \
+ && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
 
 COPY --from=build /out/node_modules ./node_modules
 COPY --from=build /out/dist ./dist
