@@ -34,6 +34,7 @@ test("le catalogue expose le carnet, l'exploitation ET le cercle", () => {
     "list_children",
     "upload_daily_note",
     "create_daily_note",
+    "attach_daily_note_pages",
     "list_daily_notes",
     "get_daily_note",
     "instance_status",

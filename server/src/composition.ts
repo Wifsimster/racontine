@@ -105,6 +105,8 @@ export const entryEditing = new EntryEditingService({
 
 export const pages = new PageService({
   pages: new DrizzlePageRepository(),
+  entries,
+  attachments,
   images,
   access,
   logger,
@@ -141,6 +143,7 @@ export const sharing = new SharingService({
 
 export const mcpTooling = {
   ingest: ingestService,
+  pages,
   notes: transcribedNotes,
   queries: new DrizzleEntryQueries(),
   uploads: new DbStagedUploads(),

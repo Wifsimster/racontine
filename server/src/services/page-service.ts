@@ -1,10 +1,15 @@
 import type {
   AccessPolicy,
+  AttachmentRepository,
+  EntryRepository,
   ImageStore,
   Logger,
   PageRecord,
   PageRepository,
+  StoredImage,
 } from "../ports.js";
+
+export const MAX_PAGES_PER_ENTRY = 20;
 
 export type PageRejection = { ok: false; httpCode: number; error: string };
 
@@ -16,6 +21,11 @@ const NOT_FOUND: PageRejection = {
 
 export type PageDeps = {
   pages: PageRepository;
+  entries: Pick<EntryRepository, "findById">;
+  attachments: Pick<
+    AttachmentRepository,
+    "pathsFor" | "nextPosition" | "addMany"
+  >;
   images: ImageStore;
   access: AccessPolicy;
   logger: Logger;
@@ -39,6 +49,73 @@ export class PageService {
     return {
       relPath: wantsThumb && page.thumbPath ? page.thumbPath : page.originalPath,
       mime: page.mime,
+    };
+  }
+
+  async attach(params: {
+    userId: string;
+    entryId: string;
+    images: Buffer[];
+  }): Promise<{ ok: true; added: number; total: number } | PageRejection> {
+    if (!params.images.length)
+      return { ok: false, httpCode: 400, error: "aucune photo fournie" };
+
+    const entry = await this.deps.entries.findById(params.entryId);
+    const notFound: PageRejection = {
+      ok: false,
+      httpCode: 404,
+      error: "journée introuvable",
+    };
+    if (!entry) return notFound;
+    if (
+      !(await this.deps.access.hasChildRole(
+        params.userId,
+        entry.childId,
+        "contributor",
+      ))
+    )
+      return notFound;
+    if (entry.status === "processing")
+      return {
+        ok: false,
+        httpCode: 409,
+        error:
+          "la journée est encore en cours de lecture, réessayez une fois le brouillon prêt",
+      };
+
+    const already = (await this.deps.attachments.pathsFor(entry.id)).length;
+    if (already + params.images.length > MAX_PAGES_PER_ENTRY)
+      return {
+        ok: false,
+        httpCode: 413,
+        error: `Une journée compte au plus ${MAX_PAGES_PER_ENTRY} pages (elle en a déjà ${already}).`,
+      };
+
+    const stored: StoredImage[] = [];
+    try {
+      for (const buf of params.images)
+        stored.push(await this.deps.images.store(buf));
+      const position = await this.deps.attachments.nextPosition(entry.id);
+      await this.deps.attachments.addMany(entry.id, stored, position);
+    } catch (err) {
+      await Promise.allSettled(
+        stored.map((img) => this.deps.images.delete(img)),
+      );
+      this.deps.logger.error("Ajout de pages impossible", {
+        entryId: entry.id,
+        err: err instanceof Error ? err.message : err,
+      });
+      return {
+        ok: false,
+        httpCode: 422,
+        error: "Image indécodable (format non supporté ou fichier corrompu).",
+      };
+    }
+
+    return {
+      ok: true,
+      added: stored.length,
+      total: already + stored.length,
     };
   }
 
