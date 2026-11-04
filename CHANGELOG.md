@@ -2,6 +2,13 @@
 
 Toutes les versions notables de Racontine. Format issu des messages de commit conventionnels (`feat`, `fix`, …).
 
+# [1.51.0](https://github.com/Wifsimster/racontine/compare/v1.50.0...v1.51.0) (2026-11-04)
+
+
+### Features
+
+* **journal:** calendrier du mois en mode Parcourir ([#142](https://github.com/Wifsimster/racontine/issues/142)) ([48f46f5](https://github.com/Wifsimster/racontine/commit/48f46f5e72a24e6352ce6bf989b77df36297b1b2))
+
 # [1.50.0](https://github.com/Wifsimster/racontine/compare/v1.49.0...v1.50.0) (2026-11-04)
 
 
