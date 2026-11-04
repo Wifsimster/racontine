@@ -5,6 +5,7 @@ import { folderName, planExportPhotos } from "./export-photos.js";
 
 const page = (id: string, mime = "image/jpeg") => ({
   id,
+  kind: id.startsWith("s") ? ("souvenir" as const) : ("carnet" as const),
   mime,
   width: null,
   height: null,
@@ -79,4 +80,23 @@ test("une page sans fichier garde file: null et n'entre pas dans l'archive", () 
   );
   assert.equal(plan.photos.length, 1);
   assert.equal(plan.archive.carnets[0].entries[0].pages[1].file, null);
+});
+
+test("les photos de l'enfant ont leur propre numérotation, distincte des pages", () => {
+  const plan = planExportPhotos(
+    archive([
+      { name: "Lou", entries: [{ date: "2026-09-17", pages: ["a", "s1", "b", "s2"] }] },
+    ]),
+    all(["a", "s1", "b", "s2"]),
+  );
+  assert.deepEqual(
+    plan.photos.map((p) => p.file),
+    [
+      "photos/Lou/2026-09-17-1.jpg",
+      "photos/Lou/2026-09-17-photo-1.jpg",
+      "photos/Lou/2026-09-17-2.jpg",
+      "photos/Lou/2026-09-17-photo-2.jpg",
+    ],
+  );
+  assert.equal(plan.archive.carnets[0].entries[0].pages[1].kind, "souvenir");
 });

@@ -501,6 +501,7 @@ export type Child = typeof children.$inferSelect;
 export type Membership = typeof memberships.$inferSelect;
 export type Invitation = typeof invitations.$inferSelect;
 export type MemberRole = (typeof memberRole.enumValues)[number];
+export type AttachmentKind = (typeof attachmentKind.enumValues)[number];
 export type Subscription = typeof subscriptions.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
 export type AppSettings = typeof appSettings.$inferSelect;

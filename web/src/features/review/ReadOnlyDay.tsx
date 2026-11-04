@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { glanceOf, toDraftItems } from "./draft";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { SouvenirGallery } from "@/features/journal/souvenirs";
 
 export function ReadOnlyDay({
   entry,
@@ -39,6 +40,13 @@ export function ReadOnlyDay({
       </header>
 
       <article className="flex flex-col gap-5">
+        {(entry.souvenirs?.length ?? 0) > 0 && (
+          <SouvenirGallery
+            souvenirs={entry.souvenirs ?? []}
+            childName={entry.child?.name}
+            date={entry.date}
+          />
+        )}
         {entry.story ? (
           <div className="paper-ruled pl-10">
             <p className="carnet-story m-0 whitespace-pre-line text-foreground">

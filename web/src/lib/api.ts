@@ -165,6 +165,15 @@ export const api = {
       body: JSON.stringify({ quarter }),
     }),
 
+  addSouvenirs: (entryId: string, files: File[]) => {
+    const fd = new FormData();
+    for (const f of files) fd.append("photos", f);
+    return req<{ souvenirs: AttachmentRef[]; total: number }>(
+      `/api/entries/${entryId}/souvenirs`,
+      { method: "POST", body: fd },
+    );
+  },
+
   deleteAttachment: (id: string) =>
     req<void>(`/api/attachments/${id}`, { method: "DELETE" }),
 

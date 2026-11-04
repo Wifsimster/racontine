@@ -23,7 +23,7 @@ import {
   MonthJumpVeil,
   UnreadBar,
 } from "@/features/journal/browse";
-import { PageViewer } from "@/features/journal/pages";
+import { PageViewer, type ViewerKind } from "@/features/journal/pages";
 import {
   JournalEmpty,
   JournalError,
@@ -53,7 +53,13 @@ const MODES = [
   { value: "parcourir", label: "Parcourir" },
 ] as const;
 
-type Viewer = { pages: AttachmentRef[]; index: number; date: string };
+type Viewer = {
+  pages: AttachmentRef[];
+  index: number;
+  date: string;
+  kind: ViewerKind;
+  childName?: string;
+};
 
 export default function Timeline() {
   const location = useLocation();
@@ -347,7 +353,24 @@ export default function Timeline() {
   function openPages(entry: Entry, index: number, depuis: HTMLElement) {
     void marquerLu(entry, true);
     openerRef.current = depuis;
-    setViewer({ pages: entry.attachments, index, date: entry.date });
+    setViewer({
+      pages: entry.attachments,
+      index,
+      date: entry.date,
+      kind: "carnet",
+    });
+  }
+
+  function openSouvenirs(entry: Entry, index: number, depuis: HTMLElement) {
+    void marquerLu(entry, true);
+    openerRef.current = depuis;
+    setViewer({
+      pages: entry.souvenirs ?? [],
+      index,
+      date: entry.date,
+      kind: "souvenir",
+      childName: entry.child?.name,
+    });
   }
 
   function closeViewer() {
@@ -509,6 +532,7 @@ export default function Timeline() {
                       entry={e}
                       canEdit={false}
                       onOpenPages={openPages}
+                      onOpenSouvenirs={openSouvenirs}
                       onRead={marquerLu}
                       showChild={plusieursEnfants}
                     />
@@ -564,6 +588,8 @@ export default function Timeline() {
           pages={viewer.pages}
           index={viewer.index}
           date={viewer.date}
+          kind={viewer.kind}
+          childName={viewer.childName}
           onIndex={(i) => setViewer((v) => (v ? { ...v, index: i } : v))}
           onClose={closeViewer}
         />

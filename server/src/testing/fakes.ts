@@ -1,5 +1,11 @@
 import { Readable } from "node:stream";
-import type { Entry, EntryItemData, MemberRole, Uncertainty } from "../db/schema.js";
+import type {
+  AttachmentKind,
+  Entry,
+  EntryItemData,
+  MemberRole,
+  Uncertainty,
+} from "../db/schema.js";
 import type { CarnetDay } from "../domain/carnet.js";
 import type { ItemRow, ItemType } from "../domain/entry-items.js";
 import type { Source } from "../domain/entry-metadata.js";
@@ -265,7 +271,7 @@ export class FakeEntryRepository
 export class FakeAttachmentRepository implements AttachmentRepository {
   readonly pages = new Map<
     string,
-    { id: string; path: string; position: number }[]
+    { id: string; path: string; position: number; kind: AttachmentKind }[]
   >();
 
   constructor(seed: Record<string, string[]> = {}) {
@@ -276,6 +282,7 @@ export class FakeAttachmentRepository implements AttachmentRepository {
           id: `${entryId}-page-${position + 1}`,
           path,
           position,
+          kind: "carnet" as const,
         })),
       );
   }
@@ -286,12 +293,20 @@ export class FakeAttachmentRepository implements AttachmentRepository {
     );
   }
 
+  private carnetOf(entryId: string) {
+    return this.listOf(entryId).filter((p) => p.kind === "carnet");
+  }
+
   async pathsFor(entryId: string): Promise<string[]> {
-    return this.listOf(entryId).map((p) => p.path);
+    return this.carnetOf(entryId).map((p) => p.path);
   }
 
   async idsFor(entryId: string): Promise<string[]> {
-    return this.listOf(entryId).map((p) => p.id);
+    return this.carnetOf(entryId).map((p) => p.id);
+  }
+
+  async countOf(entryId: string, kind: AttachmentKind): Promise<number> {
+    return this.listOf(entryId).filter((p) => p.kind === kind).length;
   }
 
   async nextPosition(entryId: string): Promise<number> {
@@ -305,16 +320,16 @@ export class FakeAttachmentRepository implements AttachmentRepository {
     entryId: string,
     images: StoredImage[],
     startPosition: number,
-  ): Promise<void> {
+    kind: AttachmentKind = "carnet",
+  ): Promise<string[]> {
     const list = this.pages.get(entryId) ?? [];
-    images.forEach((img, i) =>
-      list.push({
-        id: nextId("page"),
-        path: img.originalPath,
-        position: startPosition + i,
-      }),
-    );
+    const ids = images.map((img, i) => {
+      const id = nextId(kind === "carnet" ? "page" : "souvenir");
+      list.push({ id, path: img.originalPath, position: startPosition + i, kind });
+      return id;
+    });
     this.pages.set(entryId, list);
+    return ids;
   }
 
   async moveTo(attachmentIds: string[], targetEntryId: string): Promise<void> {

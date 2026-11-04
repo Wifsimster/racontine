@@ -7,9 +7,10 @@ import {
   FakeEntryRepository,
   FakeImageStore,
   FakeLogger,
+  FakePaywall,
   entryRecord,
 } from "../testing/fakes.js";
-import { PageService } from "./page-service.js";
+import { MAX_SOUVENIRS_PER_ENTRY, PageService } from "./page-service.js";
 
 class FakePages implements PageRepository {
   readonly removed: string[] = [];
@@ -39,6 +40,7 @@ function page(over: Partial<PageRecord> = {}): PageRecord {
   return {
     id: "att-1",
     entryId: "e1",
+    kind: "carnet",
     originalPath: "p1.jpg",
     thumbPath: "p1_thumb.jpg",
     mime: "image/jpeg",
@@ -57,6 +59,7 @@ function build(opts: {
   role?: "reader" | "contributor" | "admin" | null;
   entries?: ReturnType<typeof entryRecord>[];
   existingPages?: Record<string, string[]>;
+  paywall?: string | null;
 } = {}) {
   const pages = new FakePages(
     opts.page === undefined ? page() : opts.page,
@@ -72,6 +75,7 @@ function build(opts: {
     attachments,
     images,
     access: new FakeAccessPolicy(["child-1"], opts.role ?? "contributor"),
+    paywall: new FakePaywall(opts.paywall ?? null),
     logger: new FakeLogger(),
   });
   return { service, pages, images, attachments };
@@ -266,4 +270,132 @@ test("une image indécodable ne laisse rien derrière elle", async () => {
   });
   assert.equal(!result.ok && result.httpCode, 422);
   assert.deepEqual(await attachments.pathsFor("e1"), []);
+});
+
+test("une photo de l'enfant s'ajoute à une journée publiée sans toucher aux pages", async () => {
+  const { service, attachments, images } = build({
+    existingPages: { e1: ["page.jpg"] },
+  });
+  const result = await service.addSouvenirs({
+    userId: "u",
+    entryId: "e1",
+    images: [Buffer.from("a"), Buffer.from("b")],
+  });
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  assert.equal(result.total, 2);
+  assert.deepEqual(
+    result.added.map((a) => [a.width, a.height]),
+    [
+      [1200, 1600],
+      [1200, 1600],
+    ],
+  );
+  assert.equal(images.stored.length, 2);
+  assert.deepEqual(await attachments.pathsFor("e1"), ["page.jpg"]);
+  assert.equal(await attachments.countOf("e1", "souvenir"), 2);
+  assert.deepEqual(
+    attachments.pages.get("e1")!.map((p) => [p.kind, p.position]),
+    [
+      ["carnet", 0],
+      ["souvenir", 1],
+      ["souvenir", 2],
+    ],
+  );
+});
+
+test("un lecteur ne peut pas ajouter de photo, et ne l'apprend pas", async () => {
+  const { service, images } = build({ role: "reader" });
+  const result = await service.addSouvenirs({
+    userId: "u",
+    entryId: "e1",
+    images: [Buffer.from("a")],
+  });
+  assert.deepEqual(result, {
+    ok: false,
+    httpCode: 404,
+    error: "journée introuvable",
+  });
+  assert.equal(images.stored.length, 0);
+});
+
+test("le paywall fermé bloque l'ajout de photos", async () => {
+  const { service, images } = build({ paywall: "Abonnement requis" });
+  const result = await service.addSouvenirs({
+    userId: "u",
+    entryId: "e1",
+    images: [Buffer.from("a")],
+  });
+  assert.deepEqual(result, {
+    ok: false,
+    httpCode: 402,
+    error: "Abonnement requis",
+  });
+  assert.equal(images.stored.length, 0);
+});
+
+test("le plafond de photos par journée ne compte pas les pages du carnet", async () => {
+  const { service, images } = build({
+    existingPages: { e1: Array.from({ length: 19 }, (_, i) => `p${i}.jpg`) },
+  });
+  const ok = await service.addSouvenirs({
+    userId: "u",
+    entryId: "e1",
+    images: Array.from({ length: MAX_SOUVENIRS_PER_ENTRY }, () =>
+      Buffer.from("a"),
+    ),
+  });
+  assert.equal(ok.ok, true);
+
+  const over = await service.addSouvenirs({
+    userId: "u",
+    entryId: "e1",
+    images: [Buffer.from("b")],
+  });
+  assert.equal(!over.ok && over.httpCode, 413);
+  assert.equal(images.stored.length, MAX_SOUVENIRS_PER_ENTRY);
+});
+
+test("ajouter sans photo ou une photo indécodable est refusé proprement", async () => {
+  const empty = build();
+  const r1 = await empty.service.addSouvenirs({
+    userId: "u",
+    entryId: "e1",
+    images: [],
+  });
+  assert.equal(!r1.ok && r1.httpCode, 400);
+
+  const broken = build();
+  broken.images.rejectNext = true;
+  const r2 = await broken.service.addSouvenirs({
+    userId: "u",
+    entryId: "e1",
+    images: [Buffer.from("a")],
+  });
+  assert.equal(!r2.ok && r2.httpCode, 422);
+  assert.equal(await broken.attachments.countOf("e1", "souvenir"), 0);
+});
+
+test("une photo de l'enfant se retire même publiée, même seule", async () => {
+  const { service, pages, images } = build({
+    page: page({ kind: "souvenir", entryStatus: "published" }),
+    siblings: 0,
+  });
+  assert.deepEqual(await service.remove("u", "att-1"), { ok: true });
+  assert.deepEqual(pages.removed, ["att-1"]);
+  assert.deepEqual(images.deleted, ["p1.jpg"]);
+});
+
+test("un lecteur ne voit une photo de l'enfant que sur une journée publiée", async () => {
+  const draft = build({ role: "reader", page: page({ kind: "souvenir" }) });
+  assert.equal(await draft.service.openForRead("u", "att-1", true), null);
+
+  const published = build({
+    role: "reader",
+    page: page({ kind: "souvenir", entryStatus: "published" }),
+  });
+  assert.equal(
+    (await published.service.openForRead("u", "att-1", true))?.relPath,
+    "p1_thumb.jpg",
+  );
 });

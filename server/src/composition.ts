@@ -109,6 +109,7 @@ export const pages = new PageService({
   attachments,
   images,
   access,
+  paywall,
   logger,
 });
 

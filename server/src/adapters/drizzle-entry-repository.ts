@@ -1,4 +1,4 @@
-import { and, eq, ne } from "drizzle-orm";
+import { and, count, eq, ne } from "drizzle-orm";
 import { db as defaultDb } from "../db/index.js";
 import {
   attachments,
@@ -9,7 +9,7 @@ import {
   subscriptions,
   wordCorrections,
 } from "../db/schema.js";
-import type { Uncertainty } from "../db/schema.js";
+import type { AttachmentKind, Uncertainty } from "../db/schema.js";
 import {
   DuplicateEntryError,
   EntryNotReviewableError,
@@ -203,7 +203,9 @@ export class DrizzleAttachmentRepository implements AttachmentRepository {
     const rows = await this.db
       .select({ path: attachments.originalPath })
       .from(attachments)
-      .where(eq(attachments.entryId, entryId))
+      .where(
+        and(eq(attachments.entryId, entryId), eq(attachments.kind, "carnet")),
+      )
       .orderBy(attachments.position);
     return rows.map((r) => r.path);
   }
@@ -212,7 +214,9 @@ export class DrizzleAttachmentRepository implements AttachmentRepository {
     const rows = await this.db
       .select({ id: attachments.id })
       .from(attachments)
-      .where(eq(attachments.entryId, entryId))
+      .where(
+        and(eq(attachments.entryId, entryId), eq(attachments.kind, "carnet")),
+      )
       .orderBy(attachments.position);
     return rows.map((r) => r.id);
   }
@@ -225,16 +229,25 @@ export class DrizzleAttachmentRepository implements AttachmentRepository {
     return rows.reduce((max, a) => Math.max(max, a.position + 1), 0);
   }
 
+  async countOf(entryId: string, kind: AttachmentKind): Promise<number> {
+    const [row] = await this.db
+      .select({ n: count() })
+      .from(attachments)
+      .where(and(eq(attachments.entryId, entryId), eq(attachments.kind, kind)));
+    return row?.n ?? 0;
+  }
+
   async addMany(
     entryId: string,
     images: StoredImage[],
     startPosition: number,
-  ): Promise<void> {
-    if (!images.length) return;
-    await this.db.insert(attachments).values(
+    kind: AttachmentKind = "carnet",
+  ): Promise<string[]> {
+    if (!images.length) return [];
+    const rows = await this.db.insert(attachments).values(
       images.map((img, i) => ({
         entryId,
-        kind: "carnet" as const,
+        kind,
         originalPath: img.originalPath,
         thumbPath: img.thumbPath,
         mime: img.mime,
@@ -242,7 +255,8 @@ export class DrizzleAttachmentRepository implements AttachmentRepository {
         height: img.height,
         position: startPosition + i,
       })),
-    );
+    ).returning({ id: attachments.id });
+    return rows.map((r) => r.id);
   }
 
   async moveTo(attachmentIds: string[], targetEntryId: string): Promise<void> {

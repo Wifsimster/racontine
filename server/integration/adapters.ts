@@ -111,6 +111,19 @@ await pages.addMany(created.id, [
 assert.deepEqual(await pages.pathsFor(created.id), ["a.jpg", "b.jpg"]);
 ok("addMany numérote à la suite des pages déjà rattachées");
 
+const souvenirIds = await pages.addMany(created.id, [
+  { originalPath: "s.jpg", thumbPath: "s_t.jpg", mime: "image/jpeg", width: 30, height: 20 },
+], await pages.nextPosition(created.id), "souvenir");
+assert.equal(souvenirIds.length, 1);
+assert.deepEqual(await pages.pathsFor(created.id), ["a.jpg", "b.jpg"]);
+assert.equal((await pages.idsFor(created.id)).includes(souvenirIds[0]!), false);
+assert.equal(await pages.countOf(created.id, "souvenir"), 1);
+assert.equal(await pages.countOf(created.id, "carnet"), 2);
+assert.equal((await new DrizzlePageRepository().findWithEntry(souvenirIds[0]!))?.kind, "souvenir");
+assert.equal(await new DrizzlePageRepository().countSiblings(created.id), 2);
+await new DrizzlePageRepository().remove(souvenirIds[0]!);
+ok("une photo de l'enfant reste hors des pages lues, comptée à part");
+
 const second = await repo.createWithItems({
   childId: child.id,
   date: "2026-02-02",

@@ -5,11 +5,19 @@ import type {
   ImageStore,
   Logger,
   PageRecord,
+  Paywall,
   PageRepository,
   StoredImage,
 } from "../ports.js";
 
 export const MAX_PAGES_PER_ENTRY = 20;
+export const MAX_SOUVENIRS_PER_ENTRY = 12;
+
+export type AddedSouvenir = {
+  id: string;
+  width: number;
+  height: number;
+};
 
 export type PageRejection = { ok: false; httpCode: number; error: string };
 
@@ -24,10 +32,11 @@ export type PageDeps = {
   entries: Pick<EntryRepository, "findById">;
   attachments: Pick<
     AttachmentRepository,
-    "pathsFor" | "nextPosition" | "addMany"
+    "pathsFor" | "nextPosition" | "addMany" | "countOf"
   >;
   images: ImageStore;
   access: AccessPolicy;
+  paywall: Paywall;
   logger: Logger;
 };
 
@@ -119,6 +128,76 @@ export class PageService {
     };
   }
 
+  async addSouvenirs(params: {
+    userId: string;
+    entryId: string;
+    images: Buffer[];
+  }): Promise<
+    { ok: true; added: AddedSouvenir[]; total: number } | PageRejection
+  > {
+    if (!params.images.length)
+      return { ok: false, httpCode: 400, error: "aucune photo fournie" };
+
+    const entry = await this.deps.entries.findById(params.entryId);
+    if (
+      !entry ||
+      !(await this.deps.access.hasChildRole(
+        params.userId,
+        entry.childId,
+        "contributor",
+      ))
+    )
+      return { ok: false, httpCode: 404, error: "journée introuvable" };
+
+    const blocked = await this.deps.paywall.blockedReason();
+    if (blocked) return { ok: false, httpCode: 402, error: blocked };
+
+    const already = await this.deps.attachments.countOf(entry.id, "souvenir");
+    if (already + params.images.length > MAX_SOUVENIRS_PER_ENTRY)
+      return {
+        ok: false,
+        httpCode: 413,
+        error: `Une journée garde au plus ${MAX_SOUVENIRS_PER_ENTRY} photos (elle en a déjà ${already}).`,
+      };
+
+    const stored: StoredImage[] = [];
+    let ids: string[];
+    try {
+      for (const buf of params.images)
+        stored.push(await this.deps.images.store(buf));
+      const position = await this.deps.attachments.nextPosition(entry.id);
+      ids = await this.deps.attachments.addMany(
+        entry.id,
+        stored,
+        position,
+        "souvenir",
+      );
+    } catch (err) {
+      await Promise.allSettled(
+        stored.map((img) => this.deps.images.delete(img)),
+      );
+      this.deps.logger.error("Ajout de photos impossible", {
+        entryId: entry.id,
+        err: err instanceof Error ? err.message : err,
+      });
+      return {
+        ok: false,
+        httpCode: 422,
+        error: "Image indécodable (format non supporté ou fichier corrompu).",
+      };
+    }
+
+    return {
+      ok: true,
+      added: ids.map((id, i) => ({
+        id,
+        width: stored[i]!.width,
+        height: stored[i]!.height,
+      })),
+      total: already + ids.length,
+    };
+  }
+
   async rotate(params: {
     userId: string;
     attachmentId: string;
@@ -177,6 +256,8 @@ export class PageService {
     if (!page) return NOT_FOUND;
     if (!(await this.mayContribute(userId, page))) return NOT_FOUND;
 
+    if (page.kind === "souvenir") return this.discard(page);
+
     if (page.entryStatus === "published")
       return {
         ok: false,
@@ -191,6 +272,10 @@ export class PageService {
         error: "impossible de retirer la dernière page du carnet",
       };
 
+    return this.discard(page);
+  }
+
+  private async discard(page: PageRecord): Promise<{ ok: true }> {
     await this.deps.pages.remove(page.id);
     await this.deps.images.delete({
       originalPath: page.originalPath,
