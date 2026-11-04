@@ -2,6 +2,13 @@
 
 Toutes les versions notables de Racontine. Format issu des messages de commit conventionnels (`feat`, `fix`, …).
 
+# [1.44.0](https://github.com/Wifsimster/racontine/compare/v1.43.0...v1.44.0) (2026-11-04)
+
+
+### Features
+
+* **mcp:** joindre des photos à une journée existante ([#131](https://github.com/Wifsimster/racontine/issues/131)) ([6a4c1a1](https://github.com/Wifsimster/racontine/commit/6a4c1a12a853b8af6ecbf93957746356b67d345e))
+
 # [1.43.0](https://github.com/Wifsimster/racontine/compare/v1.42.0...v1.43.0) (2026-11-02)
 
 
