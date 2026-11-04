@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { LoginBackground } from "@/components/LoginBackground";
 import { MarqueSignature } from "@/components/Marque";
 import { StudioCard } from "@/components/Studio";
-import { MargeRule, SHEET } from "@/features/login/parts";
+import { SHEET } from "@/features/login/parts";
 import { OfferIncludes } from "@/features/billing/parts";
 
 export default function Bienvenue() {
@@ -62,8 +62,7 @@ export default function Bienvenue() {
 
       <div className="rise-enter mx-auto flex w-full max-w-[26rem] flex-col pt-[5.25rem] pr-5 pb-6 pl-10 lg:grid lg:max-w-[64rem] lg:grid-cols-[minmax(0,1fr)_26rem] lg:grid-rows-[auto_1fr] lg:items-start lg:gap-x-16 lg:px-10 lg:pt-32 lg:pb-16 xl:gap-x-24">
         <div className="lg:col-start-1 lg:row-start-1 lg:pt-4">
-          <p className="surtitre text-muted-foreground">Carnet de liaison</p>
-          <h1 className="mt-4 font-serif text-display font-semibold text-foreground lg:text-[3.25rem] lg:leading-[1.05]">
+          <h1 className="font-serif text-display font-semibold text-foreground lg:text-[3.25rem] lg:leading-[1.05]">
             {appName}
           </h1>
           <p className="carnet-story mt-4 text-foreground lg:max-w-[22ch] lg:text-[1.375rem] lg:leading-9">
@@ -109,11 +108,9 @@ function Offre({
   return (
     <>
       <section className={SHEET} aria-labelledby="offre-titre">
-        <MargeRule />
-
         <div>
           <p className="surtitre text-muted-foreground">
-            l'offre, il n'y en a qu'une
+            L'offre, il n'y en a qu'une
           </p>
           <h2
             id="offre-titre"
@@ -149,13 +146,11 @@ function Offre({
         </div>
 
         {trialDays > 0 && (
-          <p className="flex items-center gap-3">
-            <span
+          <p className="flex items-start gap-3">
+            <Hourglass
+              className="mt-0.5 size-5 shrink-0 text-primary"
               aria-hidden="true"
-              className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary"
-            >
-              <Hourglass className="size-5" />
-            </span>
+            />
             <span className="min-w-0 flex-1 text-meta text-muted-foreground">
               <span className="block text-ui font-bold text-foreground">
                 {trialDays} jours d'essai gratuit
@@ -229,7 +224,6 @@ function OffreSquelette() {
   return (
     <>
       <div className={SHEET} aria-hidden="true">
-        <MargeRule />
         <div>
           <div className="skeleton h-3 w-32" />
           <div className="skeleton mt-3 h-6 w-48" />

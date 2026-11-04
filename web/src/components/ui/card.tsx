@@ -7,7 +7,7 @@ function Card({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card"
       className={cn(
-        "flex flex-col gap-4 rounded-2xl border bg-card py-5 text-card-foreground shadow-card",
+        "flex flex-col gap-4 rounded-xl border bg-card py-5 text-card-foreground",
         "has-[>[data-slot=card-media]:first-child]:pt-0",
         className,
       )}
@@ -21,7 +21,7 @@ function CardMedia({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card-media"
       className={cn(
-        "seam relative isolate overflow-hidden rounded-t-2xl bg-muted",
+        "seam relative isolate overflow-hidden rounded-t-xl bg-muted",
         "[&_img]:size-full [&_img]:object-cover [&_video]:size-full [&_video]:object-cover",
         className,
       )}

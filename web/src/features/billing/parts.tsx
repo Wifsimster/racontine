@@ -139,12 +139,10 @@ export function OfferIncludes({ className }: { className?: string }) {
     <ul className={cn("flex flex-col gap-3", className)}>
       {INCLUS.map(({ icon: Icon, text }) => (
         <li key={text} className="flex items-start gap-3">
-          <span
+          <Icon
+            className="mt-0.5 size-4 shrink-0 text-muted-foreground"
             aria-hidden="true"
-            className="grid size-7 shrink-0 place-items-center rounded-md bg-primary-soft text-primary"
-          >
-            <Icon className="size-4" />
-          </span>
+          />
           <span className="text-meta text-muted-foreground">{text}</span>
         </li>
       ))}
@@ -156,8 +154,8 @@ export function OfferCard({ billing }: { billing: Billing }) {
   const price = billing.price;
 
   return (
-    <section className="rounded-2xl border bg-card p-5 shadow-card">
-      <p className="surtitre text-muted-foreground">l'offre, il n'y en a qu'une</p>
+    <section>
+      <p className="surtitre text-muted-foreground">L'offre, il n'y en a qu'une</p>
       <h2 className="mt-2 font-serif text-title font-semibold">
         Racontine Famille
       </h2>
@@ -213,16 +211,14 @@ export function BillingCallout({ billing }: { billing: Billing }) {
     const jours = access.daysLeft ?? 0;
     const fin = formatDay(access.until);
     return (
-      <section className="rise-enter flex flex-col gap-3 rounded-2xl border bg-card p-4 shadow-card sm:flex-row sm:items-center">
-        <span
+      <section className="rise-enter flex flex-col gap-3 rounded-xl border bg-card p-4 sm:flex-row sm:items-center">
+        <Hourglass
+          className="hidden size-5 shrink-0 text-muted-foreground sm:block"
           aria-hidden="true"
-          className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary"
-        >
-          <Hourglass className="size-5" />
-        </span>
+        />
         <div className="min-w-0 flex-1">
           <p className="text-ui font-bold">
-            Essai gratuit — il reste {jours} jour{jours > 1 ? "s" : ""}
+            Essai gratuit : il reste {jours} jour{jours > 1 ? "s" : ""}
           </p>
           <p className="mt-0.5 text-meta text-muted-foreground">
             {price
@@ -242,20 +238,18 @@ export function BillingCallout({ billing }: { billing: Billing }) {
 
   if (access.reason === "payment-late")
     return (
-      <section className="rise-enter flex flex-col gap-3 rounded-2xl border border-warning bg-warning-bg p-4 sm:flex-row sm:items-center">
-        <span
+      <section className="rise-enter flex flex-col gap-3 rounded-xl border-l-4 border-warning bg-warning-bg p-4 sm:flex-row sm:items-center">
+        <CreditCard
+          className="hidden size-5 shrink-0 text-warning sm:block"
           aria-hidden="true"
-          className="grid size-10 shrink-0 place-items-center rounded-xl bg-warning text-background"
-        >
-          <CreditCard className="size-5" />
-        </span>
+        />
         <div className="min-w-0 flex-1">
           <p className="text-ui font-bold text-warning">
             Le dernier paiement n'est pas passé
           </p>
           <p className="mt-0.5 text-meta text-warning">
-            Le carnet reste ouvert — on ne coupe pas pour une carte expirée. Mettez-la
-            à jour pour que rien ne s'interrompe.
+            Le carnet reste ouvert. Mettez la carte à jour pour que rien ne
+            s'interrompe.
           </p>
         </div>
         {billing.canManage ? (
@@ -269,14 +263,12 @@ export function BillingCallout({ billing }: { billing: Billing }) {
   if (!access.open) {
     const encore = access.reason === "subscription-over";
     return (
-      <section className="rise-enter rounded-2xl border border-primary bg-card p-5 shadow-card">
+      <section className="rise-enter rounded-xl border border-primary bg-card p-5">
         <div className="flex items-start gap-3">
-          <span
+          <Lock
+            className="mt-1 size-5 shrink-0 text-primary"
             aria-hidden="true"
-            className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary"
-          >
-            <Lock className="size-5" />
-          </span>
+          />
           <div className="min-w-0 flex-1">
             <h2 className="font-serif text-title font-semibold text-balance">
               Le carnet est en pause

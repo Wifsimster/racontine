@@ -25,15 +25,15 @@ export const ITEM_DOT: Record<ItemType, string> = {
 };
 
 export const SOURCE_BADGE: Record<EntrySource, string> = {
-  nounou: "bg-muted text-muted-foreground",
-  mam: "bg-muted text-muted-foreground",
-  creche: "bg-muted text-muted-foreground",
-  maison: "bg-muted text-muted-foreground",
+  nounou: "text-meta text-muted-foreground",
+  mam: "text-meta text-muted-foreground",
+  creche: "text-meta text-muted-foreground",
+  maison: "text-meta text-muted-foreground",
 };
 
 export const STATUS_BADGE: Record<EntryStatus, string> = {
-  processing: "bg-muted text-muted-foreground",
+  processing: "text-meta text-muted-foreground",
   draft: "bg-warning-bg text-warning",
-  published: "bg-success-bg text-success",
+  published: "text-meta text-muted-foreground",
   failed: "bg-destructive-soft text-destructive",
 };

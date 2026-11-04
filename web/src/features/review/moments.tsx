@@ -1,13 +1,11 @@
 import { useCallback, useEffect, useRef } from "react";
 import type React from "react";
-import {
-  Check,
-  TriangleAlert,
-} from "lucide-react";
+import { TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Textarea } from "@/components/ui/textarea";
 import { glanceOf, type DraftItem } from "./draft";
 import { itemKind } from "@/lib/items";
+import { ITEM_INK } from "@/lib/ui";
 
 export function GrowingTextarea({
   value,
@@ -77,7 +75,7 @@ export function MomentsGlance({
           en ajouter juste en dessous — ou publier le récit seul.
         </p>
       ) : (
-      <ul className="rounded-2xl border bg-card px-4 shadow-card">
+      <ul className="divide-y border-y">
         {items.map((it, i) => {
           const { label, value } = glanceOf(it);
           const Icon = itemKind(it.type).Icon;
@@ -86,24 +84,22 @@ export function MomentsGlance({
           return (
             <li
               key={i}
-              className="grid min-h-14 grid-cols-[28px_1fr_auto] items-center gap-x-3 border-b py-2 last:border-b-0"
+              className="grid min-h-14 grid-cols-[1.25rem_1fr_auto] items-center gap-x-3 py-2"
             >
-              <span className="row-span-2 grid size-7 place-items-center self-center rounded-[9px] bg-muted">
-                <Icon className="size-4 text-muted-foreground" aria-hidden="true" />
-              </span>
-              <span className="surtitre min-w-0 truncate text-muted-foreground">
+              <Icon
+                className={cn("row-span-2 size-5 self-center", ITEM_INK[it.type])}
+                aria-hidden="true"
+              />
+              <span className="min-w-0 truncate text-meta font-bold text-muted-foreground">
                 {label}
               </span>
               {flag ? (
-                <span className="inline-flex h-5 items-center gap-1 rounded-full bg-warning-bg px-2 text-xs font-bold text-warning">
-                  <TriangleAlert aria-hidden="true" className="size-3" />
+                <span className="inline-flex items-center gap-1 text-meta font-bold text-warning">
+                  <TriangleAlert aria-hidden="true" className="size-3.5" />
                   à vérifier
                 </span>
               ) : (
-                <span className="inline-flex h-5 items-center gap-1 rounded-full bg-success-bg px-2 text-xs font-bold text-success">
-                  <Check aria-hidden="true" className="size-3" />
-                  confirmé
-                </span>
+                <span />
               )}
               <span className="col-span-2 min-w-0 text-ui text-foreground line-clamp-2">
                 {value || "—"}

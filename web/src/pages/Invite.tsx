@@ -5,12 +5,10 @@ import {
   CloudOff,
   Inbox,
   Mail,
-  MailCheck,
   RotateCcw,
   ShieldCheck,
   TriangleAlert,
   UserCheck,
-  UserX,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useSession, signIn, signOut } from "@/lib/auth-client";
@@ -260,8 +258,6 @@ export default function Invite() {
     return frame(
       <DoorSheet>
         <DoorSheetTitle
-          icon={missing ? UserX : TriangleAlert}
-          tone="warn"
           title={missing ? "Ce lien ne s’ouvre plus" : "L’invitation ne vient pas"}
         />
         <p className="carnet-story text-foreground">
@@ -301,7 +297,7 @@ export default function Invite() {
   if (phase === "sent") {
     return frame(
       <DoorSheet role="status">
-        <DoorSheetTitle icon={MailCheck} tone="done" title="Le lien est parti" />
+        <DoorSheetTitle title="Le lien est parti" />
         <p className="carnet-story text-foreground">
           {
             "Ouvrez-le depuis cet appareil : il vous connecte et vous fait rejoindre le carnet, d’un seul geste."
@@ -338,11 +334,7 @@ export default function Invite() {
   if (preview.status === "accepted") {
     return frame(
       <DoorSheet>
-        <DoorSheetTitle
-          icon={UserCheck}
-          tone="done"
-          title="Vous faites déjà partie du cercle"
-        />
+        <DoorSheetTitle title="Vous faites déjà partie du cercle" />
         <p className="carnet-story text-foreground">
           Cette invitation a déjà servi — c’est normal, elle ne sert qu’une fois.
           Le journal de {preview.childName} vous est ouvert.
@@ -383,8 +375,6 @@ export default function Invite() {
     return frame(
       <DoorSheet>
         <DoorSheetTitle
-          icon={UserX}
-          tone="warn"
           title={revoked ? "Cette invitation a été retirée" : "Cette invitation a expiré"}
         />
         <p className="carnet-story text-foreground">
@@ -392,8 +382,8 @@ export default function Invite() {
             ? `La personne qui tient le carnet de ${preview.childName} a retiré cette invitation. Rien de grave : elle peut vous en envoyer une nouvelle.`
             : `Les liens d’invitation ne restent valables que quelques jours, par sécurité. Demandez-en un nouveau pour rejoindre le carnet de ${preview.childName}.`}
         </p>
-        <p className="flex items-start gap-2 rounded-lg bg-muted px-4 py-3 text-meta text-muted-foreground">
-          <ShieldCheck className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+        <p className="flex items-start gap-2 text-meta text-muted-foreground">
+          <ShieldCheck className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
           <span>
             Un lien qui ne sert plus est un lien qui ne peut plus être transféré
             à quelqu’un d’autre : c’est ce qui protège le journal.
@@ -412,11 +402,7 @@ export default function Invite() {
   if (wrongAccount) {
     return frame(
       <DoorSheet>
-        <DoorSheetTitle
-          icon={UserX}
-          tone="warn"
-          title="Ce n’est pas le bon compte"
-        />
+        <DoorSheetTitle title="Ce n’est pas le bon compte" />
         <p className="carnet-story text-foreground">
           L’invitation est nominative : elle a été envoyée à{" "}
           <span className="font-bold">{email}</span>, et vous êtes connecté·e en
@@ -445,11 +431,7 @@ export default function Invite() {
   if (phase === "joining") {
     return frame(
       <DoorSheet role="status">
-        <DoorSheetTitle
-          icon={UserCheck}
-          tone="done"
-          title="On vous ouvre le carnet"
-        />
+        <DoorSheetTitle title="On vous ouvre le carnet" />
         <p className="carnet-story text-foreground">
           Votre place dans le cercle de {preview.childName} se crée, puis le
           journal s’ouvre. Ce n’est qu’une seconde.
@@ -466,10 +448,7 @@ export default function Invite() {
 
   return frame(
     <DoorSheet>
-      <DoorSheetTitle
-        icon={session ? UserCheck : Mail}
-        title="Rejoindre le carnet"
-      />
+      <DoorSheetTitle title="Rejoindre le carnet" />
       {session ? (
         <p className="carnet-story text-foreground">
           Vous êtes connecté·e en tant que{" "}
@@ -482,13 +461,13 @@ export default function Invite() {
               "Aucun mot de passe à créer : un lien vous connecte et vous fait rejoindre le carnet d’un seul geste."
             }
           </p>
-          <p className="flex items-start gap-3 rounded-lg bg-muted px-4 py-3 text-ui">
+          <p className="flex items-start gap-2 text-ui">
             <Mail
               className="mt-0.5 size-4 shrink-0 text-muted-foreground"
               aria-hidden="true"
             />
             <span className="min-w-0">
-              <span className="surtitre block text-muted-foreground">
+              <span className="block text-meta text-muted-foreground">
                 Envoyé à
               </span>
               <span className="block font-bold break-all">{email}</span>
@@ -584,16 +563,12 @@ function InviteSkeleton() {
         </span>
       </p>
       <div aria-hidden="true" className="mt-4 flex flex-col gap-3">
-        <div className="skeleton h-3 w-40" />
         <div className="skeleton h-8 w-44" />
         <div className="skeleton h-4 w-56" />
       </div>
       <DoorSheet className="!mt-6">
         <div aria-hidden="true" className="flex flex-col gap-4">
-          <div className="flex items-center gap-3">
-            <div className="skeleton size-9" />
-            <div className="skeleton h-5 w-48" />
-          </div>
+          <div className="skeleton h-5 w-48" />
           <div className="skeleton h-4 w-full" />
           <div className="skeleton h-4 w-4/5" />
           <div className="skeleton h-12 w-full rounded-xl" />

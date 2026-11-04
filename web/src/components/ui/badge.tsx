@@ -16,30 +16,22 @@ const badgeVariants = cva(
   {
     variants: {
       variant: {
-        default:
-          "bg-primary text-primary-foreground [a&]:hover:bg-primary-hover",
-        secondary:
-          "bg-secondary text-secondary-foreground [a&]:hover:bg-accent",
         soft: "bg-muted text-muted-foreground [a&]:hover:text-foreground",
         success: "bg-success-bg text-success",
         warning: "bg-warning-bg text-warning",
         destructive:
           "bg-destructive text-destructive-foreground [a&]:hover:bg-destructive-hover",
-        outline:
-          "border-border text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
-        ghost: "[a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 [a&]:hover:underline",
       },
     },
     defaultVariants: {
-      variant: "default",
+      variant: "soft",
     },
   },
 );
 
 function Badge({
   className,
-  variant = "default",
+  variant = "soft",
   asChild = false,
   ...props
 }: React.ComponentProps<"span"> &

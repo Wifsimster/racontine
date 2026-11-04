@@ -6,12 +6,7 @@ import { Tip } from "./inputs";
 export function CaptureDenied() {
   return (
     <div className="shell-width flex min-h-[calc(100svh-3.5rem)] flex-col items-center justify-center gap-5 px-4 py-8 text-center">
-      <span
-        aria-hidden="true"
-        className="grid size-16 place-items-center rounded-3xl bg-muted text-muted-foreground"
-      >
-        <BookOpenText className="size-7" />
-      </span>
+      <BookOpenText aria-hidden="true" className="size-8 text-muted-foreground" />
       <div className="flex flex-col items-center gap-2">
         <h1 className="font-serif text-title font-semibold text-balance">
           Ce carnet, vous le lisez
@@ -53,12 +48,7 @@ export function CaptureDenied() {
 export function CaptureEmpty() {
   return (
     <section className="rise-enter flex flex-col items-center gap-5 pt-6 text-center">
-      <span
-        aria-hidden="true"
-        className="grid size-20 place-items-center rounded-3xl bg-primary-soft text-primary"
-      >
-        <BookOpenText className="size-8" />
-      </span>
+      <BookOpenText aria-hidden="true" className="size-8 text-primary" />
 
       <div className="flex flex-col items-center gap-2">
         <h2 className="font-serif text-title font-semibold">
@@ -69,7 +59,7 @@ export function CaptureEmpty() {
         </p>
       </div>
 
-      <ul className="flex w-full flex-col gap-3">
+      <ul className="flex w-full max-w-md flex-col gap-3">
         <Tip Icon={Sun}>
           À plat, près d’une fenêtre : la lumière du jour suffit, pas besoin du
           flash.

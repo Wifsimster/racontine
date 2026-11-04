@@ -6,7 +6,6 @@ import {
   CloudOff,
   Mail,
   ShieldAlert,
-  ShieldCheck,
   Trash2,
   TriangleAlert,
   UserPlus,
@@ -16,13 +15,11 @@ import {
   ROLE_LABELS,
   type AdminConsole,
   type AdminPerson,
-  type MemberRole,
 } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -39,11 +36,9 @@ import {
   PageHeader,
   PageState,
   PageSkeleton,
-  SectionLabel,
   InlineError,
 } from "@/components/PageState";
-
-const ROLES: MemberRole[] = ["reader", "contributor", "admin"];
+import { MemberRow, RemoveButton, RoleControl } from "@/components/MemberRow";
 
 function fmtDay(iso: string | null): string | null {
   if (!iso) return null;
@@ -54,15 +49,6 @@ function fmtDay(iso: string | null): string | null {
     month: "long",
     year: "numeric",
   }).format(d);
-}
-
-function Stat({ value, label }: { value: number; label: string }) {
-  return (
-    <div className="flex flex-col gap-0.5 rounded-2xl border bg-card px-4 py-3 shadow-card">
-      <span className="font-serif text-title font-semibold">{value}</span>
-      <span className="text-meta text-muted-foreground">{label}</span>
-    </div>
-  );
 }
 
 function ChildCard({
@@ -94,47 +80,28 @@ function ChildCard({
   }
 
   return (
-    <li className="flex flex-col gap-3 rounded-2xl border bg-card p-4 shadow-card">
-      <div className="flex items-center gap-3">
+    <li className="flex flex-col gap-2 py-4">
+      <div className="flex min-h-11 flex-wrap items-center gap-x-3 gap-y-2">
         <ChildMark name={child.name} size="md" />
-        <div className="flex min-w-0 flex-col">
+        <div className="flex min-w-0 flex-1 basis-40 flex-col">
           <span className="truncate text-ui font-bold">{child.name}</span>
-          <span className="truncate text-meta text-muted-foreground">
-            {age ? `${age} · ` : ""}
-            {child.members} {child.members > 1 ? "proches" : "proche"}
+          <span className="text-meta text-muted-foreground">
+            {[
+              age,
+              `${child.members} ${child.members > 1 ? "proches" : "proche"}`,
+              `${child.entries.published} publiée${child.entries.published > 1 ? "s" : ""}`,
+              child.entries.processing > 0
+                ? `${child.entries.processing} en lecture`
+                : null,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
           </span>
         </div>
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge variant="soft">
-          {child.entries.published} publiée
-          {child.entries.published > 1 ? "s" : ""}
-        </Badge>
-        {child.entries.draft > 0 && (
-          <Badge variant="warning">
-            <Clock aria-hidden="true" />
-            {child.entries.draft} à relire
-          </Badge>
-        )}
-        {child.entries.processing > 0 && (
-          <Badge variant="soft">{child.entries.processing} en lecture</Badge>
-        )}
-        {child.entries.failed > 0 && (
-          <Badge variant="destructive">
-            <TriangleAlert aria-hidden="true" />
-            {child.entries.failed} en échec
-          </Badge>
-        )}
-      </div>
-      <p className="text-meta text-muted-foreground">
-        {last ? `Dernière journée publiée le ${last}.` : "Aucune journée publiée pour l'instant."}
-      </p>
-
-      <div className="flex justify-end border-t pt-3">
         <Button
           variant="ghost"
           size="sm"
-          className="text-destructive hover:bg-destructive-soft hover:text-destructive"
+          className="text-muted-foreground hover:bg-destructive-soft hover:text-destructive"
           onClick={() => {
             setTyped("");
             setError(null);
@@ -145,6 +112,25 @@ function ChildCard({
           Effacer ce carnet
         </Button>
       </div>
+      {(child.entries.draft > 0 || child.entries.failed > 0) && (
+        <div className="flex flex-wrap items-center gap-2">
+          {child.entries.draft > 0 && (
+            <Badge variant="warning">
+              <Clock aria-hidden="true" />
+              {child.entries.draft} à relire
+            </Badge>
+          )}
+          {child.entries.failed > 0 && (
+            <Badge variant="destructive">
+              <TriangleAlert aria-hidden="true" />
+              {child.entries.failed} en échec
+            </Badge>
+          )}
+        </div>
+      )}
+      <p className="text-meta text-muted-foreground">
+        {last ? `Dernière journée publiée le ${last}.` : "Aucune journée publiée pour l'instant."}
+      </p>
 
       <AlertDialog open={open} onOpenChange={setOpen}>
         <AlertDialogContent>
@@ -227,78 +213,64 @@ function PersonCard({
     }
   }
 
-  return (
-    <li className="flex flex-col gap-3 rounded-2xl border bg-card p-4 shadow-card">
-      <div className="flex min-w-0 flex-col">
-        <span className="flex min-w-0 flex-wrap items-center gap-1.5 text-ui font-bold">
-          <span className="truncate">{person.name}</span>
-          {person.isSelf && <Badge variant="soft">vous</Badge>}
-          {person.isOwner && (
-            <Badge variant="secondary">
-              <ShieldCheck aria-hidden="true" />
-              propriétaire
-            </Badge>
-          )}
-        </span>
-        <span className="truncate text-meta text-muted-foreground">
-          {person.email}
-        </span>
-      </div>
+  const status = [person.isSelf && "vous", person.isOwner && "propriétaire"]
+    .filter(Boolean)
+    .join(", ");
 
-      <ul className="flex flex-col divide-y border-t">
+  return (
+    <li className="flex flex-col gap-1 py-4">
+      <p className="min-w-0 text-ui">
+        <span className="font-bold break-words">{person.name}</span>
+        {status && (
+          <span className="text-meta text-muted-foreground"> — {status}</span>
+        )}
+      </p>
+      <p className="truncate text-meta text-muted-foreground">{person.email}</p>
+
+      <ul className="flex flex-col divide-y">
         {person.roles.map(({ childId, childName, role }) => {
           const sole = person.soleAdminOf.includes(childId);
           const locked = person.isSelf || sole;
           return (
-            <li key={childId} className="flex flex-col gap-2 pt-3 pb-1">
-              <div className="flex items-center gap-2">
-                <ChildMark name={childName} />
-                <span className="min-w-0 flex-1 truncate text-meta font-bold">
-                  {childName}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Select
-                  value={role}
-                  disabled={locked || busy === childId}
-                  aria-label={`Rôle de ${person.name} sur le carnet de ${childName}`}
-                  className="min-w-0 flex-1"
-                  onChange={(e) =>
-                    run(childId, () =>
-                      api.setMemberRole(
-                        childId,
-                        person.userId,
-                        e.target.value as MemberRole,
-                      ),
-                    )
-                  }
-                >
-                  {ROLES.map((r) => (
-                    <option key={r} value={r}>
-                      {ROLE_LABELS[r]}
-                    </option>
-                  ))}
-                </Select>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  disabled={locked || busy === childId}
-                  aria-label={`Retirer ${person.name} du carnet de ${childName}`}
-                  className="text-destructive hover:bg-destructive-soft hover:text-destructive"
-                  onClick={() =>
-                    run(childId, () => api.removeMember(childId, person.userId))
-                  }
-                >
-                  <Trash2 />
-                </Button>
-              </div>
+            <MemberRow
+              key={childId}
+              className="py-1"
+              leading={<ChildMark name={childName} />}
+              name={childName}
+              trailing={
+                <>
+                  <RoleControl
+                    role={role}
+                    locked={locked}
+                    disabled={busy === childId}
+                    aria-label={`Rôle de ${person.name} sur le carnet de ${childName}`}
+                    onChange={(r) =>
+                      run(childId, () =>
+                        api.setMemberRole(childId, person.userId, r),
+                      )
+                    }
+                  />
+                  {!locked && (
+                    <RemoveButton
+                      label={`Retirer ${person.name} du carnet de ${childName}`}
+                      disabled={busy === childId}
+                      onClick={() =>
+                        run(childId, () =>
+                          api.removeMember(childId, person.userId),
+                        )
+                      }
+                    />
+                  )}
+                </>
+              }
+            >
               {sole && !person.isSelf && (
                 <p className="text-meta text-muted-foreground">
                   Seul administrateur de ce carnet : nommez d'abord quelqu'un
                   d'autre.
                 </p>
               )}
-            </li>
+            </MemberRow>
           );
         })}
       </ul>
@@ -335,7 +307,7 @@ export default function Administration() {
   const header = (
     <PageHeader
       title="Administration"
-      lede="Les carnets que vous administrez, les proches qui y tiennent un rôle, et ce qui attend une réponse."
+      lede="Vos carnets, leurs proches et ce qui attend une réponse."
     />
   );
 
@@ -399,114 +371,123 @@ export default function Administration() {
         </InlineError>
       )}
 
-      <section className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <Stat value={data.totals.children} label="carnets" />
-        <Stat value={data.totals.people} label="proches" />
-        <Stat value={data.totals.published} label="journées publiées" />
-        <Stat
-          value={data.totals.pendingInvitations}
-          label="invitations en attente"
-        />
-      </section>
+      <dl className="-mt-2 flex flex-wrap gap-x-2 text-meta text-muted-foreground">
+        {[
+          [data.totals.children, "carnet", "carnets"],
+          [data.totals.people, "proche", "proches"],
+          [data.totals.published, "journée publiée", "journées publiées"],
+          [
+            data.totals.pendingInvitations,
+            "invitation en attente",
+            "invitations en attente",
+          ],
+        ].map(([n, one, many], i) => (
+          <div
+            key={String(one)}
+            className={
+              i > 0
+                ? "flex flex-row-reverse justify-end gap-1 before:content-['·'] before:order-last before:pr-1"
+                : "flex flex-row-reverse justify-end gap-1"
+            }
+          >
+            <dt>{Number(n) > 1 ? many : one}</dt>
+            <dd className="font-bold text-foreground" data-tabular>
+              {n}
+            </dd>
+          </div>
+        ))}
+      </dl>
 
-      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-10">
-        <div className="flex flex-col gap-6">
-          <section className="flex flex-col gap-1">
-            <SectionLabel className="px-1">
-              Les carnets ({data.children.length})
-            </SectionLabel>
-            <ul className="flex flex-col gap-2">
-              {data.children.map((c) => (
-                <ChildCard
-                  key={c.id}
-                  child={c}
-                  onDeleted={() => {
-                    void refresh().catch(() => {});
-                  }}
+      <div className="flex max-w-3xl flex-col divide-y">
+        <section className="flex flex-col gap-2 py-6 first:pt-0">
+          <h2 className="font-serif text-title font-semibold">
+            Les carnets ({data.children.length})
+          </h2>
+          <ul className="flex flex-col divide-y">
+            {data.children.map((c) => (
+              <ChildCard
+                key={c.id}
+                child={c}
+                onDeleted={() => {
+                  void refresh().catch(() => {});
+                }}
+              />
+            ))}
+          </ul>
+        </section>
+
+        {data.invitations.length > 0 && (
+          <section className="flex flex-col gap-2 py-6 first:pt-0">
+            <h2 className="font-serif text-title font-semibold">
+              En attente ({data.invitations.length})
+            </h2>
+            <ul className="flex flex-col divide-y">
+              {data.invitations.map((inv) => (
+                <MemberRow
+                  key={inv.id}
+                  name={inv.email}
+                  detail={
+                    <span className="inline-flex items-center gap-1.5">
+                      <Mail className="size-3.5 shrink-0" aria-hidden="true" />
+                      {ROLE_LABELS[inv.role]} · {inv.childName}
+                    </span>
+                  }
+                  trailing={
+                    <>
+                      {inv.expired && (
+                        <Badge variant="warning">
+                          <TriangleAlert aria-hidden="true" />
+                          expirée
+                        </Badge>
+                      )}
+                      <RemoveButton
+                        label={`Révoquer l'invitation de ${inv.email}`}
+                        onClick={async () => {
+                          try {
+                            await api.revokeInvitation(inv.id);
+                            await refresh();
+                          } catch (e) {
+                            setError(e instanceof Error ? e.message : "Échec");
+                          }
+                        }}
+                      />
+                    </>
+                  }
                 />
               ))}
             </ul>
           </section>
-        </div>
+        )}
 
-        <div className="flex flex-col gap-6">
-          {data.invitations.length > 0 && (
-            <section className="flex flex-col gap-1">
-              <SectionLabel className="px-1">
-                En attente ({data.invitations.length})
-              </SectionLabel>
-              <ul className="flex flex-col gap-2">
-                {data.invitations.map((inv) => (
-                  <li
-                    key={inv.id}
-                    className="flex items-center gap-2 rounded-2xl border bg-card p-3 pl-4 shadow-card"
-                  >
-                    <div className="flex min-w-0 flex-1 flex-col">
-                      <span className="truncate text-ui font-bold">{inv.email}</span>
-                      <span className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-meta text-muted-foreground">
-                        <Mail className="size-3.5 shrink-0" aria-hidden="true" />
-                        {ROLE_LABELS[inv.role]} · {inv.childName}
-                        {inv.expired && (
-                          <Badge variant="warning">
-                            <TriangleAlert aria-hidden="true" />
-                            expirée
-                          </Badge>
-                        )}
-                      </span>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label={`Révoquer l'invitation de ${inv.email}`}
-                      className="text-destructive hover:bg-destructive-soft hover:text-destructive"
-                      onClick={async () => {
-                        try {
-                          await api.revokeInvitation(inv.id);
-                          await refresh();
-                        } catch (e) {
-                          setError(e instanceof Error ? e.message : "Échec");
-                        }
-                      }}
-                    >
-                      <Trash2 />
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-
-          <section className="flex flex-col gap-1">
-            <SectionLabel className="px-1">
+        <section className="flex flex-col gap-2 py-6 first:pt-0">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="font-serif text-title font-semibold">
               Les proches ({data.people.length})
-            </SectionLabel>
-            {data.people.length === 0 ? (
-              <p className="rounded-2xl border bg-card p-5 text-meta text-muted-foreground shadow-card">
-                Aucun proche n'a encore de rôle sur ces carnets.
-              </p>
-            ) : (
-              <ul className="flex flex-col gap-2">
-                {data.people.map((p) => (
-                  <PersonCard
-                    key={p.userId}
-                    person={p}
-                    onChange={refresh}
-                    onError={setError}
-                  />
-                ))}
-              </ul>
-            )}
-          </section>
-        </div>
-      </div>
-
-      <div className="flex">
-        <Button asChild variant="outline">
-          <Link to="/partage">
-            <UserPlus aria-hidden="true" />
-            Inviter un proche
-          </Link>
-        </Button>
+            </h2>
+            <Button asChild variant="outline" size="sm">
+              <Link to="/partage">
+                <UserPlus aria-hidden="true" />
+                Inviter un proche
+              </Link>
+            </Button>
+          </div>
+          {data.people.length === 0 ? (
+            <p className="text-meta text-muted-foreground">
+              Aucun proche n'a encore de rôle sur ces carnets.
+            </p>
+          ) : (
+            <ul className="flex flex-col divide-y">
+              {data.people.map((p) => (
+                <PersonCard
+                  key={p.userId}
+                  person={p}
+                  onChange={refresh}
+                  onError={setError}
+                />
+              ))}
+            </ul>
+          )}
+        </section>
       </div>
     </PageShell>
   );

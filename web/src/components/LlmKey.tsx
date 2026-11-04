@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react";
 import {
-  Sparkles,
-  KeyRound,
   Save,
   Trash2,
   Check,
@@ -73,17 +71,15 @@ export default function LlmKey() {
   }
 
   return (
-    <section className="flex flex-col rounded-2xl border bg-card px-5 shadow-card">
-      <h2 className="flex items-center gap-2 border-b py-4 text-ui font-bold">
-        <Sparkles className="size-4 shrink-0 text-primary" aria-hidden="true" />
+    <section className="flex flex-col gap-2 py-6">
+      <h2 className="font-serif text-title font-semibold">
         Clé API d'extraction (Anthropic)
       </h2>
 
-      <div className="flex flex-col gap-4 py-4">
-        <p className="text-meta text-pretty text-muted-foreground">
-          La lecture automatique des carnets utilise <strong>votre</strong> clé
-          API Anthropic : les appels sont facturés sur votre compte. Elle est
-          stockée chiffrée et n'est jamais réaffichée.
+      <div className="flex flex-col gap-4">
+        <p className="max-w-[52ch] text-meta text-pretty text-muted-foreground">
+          Lit vos carnets, facturée sur votre compte Anthropic. Stockée chiffrée,
+          jamais réaffichée.
         </p>
 
         <Button
@@ -112,7 +108,7 @@ export default function LlmKey() {
             <Button
               variant="ghost"
               size="icon-sm"
-              className="-mr-2 shrink-0 text-destructive hover:bg-destructive-soft hover:text-destructive"
+              className="-mr-2 shrink-0 text-muted-foreground hover:bg-destructive-soft hover:text-destructive"
               onClick={() => setConfirmClear(true)}
               aria-label="Supprimer la clé API"
             >
@@ -120,10 +116,10 @@ export default function LlmKey() {
             </Button>
           </div>
         ) : state ? (
-          <div className="rounded-xl border bg-background px-3 py-2 text-meta text-muted-foreground">
-            Aucune clé configurée — l'import de carnets est indisponible tant
-            qu'une clé n'est pas enregistrée.
-          </div>
+          <p className="rounded-xl border border-dashed px-3 py-3 text-meta text-muted-foreground">
+            Aucune clé pour l'instant : l'import de carnets attend qu'une clé
+            soit enregistrée.
+          </p>
         ) : (
           <div className="skeleton h-10 w-full" role="status" aria-label="On regarde si une clé est enregistrée" />
         )}
@@ -154,11 +150,6 @@ export default function LlmKey() {
               {saved ? "Enregistré" : "Enregistrer"}
             </Button>
           </div>
-          <p className="flex items-center gap-1.5 text-meta text-muted-foreground">
-            <KeyRound className="size-3.5 shrink-0" aria-hidden="true" />
-            La clé reste sur ce serveur, chiffrée ; elle sert uniquement à lire
-            vos carnets.
-          </p>
         </div>
 
         {error && (

@@ -7,7 +7,7 @@ import {
   type EntryItem,
   type ItemType,
 } from "@/lib/types";
-import { ITEM_CHIP } from "@/lib/ui";
+import { ITEM_INK } from "@/lib/ui";
 import {
   ITEM_KINDS,
   itemKind,
@@ -72,24 +72,38 @@ export function pickGlance(all: Glance[]): Glance[] {
   return all.filter((g) => keep.has(g.key));
 }
 
-export function GlanceStrip({ stats }: { stats: Glance[] }) {
+export function GlanceStrip({
+  stats,
+  className,
+}: {
+  stats: Glance[];
+  className?: string;
+}) {
   if (stats.length === 0) return null;
   return (
-    <ul className="flex flex-wrap gap-1.5">
-      {stats.map(({ key, type, Icon, value, spoken }) => (
-        <li
-          key={key}
-          className={cn(
-            "flex h-7 items-center gap-1.5 rounded-md px-2",
-            type
-              ? ITEM_CHIP[type]
-              :
-                "bg-muted text-foreground",
+    <ul
+      className={cn(
+        "flex flex-wrap items-center gap-x-1.5 gap-y-1 text-meta",
+        className,
+      )}
+    >
+      {stats.map(({ key, type, Icon, value, spoken }, i) => (
+        <li key={key} className="flex items-center gap-1.5">
+          {i > 0 && (
+            <span aria-hidden="true" className="text-muted-foreground">
+              ·
+            </span>
           )}
-        >
-          <Icon className="size-4" role="img" aria-label={spoken} />
-          <span className="text-meta font-bold" data-tabular>
-            {value}
+          <span
+            className={cn(
+              "flex items-center gap-1",
+              type ? ITEM_INK[type] : "text-foreground",
+            )}
+          >
+            <Icon className="size-4 shrink-0" role="img" aria-label={spoken} />
+            <span className="font-bold" data-tabular>
+              {value}
+            </span>
           </span>
         </li>
       ))}
@@ -100,15 +114,10 @@ export function GlanceStrip({ stats }: { stats: Glance[] }) {
 export function Chip({ type, icon }: { type: ItemType; icon?: typeof Soup }) {
   const Icon = icon ?? itemKind(type).Icon;
   return (
-    <span
-      className={cn(
-        "-mt-1 grid size-7 shrink-0 place-items-center rounded-md",
-        ITEM_CHIP[type],
-      )}
+    <Icon
       aria-hidden="true"
-    >
-      <Icon className="size-4" />
-    </span>
+      className={cn("mt-0.5 size-4 shrink-0", ITEM_INK[type])}
+    />
   );
 }
 

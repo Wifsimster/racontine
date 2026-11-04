@@ -32,8 +32,8 @@ export function JournalSkeleton() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex h-11 items-end justify-between gap-3 border-b pb-2">
-        <p role="status" className="surtitre text-muted-foreground">
+      <div className="flex min-h-11 items-center gap-2">
+        <p role="status" className="text-meta text-muted-foreground">
           {slow ? "Le carnet met du temps à venir" : "Racontine ouvre le carnet"}
         </p>
         <span aria-hidden="true" className="skeleton size-2 rounded-full" />
@@ -42,18 +42,14 @@ export function JournalSkeleton() {
         <div
           key={i}
           aria-hidden="true"
-          className="relative overflow-hidden rounded-2xl border bg-card py-4 pr-5 pl-7 shadow-card"
+          className="rounded-xl border bg-card px-5 py-4"
         >
-          <span className="pointer-events-none absolute inset-y-0 left-5 w-[1.5px] bg-[var(--rule-margin)]" />
-          <div className="flex items-center justify-between gap-3">
-            <div className="skeleton h-3 w-32" />
-            <div className="skeleton h-3 w-14" />
-          </div>
+          <div className="skeleton h-3 w-32" />
           <div className="skeleton mt-4 h-6 w-4/5" />
-          <div className="mt-4 flex gap-1.5">
-            <div className="skeleton h-7 w-20" />
-            <div className="skeleton h-7 w-28" />
-            <div className="skeleton h-7 w-20" />
+          <div className="mt-3 flex gap-3">
+            <div className="skeleton h-4 w-16" />
+            <div className="skeleton h-4 w-24" />
+            <div className="skeleton h-4 w-16" />
           </div>
           <div className="mt-4 flex flex-col gap-3">
             <div className="skeleton h-4 w-full" />
@@ -66,9 +62,9 @@ export function JournalSkeleton() {
               <div className="skeleton aspect-square" />
             </div>
           )}
-          <div className="mt-4 flex items-center gap-3 border-t pt-4">
-            <div className="skeleton h-4 w-40" />
-            <div className="skeleton ml-auto h-4 w-16" />
+          <div className="mt-4 flex items-center gap-3">
+            <div className="skeleton h-4 w-20" />
+            <div className="skeleton ml-auto h-4 w-32" />
           </div>
         </div>
       ))}
@@ -88,22 +84,18 @@ export function JournalEmpty({
       <section className="rise-enter flex flex-col items-center gap-6 pt-2">
         <div
           aria-hidden="true"
-          className="relative w-full overflow-hidden rounded-2xl border border-dashed bg-card py-4 pr-5 pl-7"
+          className="w-full rounded-xl border border-dashed bg-card px-5 py-4"
         >
-          <span className="pointer-events-none absolute inset-y-0 left-5 w-[1.5px] bg-[var(--rule-margin)]" />
-          <div className="flex items-baseline justify-between gap-3">
-            <p className="surtitre text-muted-foreground">la première journée</p>
-            <p className="surtitre text-muted-foreground">nounou</p>
-          </div>
+          <p className="text-meta text-muted-foreground">
+            La première journée · Nounou
+          </p>
           <p className="mt-4 font-serif text-title font-semibold text-muted-foreground">
             Le titre de sa journée
           </p>
-          <div className="paper-ruled paper-ruled--plain -mr-5 -ml-7 mt-4 pr-5 pl-7">
-            <p className="carnet-story text-muted-foreground">
-              Ce qu’il a mangé, comment il a dormi, ce qui l’a fait rire : le
-              carnet du jour, recopié et mis en récit.
-            </p>
-          </div>
+          <p className="carnet-story mt-3 text-muted-foreground">
+            Ce qu’il a mangé, comment il a dormi, ce qui l’a fait rire : le
+            carnet du jour, recopié et mis en récit.
+          </p>
         </div>
 
         <div className="flex flex-col items-center gap-3 text-center">
@@ -131,35 +123,31 @@ export function JournalEmpty({
     <section className="rise-enter flex flex-col items-center gap-6 pt-2">
       <div
         aria-hidden="true"
-        className="relative w-full overflow-hidden rounded-2xl border border-dashed bg-card py-4 pr-5 pl-7"
+        className="w-full rounded-xl border border-dashed bg-card px-5 py-4"
       >
-        <span className="pointer-events-none absolute inset-y-0 left-5 w-[1.5px] bg-[var(--rule-margin)]" />
-        <div className="flex items-baseline justify-between gap-3">
-          <p className="surtitre text-muted-foreground">aujourd’hui</p>
-          <p className="surtitre text-muted-foreground">nounou</p>
-        </div>
+        <p className="text-meta text-muted-foreground">Aujourd’hui · Nounou</p>
         <p className="mt-4 font-serif text-title font-semibold text-muted-foreground">
           Le titre que Racontine trouvera
         </p>
-        <div className="mt-4 flex gap-1.5">
-          <span className="flex h-7 items-center gap-1.5 rounded-md bg-meal-bg px-2 text-meta font-bold text-meal">
+        <p className="mt-3 flex flex-wrap items-center gap-x-1.5 text-meta font-bold">
+          <span className="flex items-center gap-1 text-meal">
             <Soup className="size-4" />3 repas
           </span>
-          <span className="flex h-7 items-center gap-1.5 rounded-md bg-nap-bg px-2 text-meta font-bold text-nap">
+          <span className="font-normal text-muted-foreground">·</span>
+          <span className="flex items-center gap-1 text-nap">
             <Moon className="size-4" />
             sieste 2{NBSP}h{NBSP}05
           </span>
-          <span className="flex h-7 items-center gap-1.5 rounded-md bg-muted px-2 text-meta font-bold text-foreground">
+          <span className="font-normal text-muted-foreground">·</span>
+          <span className="flex items-center gap-1 text-foreground">
             <Smile className="size-4" />
             joyeuse
           </span>
-        </div>
-        <div className="paper-ruled paper-ruled--plain -mr-5 -ml-7 mt-4 pr-5 pl-7">
-          <p className="carnet-story text-muted-foreground">
-            Le récit de la journée, écrit à partir de votre photo : ce qu’il a
-            mangé, comment il a dormi, ce qui l’a fait rire.
-          </p>
-        </div>
+        </p>
+        <p className="carnet-story mt-3 text-muted-foreground">
+          Le récit de la journée, écrit à partir de votre photo : ce qu’il a
+          mangé, comment il a dormi, ce qui l’a fait rire.
+        </p>
       </div>
 
       <div className="flex flex-col items-center gap-3 text-center">
@@ -218,12 +206,10 @@ export function JournalFiltered({
 }) {
   return (
     <section className="rise-enter flex flex-col items-center gap-5 py-10 text-center">
-      <span
+      <CalendarSearch
         aria-hidden="true"
-        className="grid size-16 place-items-center rounded-3xl bg-muted text-muted-foreground"
-      >
-        <CalendarSearch className="size-7" />
-      </span>
+        className="size-8 text-muted-foreground"
+      />
       <div className="flex flex-col items-center gap-2">
         <h2 className="font-serif text-title font-semibold text-balance">
           Rien à lire pour {label}
@@ -249,10 +235,11 @@ export function Tip({
   children: React.ReactNode;
 }) {
   return (
-    <li className="flex items-start gap-3 rounded-xl bg-card px-4 py-3 shadow-card">
-      <span className="grid size-7 shrink-0 place-items-center rounded-md bg-muted text-muted-foreground">
-        <Icon className="size-4" aria-hidden="true" />
-      </span>
+    <li className="flex items-start gap-3">
+      <Icon
+        className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+        aria-hidden="true"
+      />
       <span className="text-meta text-muted-foreground">{children}</span>
     </li>
   );
@@ -279,17 +266,14 @@ export function JournalError({
     <section
       className="rise-enter flex min-h-[calc(100svh-11rem)] flex-col items-center justify-center gap-5 text-center"
     >
-      <span className="grid size-16 place-items-center rounded-3xl bg-destructive-soft text-destructive">
-        <CloudOff className="size-7" aria-hidden="true" />
-      </span>
+      <CloudOff className="size-8 text-destructive" aria-hidden="true" />
       <div className="flex flex-col items-center gap-2">
         <h2 className="font-serif text-title font-semibold text-balance">
           Le journal ne répond pas
         </h2>
         <p className="max-w-[34ch] text-ui text-pretty text-muted-foreground">
-          Vos journées sont intactes : c’est la connexion au carnet qui a
-          échoué. Réessayez ; si cela persiste, le serveur Racontine est
-          peut-être en train de redémarrer.
+          Vos journées sont intactes : seule la connexion au carnet a échoué,
+          réessayez dans un instant.
         </p>
       </div>
       <div className="flex w-full flex-col gap-3">
@@ -320,13 +304,13 @@ export function JournalError({
           />
           <span className="flex-1">Détail technique</span>
           <span
-            className="flex h-5 shrink-0 items-center rounded-sm bg-muted px-1.5 text-meta text-muted-foreground"
+            className="shrink-0 text-meta text-muted-foreground"
             data-tabular
           >
             {technicalCode(message)}
           </span>
         </summary>
-        <p className="mt-2 rounded-lg bg-muted px-4 py-3 text-meta text-muted-foreground">
+        <p className="mt-1 border-l-2 pl-3 text-meta text-muted-foreground">
           {message}
         </p>
       </details>
@@ -392,18 +376,16 @@ export function Receipt({
   return (
     <div
       role="status"
-      className="rise-enter flex items-start gap-3 rounded-2xl border border-success bg-success-bg px-4 py-3"
+      className="rise-enter flex items-start gap-3 rounded-xl border border-success bg-success-bg px-4 py-3"
     >
-      <span
-        aria-hidden="true"
-        className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-md bg-success text-background"
-      >
-        {published ? (
-          <Send className="size-4" />
-        ) : (
-          <BookOpenText className="size-4" />
-        )}
-      </span>
+      {published ? (
+        <Send aria-hidden="true" className="mt-1 size-4 shrink-0 text-success" />
+      ) : (
+        <BookOpenText
+          aria-hidden="true"
+          className="mt-1 size-4 shrink-0 text-success"
+        />
+      )}
       <div className="min-w-0 flex-1">
         <p className="text-ui font-bold text-success">{title}</p>
         <p className="mt-0.5 text-meta text-success">{body}</p>

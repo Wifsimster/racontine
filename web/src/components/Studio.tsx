@@ -22,7 +22,7 @@ export function StudioSignature({ className }: { className?: string }) {
 export function StudioCard({ className }: { className?: string }) {
   return (
     <section
-      className={cn("rounded-2xl border bg-card p-5 shadow-card", className)}
+      className={cn("rounded-xl border bg-card p-5", className)}
       aria-labelledby="editeur"
     >
       <h2 id="editeur" className="surtitre text-muted-foreground">

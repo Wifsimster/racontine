@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
-  CircleCheck,
   KeyRound,
   RotateCcwKey,
   ShieldCheck,
@@ -102,11 +101,7 @@ export default function ResetPassword() {
   if (done) {
     return frame(
       <DoorSheet role="status">
-        <DoorSheetTitle
-          icon={CircleCheck}
-          tone="done"
-          title="Votre mot de passe est enregistré"
-        />
+        <DoorSheetTitle title="Votre mot de passe est enregistré" />
         <p className="carnet-story text-foreground">
           {
             "Les sessions ouvertes ailleurs ont été fermées, par sécurité : connectez-vous avec le nouveau mot de passe."
@@ -125,17 +120,13 @@ export default function ResetPassword() {
   if (dead || expired) {
     return frame(
       <DoorSheet>
-        <DoorSheetTitle
-          icon={TriangleAlert}
-          tone="warn"
-          title="Ce lien ne vaut plus"
-        />
+        <DoorSheetTitle title="Ce lien ne vaut plus" />
         <p className="carnet-story text-foreground">
           {
             "Un lien de réinitialisation ne vit qu’une heure, et il ne sert qu’une fois. Celui-ci a expiré, ou il a déjà servi — rien n’est perdu : redemandez-en un, il part tout de suite."
           }
         </p>
-        <p className="flex items-start gap-2 rounded-lg bg-muted px-4 py-3 text-meta text-muted-foreground">
+        <p className="flex items-start gap-2 text-meta text-muted-foreground">
           <ShieldCheck className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
           <span>
             {
@@ -162,7 +153,6 @@ export default function ResetPassword() {
         noValidate
       >
         <DoorSheetTitle
-          icon={RotateCcwKey}
           title="Nouveau mot de passe"
           id="feuille-titre"
         />

@@ -59,16 +59,12 @@ export default function MesDonnees({ email }: { email?: string }) {
   const ready = matches(typed, email);
 
   return (
-    <section className="flex flex-col rounded-2xl border bg-card px-5 shadow-card">
-      <h2 className="flex items-center gap-2 border-b py-4 text-ui font-bold">
-        <Download className="size-4 shrink-0 text-primary" aria-hidden="true" />
-        Mes données
-      </h2>
+    <section className="flex flex-col gap-2 py-6">
+      <h2 className="font-serif text-title font-semibold">Mes données</h2>
 
-      <div className="flex flex-col gap-4 py-4">
-        <p className="text-meta text-pretty text-muted-foreground">
-          Le carnet est à vous. Vous pouvez en emporter une copie complète à tout
-          moment, et fermer votre compte quand vous le souhaitez.
+      <div className="flex flex-col gap-4">
+        <p className="max-w-[52ch] text-meta text-pretty text-muted-foreground">
+          Le carnet est à vous : emportez-en une copie, ou fermez votre compte.
         </p>
 
         <div className="flex flex-col gap-1.5">
@@ -79,9 +75,8 @@ export default function MesDonnees({ email }: { email?: string }) {
             </a>
           </Button>
           <p className="text-meta text-muted-foreground">
-            Une archive zip : vos carnets, toutes les journées que vous pouvez
-            lire, leurs moments, et les photos des pages du carnet. Ni mot de
-            passe ni jeton n'y figurent — ce sont des clés, pas des souvenirs.
+            Une archive zip de vos carnets, journées, moments et photos. Sans
+            mot de passe ni jeton.
           </p>
         </div>
 
@@ -195,7 +190,7 @@ function CarnetList({
 }) {
   if (carnets.length === 0)
     return empty ? (
-      <p className="rounded-xl border border-dashed px-3 py-2 text-meta text-muted-foreground">
+      <p className="rounded-xl border border-dashed px-3 py-3 text-meta text-muted-foreground">
         {empty}
       </p>
     ) : null;

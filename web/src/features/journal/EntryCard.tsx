@@ -15,11 +15,7 @@ import {
   type Entry,
   SOURCE_LABELS,
 } from "@/lib/types";
-import {
-  dayLabel,
-  fr,
-  fullDate,
-} from "@/lib/format";
+import { capitalize, dayLabel, fr, fullDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -49,10 +45,10 @@ export function StatusBadge({
     );
   if (entry.status === "processing")
     return (
-      <Badge variant="soft">
-        <ScanLine aria-hidden="true" />
+      <span className="inline-flex items-center gap-1.5 text-meta text-muted-foreground">
+        <ScanLine className="size-4" aria-hidden="true" />
         Lecture en cours
-      </Badge>
+      </span>
     );
   if (entry.status === "failed")
     return (
@@ -78,12 +74,18 @@ export function isUnread(entry: Entry): boolean {
   return entry.status === "published" && entry.read === false;
 }
 
-export function UnreadBadge() {
+export function UnreadDot({ className }: { className?: string }) {
   return (
-    <Badge variant="default">
-      <span aria-hidden="true" className="size-1.5 rounded-full bg-current" />
-      Nouveau
-    </Badge>
+    <>
+      <span
+        aria-hidden="true"
+        className={cn(
+          "inline-block size-2 shrink-0 rounded-full bg-primary align-middle",
+          className,
+        )}
+      />
+      <span className="sr-only">Nouveau</span>
+    </>
   );
 }
 
@@ -131,11 +133,13 @@ export function EntryCard({
   canEdit,
   onOpenPages,
   onRead,
+  showChild = false,
 }: {
   entry: Entry;
   canEdit: boolean;
   onOpenPages: (entry: Entry, index: number, from: HTMLElement) => void;
   onRead?: (entry: Entry, read: boolean) => void;
+  showChild?: boolean;
 }) {
   const dateText = fullDate(entry.date);
   const label = dayLabel(entry.date);
@@ -191,45 +195,67 @@ export function EntryCard({
   const storyId = `recit-${entry.id}`;
   const detailId = `jour-${entry.id}`;
 
+  const nouveau = unread && trackable;
+  const moments = entry.items.length;
+  const bascule = !action && trackable && (
+    <Button
+      variant="ghost"
+      size="sm"
+      className="shrink-0 text-muted-foreground"
+      aria-pressed={!unread}
+      onClick={basculerLu}
+    >
+      {unread ? (
+        <>
+          <BookCheck aria-hidden="true" />
+          Marquer comme lu
+        </>
+      ) : (
+        <>
+          <BookOpen aria-hidden="true" />
+          Marquer comme non lu
+        </>
+      )}
+    </Button>
+  );
+
+  const rangeeBasse = hasStory || Boolean(bascule) || Boolean(action);
+
   return (
     <article
       ref={cardRef}
       id={`carte-${entry.id}`}
       data-unread={unread || undefined}
-      className="relative scroll-mt-28 overflow-hidden rounded-2xl border bg-card shadow-card"
+      className="scroll-mt-28 rounded-xl border bg-card"
     >
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-y-0 left-5 w-[1.5px] bg-[var(--rule-margin)]"
-      />
-
-      <div className="relative flex flex-col gap-4 py-4 pr-5 pl-7">
-        <div className="flex flex-col gap-2">
-          <div className="flex items-baseline justify-between gap-3">
-            <p className="surtitre flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1">
-              {entry.child && (
-                <>
-                  <ChildMark name={entry.child.name} />
-                  <span className="text-foreground">{entry.child.name}</span>
-                  <span aria-hidden="true" className="text-muted-foreground">
-                    ·
-                  </span>
-                </>
-              )}
-              <time dateTime={entry.date} className="text-muted-foreground">
-                {label}
-              </time>
-            </p>
-            <p className="surtitre shrink-0 text-muted-foreground">
-              {SOURCE_LABELS[entry.source]}
-            </p>
-          </div>
-          {unread && trackable && <UnreadBadge />}
+      <div
+        className={cn(
+          "flex flex-col gap-3 px-5 pt-4",
+          rangeeBasse ? "pb-1" : "pb-4",
+        )}
+      >
+        <div className="flex items-center justify-between gap-3">
+          <p className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-meta text-muted-foreground">
+            {!entry.title && nouveau && <UnreadDot className="mr-0.5" />}
+            {showChild && entry.child && (
+              <>
+                <ChildMark name={entry.child.name} />
+                <span className="font-bold text-foreground">
+                  {entry.child.name}
+                </span>
+                <span aria-hidden="true">·</span>
+              </>
+            )}
+            <time dateTime={entry.date}>{capitalize(label)}</time>
+            <span aria-hidden="true">·</span>
+            <span>{SOURCE_LABELS[entry.source]}</span>
+          </p>
           <StatusBadge entry={entry} canEdit={canEdit} />
         </div>
 
         {entry.title && (
           <h3 className="font-serif text-title font-semibold text-balance">
+            {nouveau && <UnreadDot className="mr-2 -mt-1" />}
             {fr(entry.title)}
           </h3>
         )}
@@ -237,18 +263,16 @@ export function EntryCard({
         <GlanceStrip stats={shown} />
 
         {entry.story && (
-          <div className="paper-ruled paper-ruled--plain -mr-5 -ml-7 pr-5 pl-7">
-            <p
-              id={storyId}
-              ref={storyRef}
-              className={cn(
-                "carnet-story measure hyphens-auto text-pretty",
-                !open && "line-clamp-3",
-              )}
-            >
-              {fr(entry.story)}
-            </p>
-          </div>
+          <p
+            id={storyId}
+            ref={storyRef}
+            className={cn(
+              "carnet-story measure hyphens-auto text-pretty",
+              !open && "line-clamp-3",
+            )}
+          >
+            {fr(entry.story)}
+          </p>
         )}
 
         {entry.status === "processing" && (
@@ -267,13 +291,16 @@ export function EntryCard({
         )}
 
         {entry.highlight && (
-          <div className="rounded-lg border-l-2 border-l-[var(--rule-margin)] bg-accent px-4 py-3">
-            <p className="surtitre flex items-center gap-1.5 text-muted-foreground">
-              <Star className="size-3 fill-current" aria-hidden="true" />
-              Le temps fort
-            </p>
-            <p className="mt-1 text-body text-pretty">{fr(entry.highlight)}</p>
-          </div>
+          <p className="flex items-start gap-2 font-serif text-body text-pretty italic">
+            <Star
+              className="mt-1.5 size-3.5 shrink-0 fill-current text-primary"
+              aria-hidden="true"
+            />
+            <span>
+              <span className="sr-only">Le temps fort : </span>
+              {fr(entry.highlight)}
+            </span>
+          </p>
         )}
 
         {entry.status === "failed" && entry.failureReason && (
@@ -286,65 +313,15 @@ export function EntryCard({
           </div>
         )}
 
-        {hasStory ? (
-          <details
-            className="border-t"
-            onToggle={(e) => {
-              const ouvert = e.currentTarget.open;
-              setOpen(ouvert);
-              if (ouvert && unread && !manuel) onRead?.(entry, true);
-            }}
-          >
-            <summary
-              aria-controls={
-                entry.items.length > 0 ? `${storyId} ${detailId}` : storyId
-              }
-              className="flex min-h-11 cursor-pointer list-none items-center gap-3 pt-1 text-ui text-muted-foreground transition-colors dur-fast hover:text-foreground [&::-webkit-details-marker]:hidden"
-            >
-              <span className="flex-1">
-                {open
-                  ? "Replier"
-                  : clipped
-                    ? "Toute la journée"
-                    : "Le détail du jour"}
-              </span>
-              {entry.items.length > 0 && (
-                <span className="surtitre" data-tabular>
-                  {entry.items.length} moment{entry.items.length > 1 ? "s" : ""}
-                </span>
-              )}
-              <ChevronDown
-                className={cn(
-                  "size-4 shrink-0 transition-transform dur-base ease-carnet",
-                  open && "rotate-180",
-                )}
-                aria-hidden="true"
-              />
-            </summary>
-            {entry.items.length > 0 ? (
-              <ul id={detailId} className="flex flex-col gap-3 pt-1 pb-2">
-                {entry.items.map((it) => (
-                  <ItemLine key={it.id} item={it} />
-                ))}
-                {entry.mood && <MoodLine mood={entry.mood} />}
-              </ul>
-            ) : (
-              <p className="pt-1 pb-2 text-meta text-muted-foreground">
-                Rien d’autre n’a été noté ce jour-là : la page ne portait que ce
-                récit.
-              </p>
-            )}
-          </details>
-        ) : (
-          entry.items.length > 0 && (
-            <ul className="flex flex-col gap-3 border-t pt-4">
-              {entry.items.map((it) => (
-                <ItemLine key={it.id} item={it} />
-              ))}
-              {entry.mood && <MoodLine mood={entry.mood} />}
-            </ul>
-          )
+        {!hasStory && moments > 0 && (
+          <ul className="flex flex-col gap-3 pt-1">
+            {entry.items.map((it) => (
+              <ItemLine key={it.id} item={it} />
+            ))}
+            {entry.mood && <MoodLine mood={entry.mood} />}
+          </ul>
         )}
+
         {entry.attachments.length > 0 && (
           <PageStrip
             pages={entry.attachments}
@@ -354,32 +331,58 @@ export function EntryCard({
         )}
       </div>
 
-      {!action && trackable && (
-        <div className="flex justify-end border-t px-5 py-2 pl-7">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-muted-foreground"
-            aria-pressed={!unread}
-            onClick={basculerLu}
+      {hasStory ? (
+        <div className="relative px-5 pb-2">
+          <details
+            onToggle={(e) => {
+              const ouvert = e.currentTarget.open;
+              setOpen(ouvert);
+              if (ouvert && unread && !manuel) onRead?.(entry, true);
+            }}
           >
-            {unread ? (
-              <>
-                <BookCheck aria-hidden="true" />
-                Marquer comme lu
-              </>
+            <summary
+              aria-controls={moments > 0 ? `${storyId} ${detailId}` : storyId}
+              className="-ml-2 inline-flex min-h-11 cursor-pointer list-none items-center gap-1.5 rounded-lg px-2 text-meta text-muted-foreground transition-colors dur-fast outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden"
+            >
+              <span data-tabular>
+                {open
+                  ? "Replier"
+                  : moments > 0
+                    ? `${moments} moment${moments > 1 ? "s" : ""}`
+                    : clipped
+                      ? "Toute la journée"
+                      : "Le détail du jour"}
+              </span>
+              <ChevronDown
+                className={cn(
+                  "size-4 shrink-0 transition-transform dur-base ease-carnet",
+                  open && "rotate-180",
+                )}
+                aria-hidden="true"
+              />
+            </summary>
+            {moments > 0 ? (
+              <ul id={detailId} className="flex flex-col gap-3 pt-2 pb-3">
+                {entry.items.map((it) => (
+                  <ItemLine key={it.id} item={it} />
+                ))}
+                {entry.mood && <MoodLine mood={entry.mood} />}
+              </ul>
             ) : (
-              <>
-                <BookOpen aria-hidden="true" />
-                Marquer comme non lu
-              </>
+              <p className="pt-1 pb-3 text-meta text-muted-foreground">
+                Rien d’autre n’a été noté ce jour-là : la page ne portait que ce
+                récit.
+              </p>
             )}
-          </Button>
+          </details>
+          {bascule && <div className="absolute top-0 right-3">{bascule}</div>}
         </div>
+      ) : (
+        bascule && <div className="flex justify-end px-3 pb-2">{bascule}</div>
       )}
 
       {action && (
-        <div className="border-t px-5 py-3 pl-7">
+        <div className="px-5 pt-1 pb-4">
           <Button
             asChild
             variant={action.quiet ? "ghost" : "secondary"}
@@ -402,12 +405,10 @@ export function EntryCard({
 export function MoodLine({ mood }: { mood: string }) {
   return (
     <li className="flex items-start gap-3 text-ui">
-      <span
+      <Smile
         aria-hidden="true"
-        className="-mt-1 grid size-7 shrink-0 place-items-center rounded-md bg-muted text-muted-foreground"
-      >
-        <Smile className="size-4" />
-      </span>
+        className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+      />
       <span>
         <span className="font-bold">Humeur</span> — {fr(mood)}
       </span>

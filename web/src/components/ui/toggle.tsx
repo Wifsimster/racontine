@@ -37,15 +37,24 @@ export function Toggle({
       <span
         aria-hidden="true"
         className={cn(
-          "relative flex h-6 w-11 items-center rounded-full transition-colors dur-fast",
-          disabled ? "bg-muted" : checked ? "bg-primary" : "bg-input",
+          "relative flex h-6 w-11 items-center rounded-full border transition-colors dur-fast",
+          disabled
+            ? "border-input bg-muted"
+            : checked
+              ? "border-primary bg-primary"
+              : "border-muted-foreground/60 bg-input",
         )}
       >
         <span
           className={cn(
-            "inline-block size-5 rounded-full bg-card shadow-card",
+            "inline-block size-[1.125rem] rounded-full border bg-card",
+            disabled
+              ? "border-input"
+              : checked
+                ? "border-primary-foreground/40"
+                : "border-muted-foreground/70",
             "transition-transform dur-fast ease-carnet",
-            checked ? "translate-x-5" : "translate-x-0.5",
+            checked ? "translate-x-[1.375rem]" : "translate-x-0.5",
           )}
         />
       </span>

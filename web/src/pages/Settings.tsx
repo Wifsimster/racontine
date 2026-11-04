@@ -1,16 +1,12 @@
 import { useEffect, useState } from "react";
 import {
-  Settings as SettingsIcon,
   Save,
   Check,
   ShieldAlert,
   Link2,
-  Sparkles,
-  UserPlus,
-  Clock,
-  Bell,
   CloudOff,
   TriangleAlert,
+  Undo2,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import type { AppSettings, SettingsMeta } from "@/lib/types";
@@ -24,82 +20,72 @@ import {
   PageHeader,
   PageState,
   PageSkeleton,
-  SectionLabel,
   InlineError,
 } from "@/components/PageState";
 
 function Row({
-  icon: Icon,
   title,
   hint,
   htmlFor,
-  inline = false,
   children,
 }: {
-  icon: React.ElementType;
   title: string;
   hint?: string;
   htmlFor?: string;
-  inline?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <div
-      className={
-        inline
-          ? "flex items-start justify-between gap-4 py-4"
-          : "flex flex-col gap-3 py-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6"
-      }
-    >
-      <div className="flex min-w-0 flex-col gap-1">
-        <Label
-          htmlFor={htmlFor}
-          className="flex items-center gap-2 text-ui font-bold"
-        >
-          <Icon className="size-4 shrink-0 text-primary" aria-hidden="true" />
+    <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 py-3">
+      <div className="flex min-w-0 flex-1 basis-56 flex-col gap-0.5">
+        <Label htmlFor={htmlFor} className="text-ui font-bold">
           {title}
         </Label>
         {hint && (
-          <p className="max-w-[46ch] text-meta text-pretty text-muted-foreground">
+          <p className="max-w-[52ch] text-meta text-pretty text-muted-foreground">
             {hint}
           </p>
         )}
       </div>
-      <div className={inline ? "shrink-0" : "shrink-0 sm:pt-1"}>{children}</div>
+      <div className="shrink-0">{children}</div>
     </div>
   );
 }
 
-function StatusPill({ ok, label }: { ok: boolean; label: string }) {
+function StatusLine({ ok, label }: { ok: boolean; label: string }) {
   return (
-    <div className="flex items-center gap-2 rounded-xl border bg-background px-3 py-3">
-      <span
-        aria-hidden="true"
-        className={`size-2 shrink-0 rounded-full ${ok ? "bg-success" : "bg-muted-foreground"}`}
-      />
-      <span className="min-w-0 flex-1 text-meta">{label}</span>
-      <span
-        className={`shrink-0 text-meta font-bold ${ok ? "text-success" : "text-muted-foreground"}`}
+    <div className="flex items-center justify-between gap-3 py-2">
+      <dt className="min-w-0 text-meta">{label}</dt>
+      <dd
+        className={`flex shrink-0 items-center gap-2 text-meta font-bold ${ok ? "text-success" : "text-muted-foreground"}`}
       >
+        <span
+          aria-hidden="true"
+          className={`size-2 rounded-full ${ok ? "bg-success" : "bg-muted-foreground"}`}
+        />
         {ok ? "configuré" : "absent"}
-      </span>
+      </dd>
     </div>
   );
 }
 
 function Section({
-  label,
+  title,
+  intro,
   children,
 }: {
-  label: string;
+  title: string;
+  intro?: string;
   children: React.ReactNode;
 }) {
   return (
-    <section className="flex flex-col gap-1">
-      <SectionLabel className="px-1">{label}</SectionLabel>
-      <div className="flex flex-col divide-y rounded-2xl border bg-card px-5 shadow-card">
-        {children}
-      </div>
+    <section className="flex flex-col gap-2 py-6 first:pt-0">
+      <h2 className="font-serif text-title font-semibold">{title}</h2>
+      {intro && (
+        <p className="max-w-[52ch] text-meta text-pretty text-muted-foreground">
+          {intro}
+        </p>
+      )}
+      <div className="flex flex-col">{children}</div>
     </section>
   );
 }
@@ -142,6 +128,11 @@ export default function Settings() {
         )
       : [];
 
+  function cancel() {
+    setSettings(initial);
+    setError(null);
+  }
+
   async function save() {
     if (!settings || !dirty.length) return;
     setSaving(true);
@@ -168,7 +159,7 @@ export default function Settings() {
   const header = (
     <PageHeader
       title="Réglages"
-      lede="Ces réglages s'appliquent immédiatement à toute l'instance, sans redéploiement."
+      lede="Ils s'appliquent tout de suite à toute l'instance."
     />
   );
 
@@ -222,143 +213,128 @@ export default function Settings() {
     <PageShell className="pb-8 lg:max-w-[64rem] lg:px-10 lg:pt-8">
       {header}
 
-      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-10">
-        <div className="flex flex-col gap-6">
-          <Section label="L'instance">
-            <Row
-              icon={SettingsIcon}
-              title="Nom de l'instance"
-              hint="Affiché dans l'en-tête et sur l'écran de connexion."
-              htmlFor="appName"
-            >
+      <div className="flex max-w-3xl flex-col divide-y">
+        <Section title="L'instance">
+          <Row
+            title="Nom de l'instance"
+            hint="Affiché dans l'en-tête et sur l'écran de connexion."
+            htmlFor="appName"
+          >
+            <Input
+              id="appName"
+              value={settings.appName}
+              maxLength={60}
+              onChange={(e) => patch("appName", e.target.value)}
+              className="w-full sm:w-56"
+            />
+          </Row>
+        </Section>
+
+        <Section title="Accès et partage">
+          <Row
+            title="Inscriptions ouvertes"
+            hint="À fermer une fois le foyer créé. Les invités par lien restent acceptés."
+            htmlFor="signupEnabled"
+          >
+            <Toggle
+              id="signupEnabled"
+              checked={settings.signupEnabled}
+              onChange={(v) => patch("signupEnabled", v)}
+            />
+          </Row>
+          <Row
+            title="Validité des invitations"
+            hint="Durée avant expiration d'un lien d'invitation."
+            htmlFor="invitationTtlDays"
+          >
+            <div className="flex items-center gap-2">
               <Input
-                id="appName"
-                value={settings.appName}
-                maxLength={60}
-                onChange={(e) => patch("appName", e.target.value)}
-                className="w-full sm:w-48"
+                id="invitationTtlDays"
+                type="number"
+                min={1}
+                max={365}
+                value={settings.invitationTtlDays}
+                onChange={(e) =>
+                  patch(
+                    "invitationTtlDays",
+                    Math.max(1, Math.min(365, Number(e.target.value) || 1)),
+                  )
+                }
+                className="w-20"
               />
-            </Row>
-          </Section>
-
-          <Section label="Accès & partage">
-            <Row
-              icon={UserPlus}
-              title="Inscriptions ouvertes"
-              hint="Autorise la création de comptes email/mot de passe. À fermer une fois le foyer créé — les proches invités par lien restent acceptés."
-              htmlFor="signupEnabled"
-              inline
-            >
-              <Toggle
-                id="signupEnabled"
-                checked={settings.signupEnabled}
-                onChange={(v) => patch("signupEnabled", v)}
-              />
-            </Row>
-            <Row
-              icon={Clock}
-              title="Validité des invitations"
-              hint="Durée avant expiration d'un lien d'invitation."
-              htmlFor="invitationTtlDays"
-            >
-              <div className="flex items-center gap-2">
-                <Input
-                  id="invitationTtlDays"
-                  type="number"
-                  min={1}
-                  max={365}
-                  value={settings.invitationTtlDays}
-                  onChange={(e) =>
-                    patch(
-                      "invitationTtlDays",
-                      Math.max(1, Math.min(365, Number(e.target.value) || 1)),
-                    )
-                  }
-                  className="w-20"
-                />
-                <span className="text-meta text-muted-foreground">jours</span>
-              </div>
-            </Row>
-          </Section>
-
-          <Section label="Notifications">
-            <Row
-              icon={Bell}
-              title="E-mails de notification"
-              hint={
-                meta.mailConfigured
-                  ? "Envoie un e-mail aux abonnés à chaque journée publiée."
-                  : "SMTP non configuré : les e-mails sont désactivés quoi qu'il arrive (notifications dans l'app seules)."
-              }
-              htmlFor="emailNotificationsEnabled"
-              inline
-            >
-              <Toggle
-                id="emailNotificationsEnabled"
-                checked={settings.emailNotificationsEnabled}
-                disabled={!meta.mailConfigured}
-                onChange={(v) => patch("emailNotificationsEnabled", v)}
-              />
-            </Row>
-          </Section>
-
-          <Section label="Lecture des carnets">
-            <Row
-              icon={Sparkles}
-              title="Modèle d'extraction"
-              hint="Modèle Claude vision utilisé pour lire les carnets, avec la clé API de chaque contributeur."
-              htmlFor="vlmModel"
-            >
-              <Select
-                id="vlmModel"
-                value={settings.vlmModel}
-                onChange={(e) => patch("vlmModel", e.target.value)}
-                className="w-full sm:w-auto"
-              >
-                {models.map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))}
-              </Select>
-            </Row>
-          </Section>
-        </div>
-
-        <div className="lg:sticky lg:top-[5.5rem]">
-          <section className="flex flex-col gap-1">
-            <SectionLabel className="px-1">Infrastructure</SectionLabel>
-            <div className="flex flex-col gap-3 rounded-2xl border bg-card p-5 shadow-card">
-              <p className="text-meta text-muted-foreground">
-                Piloté par les variables d'environnement du serveur : ces lignes se
-                lisent, elles ne se modifient pas ici.
-              </p>
-              <div className="flex flex-col gap-2">
-                <StatusPill ok={meta.mailConfigured} label="Serveur e-mail (SMTP)" />
-                <StatusPill
-                  ok={meta.webPushConfigured}
-                  label="Notifications navigateur (Web Push)"
-                />
-                <StatusPill
-                  ok={meta.notifyWebhookConfigured}
-                  label="Webhook de notification"
-                />
-                <div className="flex items-center gap-2 rounded-xl border bg-background px-3 py-3">
-                  <Link2
-                    className="size-4 shrink-0 text-muted-foreground"
-                    aria-hidden="true"
-                  />
-                  <span className="min-w-0 flex-1 truncate text-meta">
-                    {meta.webBaseUrl}
-                  </span>
-                  <span className="shrink-0 text-meta text-muted-foreground">
-                    URL publique
-                  </span>
-                </div>
-              </div>
+              <span className="text-meta text-muted-foreground">jours</span>
             </div>
-          </section>
-        </div>
+          </Row>
+        </Section>
+
+        <Section title="Notifications">
+          <Row
+            title="E-mails de notification"
+            hint={
+              meta.mailConfigured
+                ? "Un e-mail aux abonnés à chaque journée publiée."
+                : "Serveur e-mail absent : seules les notifications dans l'app partent."
+            }
+            htmlFor="emailNotificationsEnabled"
+          >
+            <Toggle
+              id="emailNotificationsEnabled"
+              checked={settings.emailNotificationsEnabled}
+              disabled={!meta.mailConfigured}
+              onChange={(v) => patch("emailNotificationsEnabled", v)}
+            />
+          </Row>
+        </Section>
+
+        <Section title="Lecture des carnets">
+          <Row
+            title="Modèle d'extraction"
+            hint="Modèle Claude qui lit les carnets, avec la clé de chaque contributeur."
+            htmlFor="vlmModel"
+          >
+            <Select
+              id="vlmModel"
+              value={settings.vlmModel}
+              onChange={(e) => patch("vlmModel", e.target.value)}
+              className="w-full sm:w-auto"
+            >
+              {models.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </Select>
+          </Row>
+        </Section>
+
+        <Section
+          title="Infrastructure"
+          intro="Lu depuis les variables d'environnement du serveur, non modifiable ici."
+        >
+          <dl className="flex flex-col divide-y">
+            <StatusLine ok={meta.mailConfigured} label="Serveur e-mail (SMTP)" />
+            <StatusLine
+              ok={meta.webPushConfigured}
+              label="Notifications navigateur (Web Push)"
+            />
+            <StatusLine
+              ok={meta.notifyWebhookConfigured}
+              label="Webhook de notification"
+            />
+            <div className="flex items-center justify-between gap-3 py-2">
+              <dt className="flex shrink-0 items-center gap-2 text-meta">
+                <Link2
+                  className="size-4 shrink-0 text-muted-foreground"
+                  aria-hidden="true"
+                />
+                URL publique
+              </dt>
+              <dd className="min-w-0 truncate text-meta text-muted-foreground">
+                {meta.webBaseUrl}
+              </dd>
+            </div>
+          </dl>
+        </Section>
       </div>
 
       {error && (
@@ -368,20 +344,38 @@ export default function Settings() {
         </InlineError>
       )}
 
-      <div className="sticky bottom-0 -mx-4 flex items-center justify-end gap-3 border-t bg-surface-bar px-4 pt-3 lg:-mx-10 lg:px-10 pb-safe-4 backdrop-blur-md">
-        {saved && (
-          <p
-            role="status"
-            className="flex items-center gap-1.5 text-meta font-bold text-success"
-          >
-            <Check className="size-4" aria-hidden="true" /> Enregistré
+      <p aria-live="polite" className="sr-only">
+        {dirty.length
+          ? "Des modifications ne sont pas encore enregistrées."
+          : saved
+            ? "Réglages enregistrés."
+            : ""}
+      </p>
+      {saved && !dirty.length && (
+        <p
+          aria-hidden="true"
+          className="flex items-center gap-1.5 text-meta font-bold text-success"
+        >
+          <Check className="size-4" /> Enregistré
+        </p>
+      )}
+      {dirty.length > 0 && (
+        <div className="sticky bottom-0 -mx-4 flex flex-wrap items-center justify-end gap-3 border-t bg-surface-bar px-4 pt-3 pb-safe-4 backdrop-blur-md lg:-mx-10 lg:px-10">
+          <p className="mr-auto text-meta text-muted-foreground">
+            {dirty.length > 1
+              ? `${dirty.length} modifications non enregistrées`
+              : "1 modification non enregistrée"}
           </p>
-        )}
-        <Button onClick={save} loading={saving} disabled={!dirty.length}>
-          {!saving && <Save aria-hidden="true" />}
-          {dirty.length ? "Enregistrer" : "Rien à enregistrer"}
-        </Button>
-      </div>
+          <Button variant="ghost" onClick={cancel} disabled={saving}>
+            <Undo2 aria-hidden="true" />
+            Annuler
+          </Button>
+          <Button onClick={save} loading={saving}>
+            {!saving && <Save aria-hidden="true" />}
+            Enregistrer
+          </Button>
+        </div>
+      )}
     </PageShell>
   );
 }

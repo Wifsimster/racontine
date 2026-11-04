@@ -57,8 +57,8 @@ export default function Abonnement() {
 
       {paiement === "ok" && <Receipt syncing={syncing} />}
       {paiement === "annule" && (
-        <p className="rounded-2xl border bg-card px-4 py-3 text-meta text-muted-foreground shadow-card">
-          Paiement abandonné — rien n'a été débité. Vous pouvez y revenir quand
+        <p role="status" className="text-meta text-muted-foreground">
+          Paiement abandonné, rien n'a été débité. Vous pouvez y revenir quand
           vous voulez.
         </p>
       )}
@@ -68,7 +68,7 @@ export default function Abonnement() {
           {loading && !billing ? (
             <PageSkeleton label="On ouvre l'abonnement" rows={1} />
           ) : !billing ? (
-            <p className="rounded-2xl border bg-card px-4 py-3 text-ui text-muted-foreground shadow-card">
+            <p className="text-ui text-muted-foreground">
               L'état de l'abonnement n'a pas pu être lu. Votre journal, lui, est
               intact : réessayez dans un instant.
             </p>
@@ -89,14 +89,12 @@ function Receipt({ syncing }: { syncing: boolean }) {
   return (
     <div
       role="status"
-      className="rise-enter flex items-start gap-3 rounded-2xl border border-success bg-success-bg px-4 py-3"
+      className="rise-enter flex items-start gap-3 rounded-xl border-l-4 border-success bg-success-bg px-4 py-3"
     >
-      <span
+      <CheckCircle2
+        className="mt-0.5 size-5 shrink-0 text-success"
         aria-hidden="true"
-        className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-md bg-success text-background"
-      >
-        <CheckCircle2 className="size-4" />
-      </span>
+      />
       <div className="min-w-0 flex-1">
         <p className="text-ui font-bold text-success">
           {syncing ? "On enregistre votre abonnement…" : "Merci — le carnet est rouvert"}
@@ -113,14 +111,9 @@ function Receipt({ syncing }: { syncing: boolean }) {
 
 function SelfHosted() {
   return (
-    <section className="rounded-2xl border bg-card p-5 shadow-card">
-      <span
-        aria-hidden="true"
-        className="grid size-10 place-items-center rounded-xl bg-primary-soft text-primary"
-      >
-        <Heart className="size-5" />
-      </span>
-      <h2 className="mt-3 font-serif text-title font-semibold">
+    <section>
+      <h2 className="flex items-center gap-2 font-serif text-title font-semibold">
+        <Heart className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
         Ici, Racontine est gratuit
       </h2>
       <p className="mt-1 text-ui text-pretty text-muted-foreground">
@@ -145,8 +138,8 @@ function Etat({ billing }: { billing: Billing }) {
   if (abonne) {
     const fin = formatDay(access.endingAt ?? access.until);
     return (
-      <section className="rounded-2xl border bg-card p-5 shadow-card">
-        <p className="surtitre text-muted-foreground">votre abonnement</p>
+      <section>
+        <p className="surtitre text-muted-foreground">Votre abonnement</p>
         <h2 className="mt-2 flex flex-wrap items-baseline gap-x-2 font-serif text-title font-semibold">
           Racontine Famille
           {price && (
@@ -181,16 +174,14 @@ function Etat({ billing }: { billing: Billing }) {
   return (
     <>
       {access.reason === "trial" && (
-        <p className="flex items-center gap-3 rounded-2xl border bg-card px-4 py-3 shadow-card">
-          <span
+        <p className="flex items-start gap-3">
+          <Hourglass
+            className="mt-0.5 size-5 shrink-0 text-muted-foreground"
             aria-hidden="true"
-            className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary"
-          >
-            <Hourglass className="size-5" />
-          </span>
+          />
           <span className="min-w-0 flex-1 text-meta text-muted-foreground">
             <span className="block text-ui font-bold text-foreground">
-              Essai gratuit — il reste {access.daysLeft ?? 0} jour
+              Essai gratuit : il reste {access.daysLeft ?? 0} jour
               {(access.daysLeft ?? 0) > 1 ? "s" : ""}
             </span>
             Aucun prélèvement n'a eu lieu, et aucune carte ne vous a été demandée.
@@ -199,7 +190,7 @@ function Etat({ billing }: { billing: Billing }) {
       )}
 
       {!access.open && (
-        <p className="rounded-2xl border border-primary bg-card px-4 py-3 text-ui text-pretty shadow-card">
+        <p className="border-l-4 border-primary pl-4 text-ui text-pretty">
           {access.reason === "subscription-over"
             ? "L'abonnement est terminé : le carnet n'accepte plus de nouvelle journée."
             : "Votre essai gratuit est terminé : le carnet n'accepte plus de nouvelle journée."}{" "}
@@ -211,7 +202,7 @@ function Etat({ billing }: { billing: Billing }) {
 
       <OfferCard billing={billing} />
 
-      <Button asChild variant="link" size="sm" className="-ml-3">
+      <Button asChild variant="link" size="sm" className="-ml-3 self-start">
         <Link to="/">
           Revenir au journal
           <ArrowRight aria-hidden="true" />

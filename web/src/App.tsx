@@ -8,7 +8,6 @@ import {
 } from "react-router-dom";
 import {
   BookOpenText,
-  ChevronRight,
   CreditCard,
   LogOut,
   Menu,
@@ -31,8 +30,8 @@ import Bienvenue from "@/pages/Bienvenue";
 type NavItem = {
   to: string;
   label: string;
+  short: string;
   icon: typeof BookOpenText;
-  hint: string;
 };
 
 export default function App() {
@@ -86,57 +85,41 @@ export default function App() {
   }
 
   const items: NavItem[] = [
-    {
-      to: "/",
-      label: "Le journal",
-      icon: BookOpenText,
-      hint: "Les journées, de la plus récente",
-    },
-    {
-      to: "/proches",
-      label: "Les proches",
-      icon: Users,
-      hint: "Qui reçoit les journées",
-    },
-    {
-      to: "/partage",
-      label: "Partager",
-      icon: Share2,
-      hint: "Inviter quelqu'un au carnet",
-    },
-    {
-      to: "/compte",
-      label: "Mon compte",
-      icon: CircleUser,
-      hint: "Votre profil",
-    },
+    { to: "/", label: "Le journal", short: "Journal", icon: BookOpenText },
+    { to: "/proches", label: "Les proches", short: "Proches", icon: Users },
+    { to: "/partage", label: "Partager", short: "Partager", icon: Share2 },
+    { to: "/compte", label: "Mon compte", short: "Compte", icon: CircleUser },
   ];
   if (billing?.enabled) {
     items.push({
       to: "/abonnement",
       label: "L'abonnement",
+      short: "Abonnement",
       icon: CreditCard,
-      hint: billing.access.open
-        ? "L'offre du foyer, et son échéance"
-        : "Rouvrir le carnet à l'écriture",
     });
   }
   if (isAdmin) {
     items.push({
       to: "/administration",
       label: "Administration",
+      short: "Administration",
       icon: ShieldCheck,
-      hint: "Les carnets, les rôles, les invitations",
     });
   }
   if (isOwner) {
     items.push({
       to: "/reglages",
       label: "Réglages",
+      short: "Réglages",
       icon: Settings,
-      hint: "L'instance, la lecture, les envois",
     });
   }
+
+  const isActive = (to: string) =>
+    to === "/" ? location.pathname === "/" : location.pathname.startsWith(to);
+
+  const logout = () =>
+    signOut().then(() => (window.location.href = "/login"));
 
   return (
     <div className="min-h-svh">
@@ -151,7 +134,7 @@ export default function App() {
         <div className="shell-width flex h-header items-center justify-between gap-2 px-4 lg:max-w-[64rem] lg:gap-6 lg:px-10">
           <Link
             to="/"
-            className="-ml-1 flex min-h-11 min-w-0 shrink-0 items-center gap-2 rounded-xl px-1 transition-colors dur-fast hover:bg-accent"
+            className="-ml-1 flex min-h-11 min-w-0 items-center gap-2 rounded-xl px-1 transition-colors dur-fast hover:bg-accent"
           >
             <Marque />
             <span className="truncate font-serif text-title font-semibold">
@@ -160,36 +143,34 @@ export default function App() {
           </Link>
           <nav
             aria-label="Navigation principale"
-            className="hidden min-w-0 flex-1 items-center justify-end gap-1 lg:flex"
+            className="hidden shrink-0 items-center justify-end lg:flex"
           >
-            {items.map(({ to, label, icon: Icon }) => {
-              const active =
-                to === "/"
-                  ? location.pathname === "/"
-                  : location.pathname.startsWith(to);
-              return (
-                <Link
-                  key={to}
-                  to={to}
-                  aria-current={active ? "page" : undefined}
-                  title={label}
-                  className="flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-xl px-3 text-ui font-bold text-muted-foreground transition-colors dur-fast hover:bg-accent hover:text-foreground aria-[current=page]:bg-primary-soft aria-[current=page]:text-primary aria-[current=page]:[&>span]:not-sr-only"
-                >
-                  <Icon className="size-4" aria-hidden="true" />
-                  <span className="sr-only">{label}</span>
-                </Link>
-              );
-            })}
+            {items.map(({ to, short }) => (
+              <Link
+                key={to}
+                to={to}
+                aria-current={isActive(to) ? "page" : undefined}
+                className="relative flex min-h-11 items-center rounded-md px-2 text-ui whitespace-nowrap text-muted-foreground transition-colors dur-fast after:absolute after:inset-x-2 after:bottom-1 after:h-0.5 after:rounded-full hover:text-foreground aria-[current=page]:font-bold aria-[current=page]:text-foreground aria-[current=page]:after:bg-primary"
+              >
+                <span className="grid">
+                  <span className="col-start-1 row-start-1">{short}</span>
+                  <span
+                    aria-hidden="true"
+                    className="invisible col-start-1 row-start-1 font-bold"
+                  >
+                    {short}
+                  </span>
+                </span>
+              </Link>
+            ))}
             <button
               type="button"
-              onClick={() =>
-                signOut().then(() => (window.location.href = "/login"))
-              }
-              aria-label="Se déconnecter"
+              onClick={logout}
               title="Se déconnecter"
-              className="grid size-11 place-items-center rounded-xl text-muted-foreground transition-colors dur-fast hover:bg-accent hover:text-foreground"
+              className="ml-1 grid size-11 place-items-center rounded-full text-muted-foreground transition-colors dur-fast hover:bg-accent hover:text-foreground"
             >
               <LogOut className="size-4" aria-hidden="true" />
+              <span className="sr-only">Se déconnecter</span>
             </button>
           </nav>
           <div className="flex shrink-0 items-center gap-1">
@@ -223,62 +204,33 @@ export default function App() {
             className="panel-down fixed inset-x-0 top-header z-40 px-safe lg:hidden"
           >
             <div className="shell-width px-4">
-              <div className="mt-2 rounded-2xl border bg-popover p-2 text-popover-foreground shadow-lift">
-                {items.map(({ to, label, icon: Icon, hint }) => {
-                  const active =
-                    to === "/"
-                      ? location.pathname === "/"
-                      : location.pathname.startsWith(to);
-                  return (
-                    <Link
-                      key={to}
-                      to={to}
-                      aria-current={active ? "page" : undefined}
-                      className="group flex min-h-12 items-center gap-3 rounded-xl px-2 py-2 transition-colors dur-fast hover:bg-accent aria-[current=page]:bg-primary-soft"
+              <div className="mt-2 rounded-xl border bg-popover p-2 text-popover-foreground shadow-lift">
+                <ul className="flex flex-col">
+                  {items.map(({ to, label, icon: Icon }) => (
+                    <li key={to}>
+                      <Link
+                        to={to}
+                        aria-current={isActive(to) ? "page" : undefined}
+                        className="flex min-h-12 items-center gap-3 rounded-lg px-3 text-body text-foreground transition-colors dur-fast hover:bg-accent aria-[current=page]:font-bold aria-[current=page]:text-primary"
+                      >
+                        <Icon className="size-5 shrink-0" aria-hidden="true" />
+                        {label}
+                      </Link>
+                    </li>
+                  ))}
+                  <li className="mt-1 border-t pt-1">
+                    <button
+                      type="button"
+                      onClick={logout}
+                      className="flex min-h-12 w-full items-center gap-3 rounded-lg px-3 text-left text-body text-foreground transition-colors dur-fast hover:bg-accent"
                     >
-                      <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground group-aria-[current=page]:bg-primary group-aria-[current=page]:text-primary-foreground">
-                        <Icon className="size-4" aria-hidden="true" />
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-ui font-bold group-aria-[current=page]:text-primary">
-                          {label}
-                        </span>
-                        <span className="block truncate text-meta text-muted-foreground">
-                          {hint}
-                        </span>
-                      </span>
-                      {active ? (
-                        <span className="surtitre shrink-0 text-primary">
-                          ici
-                        </span>
-                      ) : (
-                        <ChevronRight
-                          className="size-4 shrink-0 text-muted-foreground"
-                          aria-hidden="true"
-                        />
-                      )}
-                    </Link>
-                  );
-                })}
+                      <LogOut className="size-5 shrink-0" aria-hidden="true" />
+                      Se déconnecter
+                    </button>
+                  </li>
+                </ul>
 
-                <div className="mx-2 my-2 border-t" />
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    signOut().then(() => (window.location.href = "/login"))
-                  }
-                  className="flex min-h-12 w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition-colors dur-fast hover:bg-accent"
-                >
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                    <LogOut className="size-4" aria-hidden="true" />
-                  </span>
-                  <span className="flex-1 text-ui font-bold">
-                    Se déconnecter
-                  </span>
-                </button>
-
-                <div className="flex flex-col gap-0.5 px-4 pt-2 pb-1">
+                <div className="flex flex-col gap-0.5 px-3 pt-2 pb-1">
                   <p className="text-meta text-muted-foreground">
                     {appName} · version {__APP_VERSION__}
                   </p>
@@ -314,14 +266,14 @@ function AppSplash() {
       </div>
       <div className="px-4 pt-6" aria-hidden="true">
         <div className="skeleton h-4 w-28" />
-        <div className="mt-6 rounded-2xl border bg-card p-5 shadow-card">
+        <div className="mt-6 rounded-xl border bg-card p-5">
           <div className="skeleton h-3 w-24" />
           <div className="skeleton mt-4 h-6 w-52" />
           <div className="skeleton mt-4 h-4 w-full" />
           <div className="skeleton mt-3 h-4 w-full" />
           <div className="skeleton mt-3 h-4 w-3/5" />
         </div>
-        <div className="mt-4 rounded-2xl border bg-card p-5 shadow-card">
+        <div className="mt-4 rounded-xl border bg-card p-5">
           <div className="skeleton h-3 w-20" />
           <div className="skeleton mt-4 h-6 w-40" />
         </div>

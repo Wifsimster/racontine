@@ -108,7 +108,10 @@ export default function NotificationsBell() {
         ref={btnRef}
         variant="ghost"
         size="icon-sm"
-        aria-label="Notifications"
+        aria-label={
+          unread > 0 ? `Notifications, ${unread} non lues` : "Notifications"
+        }
+        aria-expanded={open}
         onClick={() => {
           setOpen((o) => !o);
           if (!open) refresh();
@@ -116,7 +119,10 @@ export default function NotificationsBell() {
       >
         <Bell />
         {unread > 0 && (
-          <span className="absolute top-1 right-1 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-xs font-bold text-primary-foreground">
+          <span
+            aria-hidden="true"
+            className="absolute top-1 right-1 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-xs font-bold text-primary-foreground"
+          >
             {unread > 9 ? "9+" : unread}
           </span>
         )}
@@ -125,7 +131,7 @@ export default function NotificationsBell() {
       {open && pos && (
         <div
           style={{ top: pos.top, right: pos.right }}
-          className="panel-down fixed z-40 w-80 max-w-[calc(100vw-1rem)] overflow-hidden rounded-2xl border bg-popover text-popover-foreground shadow-lift"
+          className="panel-down fixed z-40 w-80 max-w-[calc(100vw-1rem)] overflow-hidden rounded-xl border bg-popover text-popover-foreground shadow-lift"
         >
           <div className="flex min-h-11 items-center justify-between gap-2 border-b pl-4">
             <span className="text-ui font-bold">Notifications</span>
@@ -138,10 +144,11 @@ export default function NotificationsBell() {
           <div className="max-h-96 overflow-y-auto">
             {items.length === 0 ? (
               <div className="px-6 py-8 text-center">
-                <span className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
-                  <Bell className="size-5" aria-hidden="true" />
-                </span>
-                <p className="mt-4 text-ui font-bold">Rien de neuf</p>
+                <Bell
+                  className="mx-auto size-6 text-muted-foreground"
+                  aria-hidden="true"
+                />
+                <p className="mt-3 text-ui font-bold">Rien de neuf</p>
                 <p className="mt-1 text-meta text-muted-foreground">
                   Vous serez prévenu ici dès qu'une journée est publiée.
                 </p>
@@ -151,16 +158,17 @@ export default function NotificationsBell() {
                 <button
                   key={n.id}
                   onClick={() => onClickItem(n)}
-                  className={`flex min-h-11 w-full flex-col items-start gap-1 border-b px-4 py-3 text-left transition-colors dur-fast last:border-b-0 hover:bg-accent ${
-                    n.readAt ? "" : "bg-primary-soft"
-                  }`}
+                  className="flex min-h-11 w-full flex-col items-start gap-1 border-b px-4 py-3 text-left transition-colors dur-fast last:border-b-0 hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset"
                 >
                   <span className="flex w-full items-center gap-2">
                     {!n.readAt && (
-                      <span
-                        className="size-2 shrink-0 rounded-full bg-primary"
-                        aria-hidden="true"
-                      />
+                      <>
+                        <span
+                          className="size-2 shrink-0 rounded-full bg-primary"
+                          aria-hidden="true"
+                        />
+                        <span className="sr-only">Nouveau</span>
+                      </>
                     )}
                     <span className="text-ui font-bold">{n.title}</span>
                   </span>
@@ -169,7 +177,7 @@ export default function NotificationsBell() {
                       {n.body}
                     </span>
                   )}
-                  <span className="surtitre text-muted-foreground">
+                  <span className="text-meta text-muted-foreground">
                     {timeAgo(n.createdAt)}
                   </span>
                 </button>

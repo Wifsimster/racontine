@@ -3,11 +3,8 @@ import { Link } from "react-router-dom";
 import {
   Users,
   UserPlus,
-  Trash2,
   Copy,
   Check,
-  ShieldCheck,
-  MailPlus,
   Clock,
   Camera,
   TriangleAlert,
@@ -33,33 +30,27 @@ import {
   PageHeader,
   PageState,
   PageSkeleton,
-  SectionLabel,
   InlineError,
 } from "@/components/PageState";
+import { MemberRow, RemoveButton, RoleControl } from "@/components/MemberRow";
 
 const ROLES: MemberRole[] = ["reader", "contributor", "admin"];
 
 const SHELL = "lg:max-w-[64rem] lg:px-10 lg:pt-8 lg:pb-12";
 
 function RoleSelect({
+  id,
   value,
   onChange,
-  disabled,
-  className,
-  "aria-label": ariaLabel,
 }: {
+  id?: string;
   value: MemberRole;
   onChange: (r: MemberRole) => void;
-  disabled?: boolean;
-  className?: string;
-  "aria-label"?: string;
 }) {
   return (
     <Select
+      id={id}
       value={value}
-      disabled={disabled}
-      aria-label={ariaLabel}
-      className={className}
       onChange={(e) => onChange(e.target.value as MemberRole)}
     >
       {ROLES.map((r) => (
@@ -260,35 +251,31 @@ export default function Share() {
     <PageShell className={SHELL}>
       {header}
 
-      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[22rem_minmax(0,1fr)] lg:items-start lg:gap-10">
-        <div className="flex flex-col gap-6 lg:sticky lg:top-[5.5rem]">
-          {children.length > 1 && (
-            <div className="flex flex-col gap-1">
-              <SectionLabel className="px-1">Le carnet</SectionLabel>
-              <div className="flex flex-wrap gap-2">
-                {children.map((c) => (
-                  <Button
-                    key={c.id}
-                    variant={c.id === selected ? "default" : "outline"}
-                    size="sm"
-                    aria-pressed={c.id === selected}
-                    onClick={() => setSelected(c.id)}
-                  >
-                    {c.name}
-                  </Button>
-                ))}
-              </div>
+      <div className="flex max-w-3xl flex-col divide-y">
+        {children.length > 1 && (
+          <section className="flex flex-col gap-2 py-6 first:pt-0">
+            <h2 className="font-serif text-title font-semibold">Le carnet</h2>
+            <div className="flex flex-wrap gap-2">
+              {children.map((c) => (
+                <Button
+                  key={c.id}
+                  variant={c.id === selected ? "default" : "outline"}
+                  size="sm"
+                  aria-pressed={c.id === selected}
+                  onClick={() => setSelected(c.id)}
+                >
+                  {c.name}
+                </Button>
+              ))}
             </div>
-          )}
+          </section>
+        )}
 
-          <form
-            onSubmit={invite}
-            className="flex flex-col gap-4 rounded-2xl border bg-card p-5 shadow-card"
-          >
-            <h2 className="flex items-center gap-2 font-serif text-title font-semibold">
-              <MailPlus className="size-5 shrink-0 text-primary" aria-hidden="true" />
-              Inviter un proche
-            </h2>
+        <section className="flex flex-col gap-4 py-6 first:pt-0">
+          <h2 className="font-serif text-title font-semibold">
+            Inviter un proche
+          </h2>
+          <form onSubmit={invite} className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="invite-email">Son adresse e-mail</Label>
               <Input
@@ -303,8 +290,10 @@ export default function Share() {
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="invite-role">Ce qu'elle pourra faire</Label>
-              <RoleSelect value={role} onChange={setRole} />
-              <p className="text-meta text-muted-foreground">{ROLE_HINTS[role]}</p>
+              <RoleSelect id="invite-role" value={role} onChange={setRole} />
+              <p className="text-meta text-muted-foreground">
+                {ROLE_HINTS[role]}
+              </p>
             </div>
             {error && (
               <InlineError>
@@ -315,131 +304,91 @@ export default function Share() {
                 {error}
               </InlineError>
             )}
-            <Button type="submit" loading={inviting}>
+            <Button type="submit" loading={inviting} className="self-start">
               {!inviting && <UserPlus aria-hidden="true" />}
               Envoyer l'invitation
             </Button>
           </form>
+        </section>
 
-        </div>
-
-        <div className="flex flex-col gap-6">
-          {invitations.length > 0 && (
-            <section className="flex flex-col gap-1">
-              <SectionLabel className="px-1">
-                En attente ({invitations.length})
-              </SectionLabel>
-              <ul className="flex flex-col gap-2">
-                {invitations.map((inv) => (
-                  <li
-                    key={inv.id}
-                    className="flex items-center gap-2 rounded-2xl border bg-card p-3 pl-4 shadow-card"
-                  >
-                    <div className="flex min-w-0 flex-1 flex-col">
-                      <span className="truncate text-ui font-bold">{inv.email}</span>
-                      <span className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-meta text-muted-foreground">
-                        <Clock className="size-3.5 shrink-0" aria-hidden="true" />
-                        {ROLE_LABELS[inv.role]}
-                        {inv.expired && (
-                          <Badge variant="warning">
-                            <TriangleAlert aria-hidden="true" />
-                            expirée
-                          </Badge>
-                        )}
-                      </span>
-                    </div>
-                    <CopyButton url={inv.url} />
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label={`Révoquer l'invitation de ${inv.email}`}
-                      className="text-destructive hover:bg-destructive-soft hover:text-destructive"
-                      onClick={async () => {
-                        try {
-                          await api.revokeInvitation(inv.id);
-                          if (selected) await refresh(selected);
-                        } catch (e) {
-                          setError(e instanceof Error ? e.message : "Échec");
-                        }
-                      }}
-                    >
-                      <Trash2 />
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-
-          <section className="flex flex-col gap-1">
-            <SectionLabel className="px-1">
-              Le cercle de {child?.name ?? "l'enfant"} ({members.length})
-            </SectionLabel>
-            <ul className="flex flex-col gap-2">
-              {members.map((m) => {
-                const isSelf = m.userId === session?.user.id;
-                const name = m.name?.trim();
-                const label = name || m.email;
-                return (
-                  <li
-                    key={m.userId}
-                    className="flex flex-col gap-3 rounded-2xl border bg-card p-4 shadow-card"
-                  >
-                    <div className="flex min-w-0 flex-1 flex-col">
-                      <span className="flex min-w-0 items-center gap-1.5 text-ui font-bold">
-                        <span className="truncate">{label}</span>
-                        {m.role === "admin" && (
-                          <ShieldCheck
-                            className="size-4 shrink-0 text-primary"
-                            aria-label="administrateur"
-                          />
-                        )}
-                        {isSelf && <Badge variant="soft">vous</Badge>}
-                      </span>
-                      {(name || isSelf) && (
-                        <span className="truncate text-meta text-muted-foreground">
-                          {[name && m.email, isSelf && ROLE_LABELS[m.role]]
-                            .filter(Boolean)
-                            .join(" · ")}
-                        </span>
+        {invitations.length > 0 && (
+          <section className="flex flex-col gap-2 py-6 first:pt-0">
+            <h2 className="font-serif text-title font-semibold">
+              En attente ({invitations.length})
+            </h2>
+            <ul className="flex flex-col divide-y">
+              {invitations.map((inv) => (
+                <MemberRow
+                  key={inv.id}
+                  name={inv.email}
+                  detail={
+                    <span className="inline-flex items-center gap-1.5">
+                      <Clock className="size-3.5 shrink-0" aria-hidden="true" />
+                      {ROLE_LABELS[inv.role]}
+                    </span>
+                  }
+                  trailing={
+                    <>
+                      {inv.expired && (
+                        <Badge variant="warning">
+                          <TriangleAlert aria-hidden="true" />
+                          expirée
+                        </Badge>
                       )}
-                    </div>
-                    {!name && !isSelf && (
-                      <NameMember
-                        email={m.email}
-                        onSave={async (n) => {
+                      <CopyButton url={inv.url} />
+                      <RemoveButton
+                        label={`Révoquer l'invitation de ${inv.email}`}
+                        onClick={async () => {
+                          try {
+                            await api.revokeInvitation(inv.id);
+                            if (selected) await refresh(selected);
+                          } catch (e) {
+                            setError(e instanceof Error ? e.message : "Échec");
+                          }
+                        }}
+                      />
+                    </>
+                  }
+                />
+              ))}
+            </ul>
+          </section>
+        )}
+
+        <section className="flex flex-col gap-2 py-6 first:pt-0">
+          <h2 className="font-serif text-title font-semibold">
+            Le cercle de {child?.name ?? "l'enfant"} ({members.length})
+          </h2>
+          <ul className="flex flex-col divide-y">
+            {members.map((m) => {
+              const isSelf = m.userId === session?.user.id;
+              const name = m.name?.trim();
+              const label = name || m.email;
+              return (
+                <MemberRow
+                  key={m.userId}
+                  name={label}
+                  meta={isSelf ? "vous" : undefined}
+                  detail={name ? m.email : undefined}
+                  trailing={
+                    <>
+                      <RoleControl
+                        role={m.role}
+                        locked={isSelf}
+                        aria-label={`Rôle de ${label}`}
+                        onChange={async (r) => {
                           if (!selected) return;
                           try {
-                            setError(null);
-                            await api.setMemberName(selected, m.userId, n);
+                            await api.setMemberRole(selected, m.userId, r);
                             await refresh(selected);
                           } catch (e) {
                             setError(e instanceof Error ? e.message : "Échec");
                           }
                         }}
                       />
-                    )}
-                    {!isSelf && (
-                      <div className="flex items-center gap-2">
-                        <RoleSelect
-                          value={m.role}
-                          className="min-w-0 flex-1"
-                          aria-label={`Rôle de ${label}`}
-                          onChange={async (r) => {
-                            if (!selected) return;
-                            try {
-                              await api.setMemberRole(selected, m.userId, r);
-                              await refresh(selected);
-                            } catch (e) {
-                              setError(e instanceof Error ? e.message : "Échec");
-                            }
-                          }}
-                        />
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          aria-label={`Retirer ${label} du cercle`}
-                          className="text-destructive hover:bg-destructive-soft hover:text-destructive"
+                      {!isSelf && (
+                        <RemoveButton
+                          label={`Retirer ${label}`}
                           onClick={async () => {
                             if (!selected) return;
                             try {
@@ -449,17 +398,31 @@ export default function Share() {
                               setError(e instanceof Error ? e.message : "Échec");
                             }
                           }}
-                        >
-                          <Trash2 />
-                        </Button>
-                      </div>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-        </div>
+                        />
+                      )}
+                    </>
+                  }
+                >
+                  {!name && !isSelf && (
+                    <NameMember
+                      email={m.email}
+                      onSave={async (n) => {
+                        if (!selected) return;
+                        try {
+                          setError(null);
+                          await api.setMemberName(selected, m.userId, n);
+                          await refresh(selected);
+                        } catch (e) {
+                          setError(e instanceof Error ? e.message : "Échec");
+                        }
+                      }}
+                    />
+                  )}
+                </MemberRow>
+              );
+            })}
+          </ul>
+        </section>
       </div>
     </PageShell>
   );

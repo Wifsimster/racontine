@@ -16,11 +16,12 @@ export function Tip({
   children: React.ReactNode;
 }) {
   return (
-    <li className="flex items-start gap-3 rounded-xl bg-card px-4 py-3 text-left shadow-card">
-      <span className="grid size-7 shrink-0 place-items-center rounded-md bg-muted text-muted-foreground">
-        <Icon className="size-4" aria-hidden="true" />
-      </span>
-      <span className="text-meta text-muted-foreground">{children}</span>
+    <li className="flex items-start gap-3 text-left">
+      <Icon
+        className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+        aria-hidden="true"
+      />
+      <span className="text-ui text-muted-foreground">{children}</span>
     </li>
   );
 }
@@ -42,21 +43,16 @@ export function DayRow({
   const name = kids.find((c) => c.id === childId)?.name;
 
   return (
-    <section className="rounded-2xl border bg-card shadow-card">
+    <section>
       <button
         type="button"
         aria-expanded={open}
         aria-controls="journee-reglages"
         onClick={() => setOpen((v) => !v)}
-        className={cn(
-          "flex min-h-11 w-full items-center gap-3 px-4 py-2 text-left transition-colors dur-fast ease-carnet hover:bg-accent",
-          open ? "rounded-t-2xl" : "rounded-2xl",
-        )}
+        className="-mx-2 flex min-h-11 w-[calc(100%+1rem)] items-center gap-2 rounded-md px-2 py-2 text-left outline-none transition-colors dur-fast ease-carnet hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
       >
-        <span className="grid size-7 shrink-0 place-items-center rounded-md bg-muted text-muted-foreground">
-          <Baby className="size-4" aria-hidden="true" />
-        </span>
-        <span className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-1.5 gap-y-1 text-ui">
+        <Baby className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+        <span className="flex min-w-0 flex-wrap items-baseline gap-x-1.5 gap-y-1 text-ui">
           <span className="font-bold text-foreground">
             {name ?? "Votre enfant"}
           </span>
@@ -65,7 +61,10 @@ export function DayRow({
           </span>
           <span className="text-muted-foreground">{SOURCE_LABELS[source]}</span>
         </span>
-        <span className="text-meta text-muted-foreground">Modifier</span>
+        <span aria-hidden="true" className="text-muted-foreground">
+          —
+        </span>
+        <span className="text-ui font-bold text-primary">Modifier</span>
         <ChevronDown
           aria-hidden="true"
           className={cn(
@@ -78,7 +77,7 @@ export function DayRow({
       {open && (
         <div
           id="journee-reglages"
-          className="flex flex-col gap-4 border-t px-4 py-4"
+          className="flex flex-col gap-4 pt-3 pb-1"
         >
           {kids.length > 1 && (
             <div className="flex flex-col gap-1.5">
@@ -159,7 +158,7 @@ export function PageGrid({
         {shots.map((s, i) => (
           <li
             key={s.id}
-            className="flex flex-col rounded-2xl border bg-card shadow-card"
+            className="flex flex-col rounded-xl border bg-card"
           >
             <div className="seam overflow-hidden rounded-t-2xl bg-muted">
               <img
