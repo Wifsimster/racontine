@@ -3,7 +3,11 @@ import type { Entry, Uncertainty } from "./db/schema.js";
 import type { CarnetDay } from "./domain/carnet.js";
 import type { ItemRow } from "./domain/entry-items.js";
 import type { Source } from "./domain/entry-metadata.js";
-import type { AttachmentKind, MemberRole } from "./db/schema.js";
+import type {
+  AttachmentKind,
+  MemberRole,
+  SubscriptionCadence,
+} from "./db/schema.js";
 import type { CarnetStanding, ErasureSnapshot } from "./domain/erasure.js";
 
 export type StoredImage = {
@@ -246,7 +250,7 @@ export type ExportedCarnet = {
   birthdate: string | null;
   role: MemberRole;
   since: string;
-  subscription: { emailEnabled: boolean } | null;
+  subscription: { emailEnabled: boolean; cadence: SubscriptionCadence } | null;
   entries: ExportedEntry[];
   corrections: {
     original: string;

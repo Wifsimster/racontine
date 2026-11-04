@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Camera } from "lucide-react";
+import { Camera, TriangleAlert } from "lucide-react";
 import { api } from "@/lib/api";
 import { canWrite, roleMap } from "@/lib/access";
 import { useBilling } from "@/lib/billing";
@@ -29,14 +29,17 @@ import {
   JournalError,
   JournalFiltered,
   JournalSkeleton,
+  QueueCleared,
   Receipt,
   readFlash,
   type Flash,
 } from "@/features/journal/states";
 import { capitalize, lastDayOfMonth, monthYear } from "@/lib/format";
 import {
+  aVerifierMemorise,
   enfantMemorise,
   filMemorise,
+  memoriserAVerifier,
   memoriserEnfant,
   memoriserFil,
   memoriserMode,
@@ -72,13 +75,18 @@ export default function Timeline() {
   const [months, setMonths] = useState<JournalMonth[]>([]);
   const [moisOuvert, setMoisOuvert] = useState<string | null>(null);
 
+  const [aVerifier, setAVerifier] = useState(
+    () => aVerifierMemorise() && modeMemorise() === "parcourir",
+  );
   const [repris] = useState(() =>
-    filMemorise(enfantMemorise(), modeMemorise()),
+    aVerifier ? null : filMemorise(enfantMemorise(), modeMemorise()),
   );
   const [entries, setEntries] = useState<Entry[]>(repris?.entries ?? []);
   const [unreadCount, setUnreadCount] = useState(repris?.unreadCount ?? 0);
+  const [pendingCount, setPendingCount] = useState(repris?.pendingCount ?? 0);
   const [toutLuEnCours, setToutLuEnCours] = useState(false);
   const lecteur = mode === "lire";
+  const filtre = aVerifier && !lecteur;
   const [cursor, setCursor] = useState<string | null>(repris?.nextCursor ?? null);
   const [phase, setPhase] = useState<"loading" | "ready" | "error">(
     repris ? "ready" : "loading",
@@ -115,30 +123,37 @@ export default function Timeline() {
 
   useEffect(() => {
     let ignore = false;
-    void api.timelineMonths(childId, lecteur).then(
+    void api.timelineMonths(childId, lecteur, filtre).then(
       (res) => !ignore && setMonths(res.months),
       () => !ignore && setMonths([]),
     );
     return () => {
       ignore = true;
     };
-  }, [childId, lecteur]);
+  }, [childId, lecteur, filtre]);
 
   const cadrage = useRef(0);
 
   const ouvrir = useCallback(
-    async (child: string | null, depuis: string | null, asReader: boolean) => {
+    async (
+      child: string | null,
+      depuis: string | null,
+      asReader: boolean,
+      pending: boolean,
+    ) => {
       const mine = cadrage.current;
       const res = await api.timeline({
         childId: child,
         from: depuis,
         limit: PAGE,
         asReader,
+        pending,
       });
       if (mine !== cadrage.current) return;
       setEntries(res.entries);
       setCursor(res.nextCursor);
       setUnreadCount(res.unreadCount);
+      setPendingCount(res.pendingCount ?? 0);
       setPhase("ready");
     },
     [],
@@ -151,9 +166,11 @@ export default function Timeline() {
       from,
       limit: PAGE,
       asReader: lecteur,
+      pending: filtre,
     });
     if (mine !== cadrage.current) return;
     setUnreadCount(res.unreadCount);
+    setPendingCount(res.pendingCount ?? 0);
     setEntries((prev) => {
       if (!prev.length) {
         setCursor(res.nextCursor);
@@ -165,16 +182,17 @@ export default function Timeline() {
       const added = res.entries.filter((e) => !known.has(e.id));
       return added.length ? [...added, ...merged] : merged;
     });
-  }, [childId, from, lecteur]);
+  }, [childId, from, lecteur, filtre]);
 
   useEffect(() => {
     cadrage.current += 1;
-    const cache = filMemorise(childId, mode);
+    const cache = filtre ? null : filMemorise(childId, mode);
 
     if (cache && cache.from === from && cache.entries.length > 0) {
       setEntries(cache.entries);
       setCursor(cache.nextCursor);
       setUnreadCount(cache.unreadCount);
+      setPendingCount(cache.pendingCount);
       setPhase("ready");
       void rafraichir().catch(() => {});
       return;
@@ -185,7 +203,7 @@ export default function Timeline() {
     setCursor(null);
     setPhase("loading");
     setMoreError("");
-    ouvrir(childId, from, mode === "lire").catch((e) => {
+    ouvrir(childId, from, mode === "lire", filtre).catch((e) => {
       if (ignore) return;
       setError(e instanceof Error ? e.message : "Erreur inconnue");
       setPhase("error");
@@ -193,17 +211,18 @@ export default function Timeline() {
     return () => {
       ignore = true;
     };
-  }, [childId, from, mode, ouvrir, rafraichir]);
+  }, [childId, from, mode, filtre, ouvrir, rafraichir]);
 
   useEffect(() => {
-    if (phase !== "ready") return;
+    if (phase !== "ready" || filtre) return;
     memoriserFil(childId, mode, {
       entries,
       nextCursor: cursor,
       from,
       unreadCount,
+      pendingCount,
     });
-  }, [phase, childId, mode, entries, cursor, from, unreadCount]);
+  }, [phase, childId, mode, filtre, entries, cursor, from, unreadCount, pendingCount]);
 
   const reload = useCallback(() => {
     cadrage.current += 1;
@@ -212,11 +231,11 @@ export default function Timeline() {
     setEntries([]);
     setCursor(null);
     oublierFil();
-    ouvrir(childId, from, lecteur).catch((e) => {
+    ouvrir(childId, from, lecteur, filtre).catch((e) => {
       setError(e instanceof Error ? e.message : "Erreur inconnue");
       setPhase("error");
     });
-  }, [childId, from, lecteur, ouvrir]);
+  }, [childId, from, lecteur, filtre, ouvrir]);
 
   const reading = entries.some((e) => e.status === "processing");
 
@@ -258,6 +277,7 @@ export default function Timeline() {
         cursor,
         limit: PAGE,
         asReader: lecteur,
+        pending: filtre,
       });
       if (mine !== cadrage.current) return;
       let ajoutees = 0;
@@ -278,7 +298,7 @@ export default function Timeline() {
     } finally {
       setMore(false);
     }
-  }, [childId, from, cursor, lecteur]);
+  }, [childId, from, cursor, lecteur, filtre]);
 
   const sentinelle = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -307,8 +327,19 @@ export default function Timeline() {
     if (m === mode) return;
     memoriserMode(m);
     setMode(m);
+    memoriserAVerifier(false);
+    setAVerifier(false);
     setFrom(null);
     setMoisOuvert(null);
+  }
+
+  function basculerAVerifier(actif: boolean) {
+    if (actif === aVerifier) return;
+    memoriserAVerifier(actif);
+    setAVerifier(actif);
+    setFrom(null);
+    setMoisOuvert(null);
+    window.scrollTo({ top: 0 });
   }
 
   const marquerLu = useCallback(async (entry: Entry, read: boolean) => {
@@ -433,6 +464,10 @@ export default function Timeline() {
       [...roleByChild.values()].some((r) => canWrite(r)));
 
   const plusieursEnfants = children.length > 1;
+  const fileVisible = !lecteur && gere && (pendingCount > 0 || filtre);
+  const enfantCadre = childId
+    ? (children.find((c) => c.id === childId)?.name ?? null)
+    : null;
   const boutonCapture = hasJournal && canCapture && carnetOuvert && !lecteur;
 
   return (
@@ -475,6 +510,25 @@ export default function Timeline() {
         />
       )}
 
+      {fileVisible && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <Button
+            variant={filtre ? "default" : "outline"}
+            size="sm"
+            aria-pressed={filtre}
+            onClick={() => basculerAVerifier(!filtre)}
+          >
+            <TriangleAlert aria-hidden="true" />
+            <span data-tabular>À vérifier ({pendingCount})</span>
+          </Button>
+          {filtre && (
+            <p className="text-meta text-pretty text-muted-foreground">
+              Les journées où la lecture a hésité sur un mot.
+            </p>
+          )}
+        </div>
+      )}
+
       {phase === "loading" && <JournalSkeleton />}
 
       {phase === "error" && (
@@ -485,11 +539,18 @@ export default function Timeline() {
         />
       )}
 
-      {phase === "ready" && entries.length === 0 && !cadre && (
+      {phase === "ready" && entries.length === 0 && filtre && (
+        <QueueCleared
+          label={enfantCadre}
+          onReset={() => basculerAVerifier(false)}
+        />
+      )}
+
+      {phase === "ready" && entries.length === 0 && !filtre && !cadre && (
         <JournalEmpty canCapture={canCapture && !lecteur} carnetOuvert={carnetOuvert} />
       )}
 
-      {phase === "ready" && entries.length === 0 && cadre && (
+      {phase === "ready" && entries.length === 0 && !filtre && cadre && (
         <JournalFiltered label={cadre} onReset={toutRevoir} />
       )}
 
@@ -537,7 +598,11 @@ export default function Timeline() {
                       showChild={plusieursEnfants}
                     />
                   ) : (
-                    <EntryRow entry={e} showChild={plusieursEnfants} />
+                    <EntryRow
+                      entry={e}
+                      showChild={plusieursEnfants}
+                      canEdit={canWrite(roleByChild?.get(e.childId))}
+                    />
                   )}
                 </li>
               ))}

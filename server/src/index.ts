@@ -1,6 +1,7 @@
 import { buildApp } from "./app.js";
 import { config } from "./config.js";
 import { reclaimStuckEntries } from "./ingest.js";
+import { notificationDispatcher } from "./composition.js";
 
 const app = await buildApp();
 
@@ -22,11 +23,14 @@ try {
   process.exit(1);
 }
 
+const stopDispatcher = notificationDispatcher.start();
+
 let closing = false;
 for (const signal of ["SIGTERM", "SIGINT"] as const) {
   process.on(signal, () => {
     if (closing) return;
     closing = true;
+    stopDispatcher();
     app.log.info({ signal }, "Arrêt demandé — fermeture du serveur");
     app
       .close()

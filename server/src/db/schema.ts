@@ -12,7 +12,7 @@ import {
   index,
   primaryKey,
 } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -121,6 +121,11 @@ export const invitationStatus = pgEnum("invitation_status", [
   "pending",
   "accepted",
   "revoked",
+]);
+
+export const subscriptionCadence = pgEnum("subscription_cadence", [
+  "chaque",
+  "hebdo",
 ]);
 
 export const notificationType = pgEnum("notification_type", [
@@ -292,6 +297,7 @@ export const subscriptions = pgTable(
       .notNull()
       .references(() => children.id, { onDelete: "cascade" }),
     emailEnabled: boolean("email_enabled").notNull().default(true),
+    cadence: subscriptionCadence("cadence").notNull().default("chaque"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (t) => [
@@ -318,9 +324,15 @@ export const notifications = pgTable(
     body: text("body"),
     readAt: timestamp("read_at"),
     emailedAt: timestamp("emailed_at"),
+    dispatchedAt: timestamp("dispatched_at"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
-  (t) => [index("notifications_user_idx").on(t.userId, t.createdAt)],
+  (t) => [
+    index("notifications_user_idx").on(t.userId, t.createdAt),
+    index("notifications_pending_idx")
+      .on(t.createdAt)
+      .where(sql`${t.dispatchedAt} is null`),
+  ],
 );
 
 export const entryReads = pgTable(
@@ -502,6 +514,8 @@ export type Membership = typeof memberships.$inferSelect;
 export type Invitation = typeof invitations.$inferSelect;
 export type MemberRole = (typeof memberRole.enumValues)[number];
 export type AttachmentKind = (typeof attachmentKind.enumValues)[number];
+export type SubscriptionCadence =
+  (typeof subscriptionCadence.enumValues)[number];
 export type Subscription = typeof subscriptions.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
 export type AppSettings = typeof appSettings.$inferSelect;

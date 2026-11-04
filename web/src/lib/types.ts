@@ -103,12 +103,15 @@ export type Entry = {
   batchId: string | null;
   read?: boolean;
   readAt?: string | null;
+  prevId?: string | null;
+  nextId?: string | null;
 };
 
 export type TimelinePage = {
   entries: Entry[];
   nextCursor: string | null;
   unreadCount: number;
+  pendingCount?: number;
 };
 
 export type JournalMonth = {
@@ -130,9 +133,12 @@ export const SOURCE_LABELS: Record<EntrySource, string> = {
   maison: "Maison",
 };
 
+export type SubscriptionCadence = "chaque" | "hebdo";
+
 export type SubscriptionStatus = {
   subscribed: boolean;
   emailEnabled: boolean;
+  cadence: SubscriptionCadence;
 };
 
 export type Subscriber = {

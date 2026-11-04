@@ -30,10 +30,12 @@ import { getSettings } from "./settings.js";
 import {
   DrizzleDayGlance,
   DrizzleNotificationLog,
+  DrizzlePendingNotifications,
   DrizzleSubscriberDirectory,
 } from "./notifications/drizzle-stores.js";
 import { EmailChannel } from "./notifications/email-channel.js";
 import { WebPushChannel } from "./notifications/push-channel.js";
+import { NotificationDispatcher } from "./notifications/notification-dispatcher.js";
 import { SubscriberNotifier } from "./notifications/subscriber-notifier.js";
 import { requireChildAdminAccess } from "./access.js";
 import { LiveInstanceOps } from "./instance-ops.js";
@@ -63,6 +65,12 @@ const paywall = { blockedReason };
 export const subscriberNotifier = new SubscriberNotifier({
   subscribers: new DrizzleSubscriberDirectory(),
   log: new DrizzleNotificationLog(),
+  webBaseUrl: config.webBaseUrl,
+  logger,
+});
+
+export const notificationDispatcher = new NotificationDispatcher({
+  pending: new DrizzlePendingNotifications(),
   channels: [new WebPushChannel(), new EmailChannel(new DrizzleDayGlance())],
   webBaseUrl: config.webBaseUrl,
   logger,

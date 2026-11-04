@@ -1,6 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { renderEntryEmail, renderLinkEmail } from "./email-template.js";
+import {
+  DIGEST_LIST_LIMIT,
+  renderDigestEmail,
+  renderEntryEmail,
+  renderLinkEmail,
+} from "./email-template.js";
 import type { DayChip } from "../domain/day-glance.js";
 
 const JOURNEE = {
@@ -140,4 +145,46 @@ test("une URL à paramètres reste intacte et encodée dans le bouton", () => {
   const { html, text } = renderLinkEmail({ kind: "invitation", url });
   assert.match(html, /href="https:\/\/racontine\.test\/invite\/jeton\?x=1&y=2"/);
   assert.ok(text.includes(url));
+});
+
+const SEMAINE = {
+  kind: "hebdo" as const,
+  greeting: "Bonjour Mamie,",
+  body: "3 journées ont été publiées cette semaine dans le journal de Léon.",
+  link: "https://racontine.test/",
+  childName: "Léon",
+  entries: [
+    { dateLabel: "lundi 2 novembre", title: "Le toboggan", highlight: "Il a glissé seul." },
+    { dateLabel: "mardi 3 novembre", title: null, highlight: null },
+    { dateLabel: "jeudi 5 novembre", title: "<b>Pâte à sel</b>", highlight: null },
+  ],
+};
+
+test("le résumé de la semaine liste chaque journée, titre et temps fort", () => {
+  const { html, text } = renderDigestEmail(SEMAINE);
+  assert.match(html, /La semaine de Léon/);
+  assert.match(html, /Le toboggan/);
+  assert.match(html, /Il a glissé seul\./);
+  assert.match(html, /mardi 3 novembre/);
+  assert.match(text, /lundi 2 novembre — Le toboggan\n {2}Il a glissé seul\./);
+  assert.match(html, /href="https:\/\/racontine\.test\/"/);
+  assert.match(html, /Propulsé par Racontine/);
+  assert.doesNotMatch(html, /<b>Pâte/);
+});
+
+test("une rafale trop longue est résumée, pas déroulée en entier", () => {
+  const entries = Array.from({ length: DIGEST_LIST_LIMIT + 3 }, (_, i) => ({
+    dateLabel: `jour ${i + 1}`,
+    title: `Journée ${i + 1}`,
+    highlight: null,
+  }));
+  const { html, text } = renderDigestEmail({
+    ...SEMAINE,
+    kind: "publications",
+    entries,
+  });
+  assert.match(html, /Les journées de Léon/);
+  assert.match(html, /et 3 autres journées/);
+  assert.doesNotMatch(html, new RegExp(`Journée ${DIGEST_LIST_LIMIT + 1}<`));
+  assert.match(text, /et 3 autres journées/);
 });

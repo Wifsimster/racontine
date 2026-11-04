@@ -102,6 +102,7 @@ export class DrizzlePrivacyRepository implements PrivacyRepository {
           .select({
             childId: subscriptions.childId,
             emailEnabled: subscriptions.emailEnabled,
+            cadence: subscriptions.cadence,
           })
           .from(subscriptions)
           .where(eq(subscriptions.userId, userId)),
@@ -172,7 +173,10 @@ export class DrizzlePrivacyRepository implements PrivacyRepository {
       role: circle.role,
       since: circle.since.toISOString(),
       subscription: subOf.has(circle.childId)
-        ? { emailEnabled: subOf.get(circle.childId)!.emailEnabled }
+        ? {
+            emailEnabled: subOf.get(circle.childId)!.emailEnabled,
+            cadence: subOf.get(circle.childId)!.cadence,
+          }
         : null,
       entries: (entriesOf.get(circle.childId) ?? []).map(
         (e): ExportedEntry => ({

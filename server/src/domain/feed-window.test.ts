@@ -5,7 +5,15 @@ import {
   parseCursor,
   parseFrom,
   parseLimit,
+  parsePending,
 } from "./feed-window.js";
+
+test("le filtre « à vérifier » ne s'active que sur une demande explicite", () => {
+  assert.equal(parsePending("1"), true);
+  assert.equal(parsePending("true"), true);
+  for (const junk of ["0", "", "oui", undefined, null, 1, ["1"]])
+    assert.equal(parsePending(junk), false);
+});
 
 test("le curseur n'accepte qu'un identifiant de journée", () => {
   const id = "0b8f1c3e-5a6d-4e2b-9f10-2c3d4e5f6a7b";

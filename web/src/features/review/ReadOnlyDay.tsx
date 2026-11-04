@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ArrowLeft, Check, Smile, Star } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpenText, Check, Smile, Star } from "lucide-react";
 import { type Entry, SOURCE_LABELS } from "@/lib/types";
 import { capitalize, longDate } from "@/lib/format";
 import { itemKind } from "@/lib/items";
@@ -144,9 +144,53 @@ export function ReadOnlyDay({
         </p>
       )}
 
+      {(entry.prevId || entry.nextId) && (
+        <nav
+          aria-label="Journées voisines"
+          className="mt-6 grid grid-cols-2 gap-2 border-t pt-4"
+        >
+          {entry.prevId ? (
+            <Button
+              asChild
+              variant="ghost"
+              className="h-auto min-h-12 justify-start px-3 text-left whitespace-normal has-[>svg]:px-3"
+            >
+              <Link to={`/entries/${entry.prevId}`} rel="prev" aria-label="Journée précédente">
+                <ArrowLeft aria-hidden="true" />
+                <span className="flex flex-col">
+                  <span className="text-meta font-normal text-muted-foreground">
+                    Journée
+                  </span>
+                  <span>précédente</span>
+                </span>
+              </Link>
+            </Button>
+          ) : (
+            <span aria-hidden="true" />
+          )}
+          {entry.nextId && (
+            <Button
+              asChild
+              variant="ghost"
+              className="col-start-2 h-auto min-h-12 justify-end px-3 text-right whitespace-normal has-[>svg]:px-3"
+            >
+              <Link to={`/entries/${entry.nextId}`} rel="next" aria-label="Journée suivante">
+                <span className="flex flex-col">
+                  <span className="text-meta font-normal text-muted-foreground">
+                    Journée
+                  </span>
+                  <span>suivante</span>
+                </span>
+                <ArrowRight aria-hidden="true" />
+              </Link>
+            </Button>
+          )}
+        </nav>
+      )}
+
       <Button asChild variant="outline" className="mt-4 min-h-12 w-full">
         <Link to="/">
-          <ArrowLeft aria-hidden="true" />
+          <BookOpenText aria-hidden="true" />
           Revenir au journal
         </Link>
       </Button>

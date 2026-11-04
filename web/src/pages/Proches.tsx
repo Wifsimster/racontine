@@ -1,7 +1,13 @@
 import { useEffect, useState } from "react";
 import { Users, CloudOff, TriangleAlert } from "lucide-react";
 import { api } from "@/lib/api";
-import type { Child, Subscriber, SubscriptionStatus } from "@/lib/types";
+import type {
+  Child,
+  Subscriber,
+  SubscriptionCadence,
+  SubscriptionStatus,
+} from "@/lib/types";
+import { SegmentedControl } from "@/components/SegmentedControl";
 import { Button } from "@/components/ui/button";
 import { ChildMark } from "@/components/ChildMark";
 import { ageLabel } from "@/lib/child";
@@ -76,7 +82,7 @@ function PushCard() {
           >
             {blocked
               ? "Bloquées par le navigateur : autorisez-les dans les réglages du site."
-              : "Une alerte à chaque journée publiée, même l'application fermée."}
+              : "Une alerte quand une nouvelle journée paraît, même l’application fermée."}
           </p>
         </div>
         <Toggle
@@ -95,6 +101,19 @@ function PushCard() {
       )}
     </section>
   );
+}
+
+const CADENCES = [
+  { value: "chaque", label: "À chaque journée" },
+  { value: "hebdo", label: "Un résumé le dimanche" },
+] as const satisfies readonly { value: SubscriptionCadence; label: string }[];
+
+function cadenceHint(status: SubscriptionStatus): string {
+  if (status.cadence === "chaque")
+    return "Un message dès qu’une journée paraît. Si plusieurs paraissent d’affilée, ils sont regroupés en un seul.";
+  return status.emailEnabled
+    ? "Un e-mail le dimanche soir avec les journées de la semaine, seulement s’il y en a. Pas d’alerte entre-temps."
+    : "Activez l’e-mail pour recevoir le résumé du dimanche soir. Les journées restent signalées dans l’application.";
 }
 
 function ChildCard({ child }: { child: Child }) {
@@ -127,7 +146,10 @@ function ChildCard({ child }: { child: Child }) {
       if (state.status.subscribed) {
         await api.unsubscribe(child.id);
       } else {
-        await api.subscribe(child.id, state.status.emailEnabled);
+        await api.subscribe(child.id, {
+          emailEnabled: state.status.emailEnabled,
+          cadence: state.status.cadence,
+        });
       }
       await load();
     } catch (e) {
@@ -142,7 +164,21 @@ function ChildCard({ child }: { child: Child }) {
     setBusy(true);
     setError(null);
     try {
-      await api.subscribe(child.id, !state.status.emailEnabled);
+      await api.subscribe(child.id, { emailEnabled: !state.status.emailEnabled });
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Échec");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function changeCadence(cadence: SubscriptionCadence) {
+    if (!state || !state.status.subscribed || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api.subscribe(child.id, { cadence });
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Échec");
@@ -194,6 +230,25 @@ function ChildCard({ child }: { child: Child }) {
             disabled={busy}
             onChange={() => void toggleEmail()}
           />
+        </div>
+      )}
+
+      {state && state.status.subscribed && (
+        <div className="flex flex-col gap-1 py-1">
+          <div className="flex flex-wrap items-center justify-between gap-x-4">
+            <span aria-hidden="true" className="text-ui font-bold">
+              Quand
+            </span>
+            <SegmentedControl
+              label={`Quand être prévenu des journées de ${child.name}`}
+              value={state.status.cadence}
+              options={CADENCES}
+              onChange={(c) => void changeCadence(c)}
+            />
+          </div>
+          <p className="max-w-[52ch] text-meta text-pretty text-muted-foreground">
+            {cadenceHint(state.status)}
+          </p>
         </div>
       )}
 
