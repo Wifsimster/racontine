@@ -34,3 +34,11 @@ export function timelineScope(
         ),
   };
 }
+
+export function reviewQueueChildIds(scope: VisibilityScope): string[] {
+  return scope.kind === "scoped" ? scope.draftableChildIds : [];
+}
+
+export function seesDrafts(role: MemberRole): boolean {
+  return roleAtLeast(role, "contributor");
+}

@@ -102,12 +102,15 @@ export type Entry = {
   batchId: string | null;
   read?: boolean;
   readAt?: string | null;
+  prevId?: string | null;
+  nextId?: string | null;
 };
 
 export type TimelinePage = {
   entries: Entry[];
   nextCursor: string | null;
   unreadCount: number;
+  pendingCount?: number;
 };
 
 export type JournalMonth = {
