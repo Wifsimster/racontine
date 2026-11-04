@@ -1,10 +1,11 @@
 import { mailEnabled, sendMail } from "../mailer.js";
 import { getSettings } from "../settings.js";
-import { renderEntryEmail } from "./email-template.js";
+import { formatDateFr } from "./dispatch-plan.js";
+import { renderDigestEmail, renderEntryEmail } from "./email-template.js";
 import type {
   DayGlance,
   NotificationChannel,
-  PublicationEvent,
+  OutgoingMessage,
   Recipient,
 } from "./types.js";
 
@@ -20,23 +21,39 @@ export class EmailChannel implements NotificationChannel {
   }
 
   async deliver(
-    event: PublicationEvent,
+    message: OutgoingMessage,
     recipient: Recipient,
   ): Promise<Date | null> {
     if (!recipient.emailEnabled || !recipient.email) return null;
-
-    const { text, html } = renderEntryEmail({
-      greeting: recipient.name ? `Bonjour ${recipient.name},` : "Bonjour,",
-      body: event.body,
-      link: event.link,
-      childName: event.childName,
-      dateLabel: event.dateLabel,
-      chips: await this.glance.chipsFor(event.entryId),
-    });
-
+    const greeting = recipient.name ? `Bonjour ${recipient.name},` : "Bonjour,";
+    const single =
+      message.kind === "publications" && message.entries.length === 1
+        ? message.entries[0]
+        : null;
+    const { text, html } = single
+      ? renderEntryEmail({
+          greeting,
+          body: message.body,
+          link: message.link,
+          childName: message.childName,
+          dateLabel: formatDateFr(single.date),
+          chips: await this.glance.chipsFor(single.entryId),
+        })
+      : renderDigestEmail({
+          kind: message.kind,
+          greeting,
+          body: message.body,
+          link: message.link,
+          childName: message.childName,
+          entries: message.entries.map((e) => ({
+            dateLabel: formatDateFr(e.date),
+            title: e.title,
+            highlight: e.highlight,
+          })),
+        });
     const ok = await sendMail({
       to: recipient.email,
-      subject: event.title,
+      subject: message.title,
       text,
       html,
     });

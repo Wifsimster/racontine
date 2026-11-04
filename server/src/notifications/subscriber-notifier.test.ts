@@ -3,7 +3,6 @@ import { test } from "node:test";
 import { FakeLogger } from "../testing/fakes.js";
 import { SubscriberNotifier } from "./subscriber-notifier.js";
 import type {
-  NotificationChannel,
   NotificationLog,
   PublicationEvent,
   Recipient,
@@ -23,32 +22,12 @@ class FakeDirectory implements SubscriberDirectory {
 }
 
 class FakeLog implements NotificationLog {
-  readonly recorded: string[] = [];
-  readonly delivered: { id: string; at: Date }[] = [];
-  async record(_e: PublicationEvent, r: Recipient): Promise<string> {
-    this.recorded.push(r.userId);
+  readonly recorded: { userId: string; event: PublicationEvent }[] = [];
+  constructor(private readonly failFor: string | null = null) {}
+  async record(event: PublicationEvent, r: Recipient): Promise<string> {
+    if (r.userId === this.failFor) throw new Error("base indisponible");
+    this.recorded.push({ userId: r.userId, event });
     return `notif-${r.userId}`;
-  }
-  async markDelivered(notificationId: string, at: Date): Promise<void> {
-    this.delivered.push({ id: notificationId, at });
-  }
-}
-
-class SpyChannel implements NotificationChannel {
-  readonly sent: string[] = [];
-  constructor(
-    readonly name: string,
-    private readonly enabled = true,
-    private readonly receipt: Date | null = null,
-    private readonly boom = false,
-  ) {}
-  async isEnabled(): Promise<boolean> {
-    return this.enabled;
-  }
-  async deliver(_e: PublicationEvent, r: Recipient): Promise<Date | null> {
-    if (this.boom) throw new Error("canal en panne");
-    this.sent.push(r.userId);
-    return this.receipt;
   }
 }
 
@@ -65,14 +44,13 @@ const parrain: Recipient = {
   emailEnabled: false,
 };
 
-function build(channels: NotificationChannel[], recipients = [mamie, parrain]) {
+function build(recipients = [mamie, parrain], failFor: string | null = null) {
   const directory = new FakeDirectory(recipients);
-  const log = new FakeLog();
+  const log = new FakeLog(failFor);
   const logger = new FakeLogger();
   const notifier = new SubscriberNotifier({
     subscribers: directory,
     log,
-    channels,
     webBaseUrl: "https://racontine.test",
     logger,
   });
@@ -87,61 +65,35 @@ const publication = {
   actorUserId: "u-parent",
 };
 
-test("chaque abonné reçoit sa notification in-app, puis chaque canal actif", async () => {
-  const push = new SpyChannel("push");
-  const email = new SpyChannel("email");
-  const { notifier, log } = build([push, email]);
-
+test("chaque abonné reçoit sa notification in-app, une par journée", async () => {
+  const { notifier, log } = build();
   await notifier.entryPublished(publication);
-
-  assert.deepEqual(log.recorded, ["u-mamie", "u-parrain"]);
-  assert.deepEqual(push.sent, ["u-mamie", "u-parrain"]);
-  assert.deepEqual(email.sent, ["u-mamie", "u-parrain"]);
-});
-
-test("un canal indisponible est simplement écarté", async () => {
-  const off = new SpyChannel("sms", false);
-  const on = new SpyChannel("push");
-  const { notifier } = build([off, on]);
-
-  await notifier.entryPublished(publication);
-
-  assert.deepEqual(off.sent, []);
-  assert.equal(on.sent.length, 2);
-});
-
-test("un canal en panne n'emporte ni les autres canaux ni les autres abonnés", async () => {
-  const broken = new SpyChannel("panne", true, null, true);
-  const healthy = new SpyChannel("push");
-  const { notifier, log, logger } = build([broken, healthy]);
-
-  await notifier.entryPublished(publication);
-
-  assert.deepEqual(healthy.sent, ["u-mamie", "u-parrain"]);
-  assert.deepEqual(log.recorded, ["u-mamie", "u-parrain"]);
-  assert.equal(logger.errors.length, 2);
-});
-
-test("un canal qui rend un accusé de remise horodate la notification", async () => {
-  const at = new Date("2026-02-01T10:00:00Z");
-  const email = new SpyChannel("email", true, at);
-  const { notifier, log } = build([email], [mamie]);
-
-  await notifier.entryPublished(publication);
-
-  assert.deepEqual(log.delivered, [{ id: "notif-u-mamie", at }]);
+  assert.deepEqual(
+    log.recorded.map((r) => r.userId),
+    ["u-mamie", "u-parrain"],
+  );
+  assert.equal(log.recorded[0].event.link, "https://racontine.test/entries/e1");
+  assert.match(log.recorded[0].event.title, /Lou/);
 });
 
 test("l'auteur de la publication est exclu de ses propres notifications", async () => {
-  const { notifier, directory } = build([new SpyChannel("push")]);
+  const { notifier, directory } = build();
   await notifier.entryPublished(publication);
   assert.deepEqual(directory.asked, ["u-parent"]);
 });
 
-test("sans abonné, rien n'est écrit nulle part", async () => {
-  const push = new SpyChannel("push");
-  const { notifier, log } = build([push], []);
+test("sans abonné, rien n'est écrit", async () => {
+  const { notifier, log } = build([]);
   await notifier.entryPublished(publication);
   assert.deepEqual(log.recorded, []);
-  assert.deepEqual(push.sent, []);
+});
+
+test("un abonné en échec n'emporte pas les autres", async () => {
+  const { notifier, log, logger } = build([mamie, parrain], "u-mamie");
+  await notifier.entryPublished(publication);
+  assert.deepEqual(
+    log.recorded.map((r) => r.userId),
+    ["u-parrain"],
+  );
+  assert.equal(logger.errors.length, 1);
 });

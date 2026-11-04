@@ -105,6 +105,63 @@ export function renderEntryEmail(params: {
   return { text, html };
 }
 
+export const DIGEST_LIST_LIMIT = 14;
+
+export type DigestLine = {
+  dateLabel: string;
+  title: string | null;
+  highlight: string | null;
+};
+
+export function renderDigestEmail(params: {
+  kind: "publications" | "hebdo";
+  greeting: string;
+  body: string;
+  link: string;
+  childName: string;
+  entries: DigestLine[];
+}): { text: string; html: string } {
+  const { kind, greeting, body, link, childName, entries } = params;
+  const shown = entries.slice(0, DIGEST_LIST_LIMIT);
+  const rest = entries.length - shown.length;
+  const restLabel =
+    rest > 0
+      ? rest === 1
+        ? "et une autre journée"
+        : `et ${rest} autres journées`
+      : "";
+  const eyebrow = kind === "hebdo" ? "Résumé de la semaine" : "Nouvelles journées";
+  const heading =
+    kind === "hebdo" ? `La semaine de ${childName}` : `Les journées de ${childName}`;
+
+  const textLines = shown.map((e) => {
+    const head = e.title ? `${e.dateLabel} — ${e.title}` : e.dateLabel;
+    return e.highlight ? `• ${head}\n  ${e.highlight}` : `• ${head}`;
+  });
+  const text =
+    `${greeting}\n\n${body}\n\n${textLines.join("\n")}\n` +
+    (restLabel ? `${restLabel}\n` : "") +
+    `\nOuvrir le journal : ${link}\n\n— Propulsé par Racontine`;
+
+  const rows = shown
+    .map(
+      (e) => `<tr><td style="padding:10px 0;border-top:1px solid ${INK.border}">
+              <p style="margin:0;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:${INK.pale}">${escapeHtml(e.dateLabel)}</p>
+              ${e.title ? `<p style="margin:2px 0 0;font-family:Georgia,'Times New Roman',serif;font-size:17px;line-height:24px;font-weight:600;color:${INK.text}">${escapeHtml(e.title)}</p>` : ""}
+              ${e.highlight ? `<p style="margin:4px 0 0;font-size:15px;line-height:22px;color:${INK.text}">${escapeHtml(e.highlight)}</p>` : ""}
+            </td></tr>`,
+    )
+    .join("");
+  const html = shell(`            <p style="margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:${INK.pale}">${escapeHtml(eyebrow)}</p>
+            <p style="margin:0 0 14px;font-family:Georgia,'Times New Roman',serif;font-size:22px;line-height:28px;font-weight:600;color:${INK.text}">${escapeHtml(heading)}</p>
+            <p style="margin:0 0 8px;font-size:16px;line-height:26px;color:${INK.text}">${escapeHtml(greeting)}</p>
+            <p style="margin:0 0 14px;font-size:16px;line-height:26px;color:${INK.text}">${escapeHtml(body)}</p>
+            <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%;margin:0 0 18px">${rows}</table>
+            ${restLabel ? `<p style="margin:-8px 0 18px;font-size:13px;line-height:20px;color:${INK.pale}">${escapeHtml(restLabel)}</p>` : ""}
+            ${buttonHtml(link, "Ouvrir le journal")}`);
+  return { text, html };
+}
+
 export type LinkKind = "connexion" | "mot-de-passe" | "invitation";
 
 const LIENS: Record<

@@ -1,3 +1,4 @@
+import type { SubscriptionCadence } from "../db/schema.js";
 import type { DayChip } from "../domain/day-glance.js";
 
 export type PublicationEvent = {
@@ -18,15 +19,50 @@ export type Recipient = {
   emailEnabled: boolean;
 };
 
+export type DigestEntry = {
+  entryId: string;
+  date: string;
+  title: string | null;
+  highlight: string | null;
+};
+
+export type PendingNotification = {
+  notificationId: string;
+  createdAt: Date;
+  recipient: Recipient;
+  cadence: SubscriptionCadence | null;
+  childId: string;
+  childName: string;
+  entry: DigestEntry | null;
+};
+
+export type OutgoingKind = "publications" | "hebdo";
+
+export type OutgoingMessage = {
+  kind: OutgoingKind;
+  childId: string;
+  childName: string;
+  entries: DigestEntry[];
+  title: string;
+  body: string;
+  link: string;
+  tag: string;
+};
+
 export interface NotificationChannel {
   readonly name: string;
   isEnabled(): Promise<boolean>;
-  deliver(event: PublicationEvent, recipient: Recipient): Promise<Date | null>;
+  deliver(message: OutgoingMessage, recipient: Recipient): Promise<Date | null>;
 }
 
 export interface NotificationLog {
   record(event: PublicationEvent, recipient: Recipient): Promise<string>;
-  markDelivered(notificationId: string, at: Date): Promise<void>;
+}
+
+export interface PendingNotifications {
+  pending(): Promise<PendingNotification[]>;
+  claim(notificationIds: string[], at: Date): Promise<string[]>;
+  markEmailed(notificationIds: string[], at: Date): Promise<void>;
 }
 
 export interface DayGlance {

@@ -1,7 +1,7 @@
 import { sendPushToUser, webPushEnabled } from "../push.js";
 import type {
   NotificationChannel,
-  PublicationEvent,
+  OutgoingMessage,
   Recipient,
 } from "./types.js";
 
@@ -13,14 +13,15 @@ export class WebPushChannel implements NotificationChannel {
   }
 
   async deliver(
-    event: PublicationEvent,
+    message: OutgoingMessage,
     recipient: Recipient,
   ): Promise<Date | null> {
+    if (message.kind !== "publications") return null;
     await sendPushToUser(recipient.userId, {
-      title: event.title,
-      body: event.body,
-      url: event.link,
-      tag: `entry-${event.entryId}`,
+      title: message.title,
+      body: message.body,
+      url: message.link,
+      tag: message.tag,
     });
     return null;
   }

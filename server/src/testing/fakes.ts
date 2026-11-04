@@ -26,6 +26,13 @@ import type {
   RecordedCorrection,
   StoredImage,
 } from "../ports.js";
+import type {
+  NotificationChannel,
+  OutgoingMessage,
+  PendingNotification,
+  PendingNotifications,
+  Recipient,
+} from "../notifications/types.js";
 
 let sequence = 0;
 const nextId = (prefix: string) => `${prefix}-${++sequence}`;
@@ -503,6 +510,72 @@ export class FakeLogger implements Logger {
   warn(): void {}
   error(message: string): void {
     this.errors.push(message);
+  }
+}
+
+type StoredPending = PendingNotification & {
+  dispatchedAt: Date | null;
+  emailedAt: Date | null;
+};
+
+export class FakePendingNotifications implements PendingNotifications {
+  readonly rows = new Map<string, StoredPending>();
+
+  add(row: PendingNotification): void {
+    this.rows.set(row.notificationId, {
+      ...row,
+      dispatchedAt: null,
+      emailedAt: null,
+    });
+  }
+
+  async pending(): Promise<PendingNotification[]> {
+    return [...this.rows.values()].filter((r) => !r.dispatchedAt);
+  }
+
+  async claim(notificationIds: string[], at: Date): Promise<string[]> {
+    const claimed: string[] = [];
+    for (const id of notificationIds) {
+      const row = this.rows.get(id);
+      if (row && !row.dispatchedAt) {
+        row.dispatchedAt = at;
+        claimed.push(id);
+      }
+    }
+    return claimed;
+  }
+
+  async markEmailed(notificationIds: string[], at: Date): Promise<void> {
+    for (const id of notificationIds) {
+      const row = this.rows.get(id);
+      if (row) row.emailedAt = at;
+    }
+  }
+}
+
+export class SpyChannel implements NotificationChannel {
+  readonly sent: { message: OutgoingMessage; recipient: Recipient }[] = [];
+
+  constructor(
+    readonly name: string,
+    private readonly options: {
+      enabled?: boolean;
+      receipt?: Date | null;
+      boom?: boolean;
+    } = {},
+  ) {}
+
+  async isEnabled(): Promise<boolean> {
+    return this.options.enabled ?? true;
+  }
+
+  async deliver(
+    message: OutgoingMessage,
+    recipient: Recipient,
+  ): Promise<Date | null> {
+    if (this.options.boom) throw new Error("canal en panne");
+    this.sent.push({ message, recipient });
+    return this.options.receipt ?? null;
   }
 }
 
