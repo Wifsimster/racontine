@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { TitreCarnet } from "@/components/TitreCarnet";
 import { Link, useLocation } from "react-router-dom";
 import { Camera, TriangleAlert } from "lucide-react";
 import { api } from "@/lib/api";
@@ -479,7 +480,7 @@ export default function Timeline() {
     >
       <header className="flex flex-col gap-1">
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-          <h1 className="font-serif text-display font-semibold">Le journal</h1>
+          <TitreCarnet title="Le journal" />
           {phase === "ready" && (hasJournal || gere) && (
             <SegmentedControl
               label="Affichage du journal"

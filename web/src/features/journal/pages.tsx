@@ -35,7 +35,7 @@ export function PageStrip({
   return (
     <ul
       className={cn(
-        "grid gap-2",
+        "grid gap-4 pt-3 pb-1",
         single
           ? "grid-cols-1"
           : pages.length === 2
@@ -44,21 +44,28 @@ export function PageStrip({
       )}
     >
       {shown.map((a, i) => (
-        <li key={a.id}>
+        <li key={a.id} className={cn("tape", i % 2 ? "tape-blue tape-right" : "tape-green")}>
           <button
             type="button"
             onClick={(e) => onOpen(i, e.currentTarget)}
             className={cn(
-              "seam block w-full overflow-hidden rounded-xl transition-transform dur-press ease-carnet active:scale-[0.98]",
-              single ? "aspect-[3/2]" : "aspect-square",
+              "polaroid block w-full transition-transform dur-press ease-carnet active:scale-[0.98]",
+              i % 2 ? "tilt-r" : "tilt-l",
             )}
           >
-            <img
-              src={a.thumbUrl}
-              alt={`Page ${i + 1} du carnet du ${dateText}`}
-              className="size-full object-cover"
-              loading="lazy"
-            />
+            <span
+              className={cn(
+                "seam block overflow-hidden rounded-[0.25rem]",
+                single ? "aspect-[3/2]" : "aspect-square",
+              )}
+            >
+              <img
+                src={a.thumbUrl}
+                alt={`Page ${i + 1} du carnet du ${dateText}`}
+                className="size-full object-cover"
+                loading="lazy"
+              />
+            </span>
           </button>
         </li>
       ))}
@@ -68,7 +75,7 @@ export function PageStrip({
             type="button"
             onClick={(e) => onOpen(shown.length, e.currentTarget)}
             aria-label={`Voir les ${pages.length} pages du carnet`}
-            className="flex aspect-square w-full flex-col items-center justify-center gap-1 rounded-xl bg-muted text-foreground transition-colors dur-fast hover:bg-accent"
+            className="polaroid tilt-r flex aspect-square w-full flex-col items-center justify-center gap-1 bg-muted text-foreground transition-colors dur-fast hover:bg-accent"
           >
             <Images className="size-5" aria-hidden="true" />
             <span className="text-meta font-bold" data-tabular>

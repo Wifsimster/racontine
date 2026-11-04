@@ -2,6 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { cn } from "@/lib/utils";
+import { TitreCarnet, type TitreTone } from "@/components/TitreCarnet";
 
 export function PageShell({
   className,
@@ -17,16 +18,20 @@ export function PageShell({
 
 export function PageHeader({
   title,
+  accent,
+  tone,
   lede,
 }: {
   title: string;
+  accent?: string;
+  tone?: TitreTone;
   lede?: React.ReactNode;
 }) {
   return (
-    <header className="flex flex-col gap-1">
-      <h1 className="font-serif text-display font-semibold">{title}</h1>
+    <header className="flex flex-col gap-2">
+      <TitreCarnet title={title} accent={accent} tone={tone} />
       {lede && (
-        <p className="max-w-[46ch] text-ui text-pretty text-muted-foreground">
+        <p className="max-w-[46ch] text-ui leading-6 text-pretty text-muted-foreground">
           {lede}
         </p>
       )}
@@ -70,7 +75,12 @@ export function PageState({
       role={tone === "error" ? "alert" : undefined}
       className="rise-enter flex min-h-[calc(100svh-16rem)] flex-col items-center justify-center gap-5 text-center"
     >
-      <Icon aria-hidden="true" className={cn("size-8", TONE[tone])} />
+      <span
+        aria-hidden="true"
+        className="sticker tilt-ll grid size-16 place-items-center rounded-2xl bg-card p-0"
+      >
+        <Icon className={cn("size-7", TONE[tone])} />
+      </span>
       <div className="flex flex-col items-center gap-2">
         <h2 className="font-serif text-title font-semibold text-balance">
           {title}
@@ -115,7 +125,7 @@ export function PageSkeleton({
         <div
           key={i}
           aria-hidden="true"
-          className="rounded-xl border bg-card p-5"
+          className="rounded-xl border bg-card p-5 shadow-card"
         >
           <div className="skeleton h-3 w-24" />
           <div className="skeleton mt-4 h-5 w-44" />

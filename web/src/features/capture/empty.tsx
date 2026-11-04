@@ -2,6 +2,8 @@ import { Link } from "react-router-dom";
 import { Bell, BookOpenText, Crop, Layers, Sparkles, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tip } from "./inputs";
+import { TitreCarnet } from "@/components/TitreCarnet";
+import { CarnetSticker } from "@/components/CarnetSticker";
 
 export function CaptureDenied() {
   return (
@@ -48,12 +50,15 @@ export function CaptureDenied() {
 export function CaptureEmpty() {
   return (
     <section className="rise-enter flex flex-col items-center gap-5 pt-6 text-center">
-      <BookOpenText aria-hidden="true" className="size-8 text-primary" />
+      <CarnetSticker />
 
       <div className="flex flex-col items-center gap-2">
-        <h2 className="font-serif text-title font-semibold">
-          Photographiez la page du jour
-        </h2>
+        <TitreCarnet
+          as="h2"
+          title="Photographiez la page du jour"
+          accent="du jour"
+          className="text-[1.625rem] leading-8"
+        />
         <p className="max-w-[31ch] text-ui text-muted-foreground">
           Racontine la lit, vous la relisez, la journée part aux proches.
         </p>

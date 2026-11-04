@@ -19,7 +19,7 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-primary text-primary-foreground shadow-card hover:bg-primary-hover",
+          "bg-primary text-primary-foreground shadow-[0_10px_20px_-12px_var(--primary)] hover:bg-primary-hover",
         destructive:
           "bg-destructive text-destructive-foreground shadow-card hover:bg-destructive-hover",
         outline:
@@ -31,10 +31,10 @@ const buttonVariants = cva(
         link: "text-primary underline decoration-primary/40 underline-offset-4 hover:decoration-primary disabled:bg-transparent",
       },
       size: {
-        default: "h-11 rounded-xl px-5 text-ui has-[>svg]:px-4",
-        lg: "h-12 rounded-xl px-6 text-body",
-        sm: "h-11 gap-1.5 rounded-xl px-3 text-meta",
-        xs: "h-11 gap-1.5 rounded-xl px-3 text-meta [&_svg:not([class*='size-'])]:size-3.5",
+        default: "h-11 rounded-full px-5 text-ui has-[>svg]:px-4",
+        lg: "h-12 rounded-full px-6 text-body",
+        sm: "h-11 gap-1.5 rounded-full px-4 text-meta",
+        xs: "h-11 gap-1.5 rounded-full px-4 text-meta [&_svg:not([class*='size-'])]:size-3.5",
         icon: "size-11 rounded-full",
         "icon-xs":
           "size-11 rounded-full [&_svg:not([class*='size-'])]:size-3.5",

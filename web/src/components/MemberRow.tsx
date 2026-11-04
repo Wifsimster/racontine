@@ -26,7 +26,7 @@ export function MemberRow({
   return (
     <li className={cn("flex flex-col gap-2 py-3", className)}>
       <div className="flex min-h-11 flex-wrap items-center gap-x-3 gap-y-2">
-        {leading}
+        {leading ?? (typeof name === "string" && <Avatar name={name} />)}
         <div className="flex min-w-0 flex-1 basis-48 flex-col">
           <p className="min-w-0 text-ui">
             <span className="font-bold break-words">{name}</span>
@@ -44,6 +44,39 @@ export function MemberRow({
       </div>
       {children}
     </li>
+  );
+}
+
+const AVATAR_TONES = [
+  "bg-primary",
+  "bg-nap",
+  "bg-activity",
+  "bg-meal",
+  "bg-anecdote",
+] as const;
+
+export function Avatar({ name, className }: { name: string; className?: string }) {
+  const clean = name.trim();
+  const initials =
+    clean
+      .split(/[\s@.]+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((w) => w[0]?.toUpperCase())
+      .join("") || "?";
+  let h = 0;
+  for (const c of clean) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        "grid size-11 shrink-0 place-items-center rounded-full text-ui font-extrabold text-background ring-[3px] ring-card shadow-card",
+        AVATAR_TONES[h % AVATAR_TONES.length],
+        className,
+      )}
+    >
+      {initials}
+    </span>
   );
 }
 

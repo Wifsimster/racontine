@@ -208,6 +208,7 @@ export default function Share() {
   const header = (
     <PageHeader
       title="Partager"
+        tone="activity"
       lede="Invitez un proche à lire le carnet — ou à écrire dedans."
     />
   );

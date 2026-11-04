@@ -1,5 +1,7 @@
 import { LoginBackground } from "@/components/LoginBackground";
 import { MarqueSignature } from "@/components/Marque";
+import { CarnetSticker } from "@/components/CarnetSticker";
+import { Spark } from "@/components/TitreCarnet";
 
 export function DoorPage({
   intro,
@@ -33,9 +35,7 @@ export function DoorHeading({
 }) {
   return (
     <>
-      <h1 className="font-serif text-display font-semibold text-foreground lg:text-[3.25rem] lg:leading-[1.05]">
-        {appName}
-      </h1>
+      <DoorTitle appName={appName} />
       <p className="carnet-story mt-4 text-foreground lg:max-w-[22ch] lg:text-[1.375rem] lg:leading-9">
         {children}
       </p>
@@ -61,8 +61,20 @@ export function DoorSheet({
 
 export function DoorSheetTitle({ title, id }: { title: string; id?: string }) {
   return (
-    <h2 id={id} className="font-serif text-title font-semibold text-balance">
+    <h2 id={id} className="titre-carnet text-[1.5rem] leading-8 text-balance">
       {title}
     </h2>
+  );
+}
+
+export function DoorTitle({ appName }: { appName: string }) {
+  return (
+    <div className="flex flex-col items-start gap-2">
+      <CarnetSticker className="-ml-3 origin-left scale-90" />
+      <h1 className="titre-carnet text-[2.25rem] leading-10 text-foreground lg:text-[3.25rem] lg:leading-[1.05]">
+        <span className="titre-accent text-primary">{appName}</span>{" "}
+        <Spark className="-translate-y-[0.2em]" />
+      </h1>
+    </div>
   );
 }

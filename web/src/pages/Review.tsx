@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { TitreCarnet } from "@/components/TitreCarnet";
 import { Link, useBlocker, useNavigate, useParams } from "react-router-dom";
 import {
   BookOpenText,
@@ -534,10 +535,8 @@ export default function Review() {
 
       <header className="mb-4">
         <div className="min-w-0">
-          <h1 className="font-serif text-title font-semibold">
-            Relire la journée
-          </h1>
-          <p className="text-meta text-muted-foreground">
+          <TitreCarnet title="Relire la journée" accent="la journée" tone="anecdote" />
+          <p className="mt-1 text-meta text-muted-foreground">
             {[
               entry.child?.name,
               capitalize(longDate(entry.date)),
@@ -568,7 +567,7 @@ export default function Review() {
             onClick={() => setSourceOpen((v) => !v)}
             aria-expanded={sourceOpen}
             aria-controls="rv-source"
-            className="tap flex min-h-11 w-full items-center gap-3 rounded-xl border p-2 text-left transition-colors dur-fast ease-carnet outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring md:hidden"
+            className="tap flex min-h-11 w-full items-center gap-3 rounded-2xl border bg-card p-2 text-left shadow-card transition-colors dur-fast ease-carnet outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring md:hidden"
           >
             <span className="flex shrink-0 -space-x-2" aria-hidden="true">
               {entry.attachments.slice(0, 3).map((a) => (

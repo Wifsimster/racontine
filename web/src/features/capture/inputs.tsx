@@ -16,12 +16,14 @@ export function Tip({
   children: React.ReactNode;
 }) {
   return (
-    <li className="flex items-start gap-3 text-left">
-      <Icon
-        className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+    <li className="flex items-center gap-3 rounded-2xl border bg-card px-3 py-2.5 text-left shadow-card">
+      <span
         aria-hidden="true"
-      />
-      <span className="text-ui text-muted-foreground">{children}</span>
+        className="grid size-9 shrink-0 -rotate-6 place-items-center rounded-xl bg-postit text-postit-ink"
+      >
+        <Icon className="size-4" />
+      </span>
+      <span className="text-ui leading-5 text-muted-foreground">{children}</span>
     </li>
   );
 }
@@ -139,7 +141,7 @@ export function PageGrid({
 }) {
   return (
     <section>
-      <div className="flex items-end justify-between gap-3 border-b pb-2">
+      <div className="flex items-end justify-between gap-3">
         <h2 className="surtitre text-muted-foreground">Pages du carnet</h2>
         <p className="surtitre text-muted-foreground" data-tabular>
           {pageCount(shots.length)}
@@ -147,7 +149,7 @@ export function PageGrid({
       </div>
       <ul
         className={cn(
-          "mt-3 grid gap-3",
+          "mt-5 grid gap-x-4 gap-y-6",
           shots.length === 1
             ? "grid-cols-1"
             : shots.length === 2
@@ -158,18 +160,21 @@ export function PageGrid({
         {shots.map((s, i) => (
           <li
             key={s.id}
-            className="flex flex-col rounded-xl border bg-card"
+            className={cn(
+              "tape polaroid flex flex-col pb-0",
+              i % 2 ? "tilt-r tape-blue tape-right" : "tilt-l tape-green",
+            )}
           >
-            <div className="seam overflow-hidden rounded-t-2xl bg-muted">
+            <div className="seam overflow-hidden rounded-[0.25rem] bg-muted">
               <img
                 src={s.url}
                 alt={`page ${i + 1}`}
                 className="aspect-[9/10] w-full object-contain"
               />
             </div>
-            <div className="flex h-11 items-center gap-1 border-t pr-1 pl-3">
+            <div className="flex h-11 items-center gap-1 pr-0 pl-1">
               <span
-                className="surtitre flex-1 text-muted-foreground"
+                className="font-hand flex-1 text-xl text-muted-foreground"
                 data-tabular
               >
                 Page {i + 1}

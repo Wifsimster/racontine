@@ -5,6 +5,7 @@ import {
   BookCheck,
   BookOpen,
   ChevronDown,
+  Heart,
   ScanLine,
   PenLine,
   Smile,
@@ -19,7 +20,6 @@ import { capitalize, dayLabel, fr, fullDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChildMark } from "@/components/ChildMark";
 import { GlanceStrip, ItemLine, glanceOf, pickGlance } from "./glance";
 import { PageStrip } from "./pages";
 import { SouvenirCover } from "./souvenirs";
@@ -69,6 +69,45 @@ export function StatusBadge({
       );
   }
   return null;
+}
+
+export function Highlight({
+  text,
+  className,
+}: {
+  text: string;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "postit tilt-r relative mt-1 flex items-start gap-3 py-3 pr-4 pl-3",
+        className,
+      )}
+    >
+      <Star
+        aria-hidden="true"
+        className="mt-0.5 size-6 shrink-0 -rotate-12 fill-spark text-spark"
+      />
+      <p className="text-pretty">
+        <span className="block text-meta font-extrabold">Le temps fort</span>
+        <span className="text-ui leading-6">{fr(text)}</span>
+      </p>
+    </div>
+  );
+}
+
+export function NewSticker({ className }: { className?: string }) {
+  return (
+    <span
+      className={cn(
+        "sticker tilt-rr bg-primary px-2 py-0 font-sans text-xs text-primary-foreground",
+        className,
+      )}
+    >
+      Nouveau
+    </span>
+  );
 }
 
 export function isUnread(entry: Entry): boolean {
@@ -230,7 +269,7 @@ export function EntryCard({
       ref={cardRef}
       id={`carte-${entry.id}`}
       data-unread={unread || undefined}
-      className="scroll-mt-28 rounded-xl border bg-card"
+      className="scroll-mt-28 rounded-2xl border bg-card shadow-card"
     >
       {souvenirs.length > 0 && (
         <SouvenirCover
@@ -253,11 +292,10 @@ export function EntryCard({
             {!entry.title && nouveau && <UnreadDot className="mr-0.5" />}
             {showChild && entry.child && (
               <>
-                <ChildMark name={entry.child.name} />
-                <span className="font-bold text-foreground">
+                <span className="sticker tilt-ll mr-1.5 bg-postit text-postit-ink">
                   {entry.child.name}
+                  <Heart aria-hidden="true" className="size-3 text-primary" />
                 </span>
-                <span aria-hidden="true">·</span>
               </>
             )}
             <time dateTime={entry.date}>{capitalize(label)}</time>
@@ -269,8 +307,8 @@ export function EntryCard({
 
         {entry.title && (
           <h3 className="font-serif text-title font-semibold text-balance">
-            {nouveau && <UnreadDot className="mr-2 -mt-1" />}
             {fr(entry.title)}
+            {nouveau && <NewSticker className="ml-2 align-[0.2em]" />}
           </h3>
         )}
 
@@ -281,7 +319,7 @@ export function EntryCard({
             id={storyId}
             ref={storyRef}
             className={cn(
-              "carnet-story measure hyphens-auto text-pretty",
+              "carnet-story paper-ruled measure -mx-5 hyphens-auto py-0 pr-5 pl-12 text-pretty",
               !open && "line-clamp-3",
             )}
           >
@@ -304,18 +342,7 @@ export function EntryCard({
           </div>
         )}
 
-        {entry.highlight && (
-          <p className="flex items-start gap-2 font-serif text-body text-pretty italic">
-            <Star
-              className="mt-1.5 size-3.5 shrink-0 fill-current text-primary"
-              aria-hidden="true"
-            />
-            <span>
-              <span className="sr-only">Le temps fort : </span>
-              {fr(entry.highlight)}
-            </span>
-          </p>
-        )}
+        {entry.highlight && <Highlight text={entry.highlight} />}
 
         {entry.status === "failed" && entry.failureReason && (
           <div className="flex items-start gap-3 rounded-lg bg-destructive-soft px-4 py-3 text-destructive">

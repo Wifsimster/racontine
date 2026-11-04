@@ -307,6 +307,7 @@ export default function Administration() {
   const header = (
     <PageHeader
       title="Administration"
+        tone="nap"
       lede="Vos carnets, leurs proches et ce qui attend une réponse."
     />
   );

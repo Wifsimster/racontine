@@ -7,7 +7,7 @@ import {
   type EntryItem,
   type ItemType,
 } from "@/lib/types";
-import { ITEM_INK } from "@/lib/ui";
+import { ITEM_CHIP } from "@/lib/ui";
 import {
   ITEM_KINDS,
   itemKind,
@@ -81,29 +81,18 @@ export function GlanceStrip({
 }) {
   if (stats.length === 0) return null;
   return (
-    <ul
-      className={cn(
-        "flex flex-wrap items-center gap-x-1.5 gap-y-1 text-meta",
-        className,
-      )}
-    >
-      {stats.map(({ key, type, Icon, value, spoken }, i) => (
-        <li key={key} className="flex items-center gap-1.5">
-          {i > 0 && (
-            <span aria-hidden="true" className="text-muted-foreground">
-              ·
-            </span>
+    <ul className={cn("flex flex-wrap items-center gap-1.5 text-meta", className)}>
+      {stats.map(({ key, type, Icon, value, spoken }) => (
+        <li
+          key={key}
+          className={cn(
+            "flex items-center gap-1 rounded-full px-2.5 py-1",
+            type ? ITEM_CHIP[type] : "bg-muted text-foreground",
           )}
-          <span
-            className={cn(
-              "flex items-center gap-1",
-              type ? ITEM_INK[type] : "text-foreground",
-            )}
-          >
-            <Icon className="size-4 shrink-0" role="img" aria-label={spoken} />
-            <span className="font-bold" data-tabular>
-              {value}
-            </span>
+        >
+          <Icon className="size-4 shrink-0" role="img" aria-label={spoken} />
+          <span className="font-bold" data-tabular>
+            {value}
           </span>
         </li>
       ))}
@@ -114,10 +103,15 @@ export function GlanceStrip({
 export function Chip({ type, icon }: { type: ItemType; icon?: typeof Soup }) {
   const Icon = icon ?? itemKind(type).Icon;
   return (
-    <Icon
+    <span
       aria-hidden="true"
-      className={cn("mt-0.5 size-4 shrink-0", ITEM_INK[type])}
-    />
+      className={cn(
+        "grid size-8 shrink-0 -rotate-6 place-items-center rounded-[0.625rem]",
+        ITEM_CHIP[type],
+      )}
+    >
+      <Icon className="size-4" />
+    </span>
   );
 }
 
@@ -126,7 +120,7 @@ export function ItemLine({ item }: { item: EntryItem }) {
   return (
     <li className="flex items-start gap-3 text-ui">
       <Chip type={item.type} icon={kind.iconFor(item)} />
-      {kind.renderLine(item)}
+      <div className="min-w-0 pt-1">{kind.renderLine(item)}</div>
     </li>
   );
 }

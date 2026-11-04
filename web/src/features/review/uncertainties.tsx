@@ -38,7 +38,7 @@ export function ResolvedReading({
       aria-label={`Revenir sur la lecture « ${unquoted(item.original)} »${
         item.champ ? ` (${FIELD_ORIGIN[item.champ]})` : ""
       }`}
-      className="tap flex min-h-11 w-full items-center gap-2 rounded-xl bg-success-bg px-3 text-left text-success transition-colors dur-fast ease-carnet hover:bg-card"
+      className="tap flex min-h-11 w-full items-center gap-2 rounded-2xl bg-success-bg px-3 text-left text-success transition-colors dur-fast ease-carnet hover:bg-card"
     >
       <Check aria-hidden="true" className="size-4 shrink-0" />
       <span className="min-w-0 flex-1 truncate text-meta">
@@ -83,7 +83,7 @@ export function CollapsedReading({
       aria-label={`Trancher la lecture « ${word} »${
         phrase ? `, dans « ${phrase} »` : ""
       }`}
-      className="tap flex min-h-14 w-full items-center gap-3 rounded-xl border-l-4 border-warning bg-warning-bg px-3 py-2 text-left transition-colors dur-fast ease-carnet outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
+      className="tap flex min-h-14 w-full items-center gap-3 rounded-2xl bg-warning-bg px-3 py-2 shadow-card ring-1 ring-border text-left transition-colors dur-fast ease-carnet outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
     >
       <TriangleAlert aria-hidden="true" className="size-4 shrink-0 text-warning" />
       <span className="min-w-0 flex-1">
@@ -147,7 +147,7 @@ export function UncertaintyCard({
       tabIndex={-1}
       role="group"
       aria-label={`Lecture à vérifier : ${word}${phrase ? `, dans « ${phrase} »` : ""}`}
-      className="flex flex-col gap-2 rounded-xl border-l-4 border-warning bg-warning-bg p-3 outline-none"
+      className="tape mt-3 flex flex-col gap-3 rounded-2xl bg-warning-bg p-4 shadow-card ring-1 ring-border outline-none"
     >
       <p className="surtitre flex items-center gap-2 text-warning">
         <TriangleAlert aria-hidden="true" className="size-4" />
@@ -155,12 +155,12 @@ export function UncertaintyCard({
         {item.champ ? ` · ${FIELD_ORIGIN[item.champ]}` : ""}
       </p>
 
-      <p className="font-serif text-body text-foreground">
-        «{" "}
-        <span className="underline decoration-warning decoration-wavy underline-offset-4">
+      <p className="text-foreground">
+        <span className="sr-only">« </span>
+        <span className="paper-ruled paper-ruled--plain font-hand inline-block -rotate-2 rounded-lg bg-card px-4 text-[1.75rem] leading-[var(--rule-pitch)] text-ink-hand shadow-card ring-1 ring-border">
           {word}
-        </span>{" "}
-        »
+        </span>
+        <span className="sr-only"> »</span>
       </p>
       {phrase && (
         <p className="border-l-2 border-warning pl-3 font-serif text-meta text-muted-foreground">
