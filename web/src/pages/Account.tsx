@@ -4,6 +4,7 @@ import { api } from "@/lib/api";
 import { signOut } from "@/lib/auth-client";
 import type { Me } from "@/lib/types";
 import { Button } from "@/components/ui/button";
+import CaptureReminders from "@/components/CaptureReminders";
 import LlmKey from "@/components/LlmKey";
 import McpTokens from "@/components/McpTokens";
 import MesDonnees from "@/components/MesDonnees";
@@ -25,7 +26,7 @@ export default function Account() {
     <PageShell className="lg:max-w-[64rem] lg:px-10 lg:pt-8 lg:pb-12">
       <PageHeader
         title="Mon compte"
-        lede="Votre clé de lecture, vos connexions Claude et vos données."
+        lede="Votre rappel du carnet, votre clé de lecture, vos connexions Claude et vos données."
       />
 
       <div className="-mt-2 flex min-w-0 flex-col text-meta">
@@ -47,6 +48,7 @@ export default function Account() {
       </div>
 
       <div className="flex max-w-3xl flex-col divide-y border-t">
+        <CaptureReminders />
         <LlmKey />
         <McpTokens />
         <MesDonnees email={me?.email} />

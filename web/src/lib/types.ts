@@ -314,3 +314,11 @@ export type ErasureBlock = {
   code?: "subscription_active" | "instance_owner" | "sole_admin";
   carnets: CarnetRef[];
 };
+
+export type CaptureReminder = {
+  childId: string;
+  childName: string;
+  enabled: boolean;
+  time: string;
+  days: number[];
+};

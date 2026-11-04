@@ -6,6 +6,7 @@ import {
   children,
   entries,
   memberships as membershipRows,
+  pushSubscriptions,
   subscriptions as subscriptionRows,
   user,
 } from "../src/db/schema.js";
@@ -17,6 +18,11 @@ import {
   DrizzleSubscriberDirectory,
 } from "../src/notifications/drizzle-stores.js";
 import { SubscriberNotifier } from "../src/notifications/subscriber-notifier.js";
+import {
+  DrizzleCaptureReminderStore,
+  listReminderPreferences,
+  saveReminderPreference,
+} from "../src/notifications/capture-reminder-store.js";
 import {
   DrizzleAttachmentRepository,
   DrizzleChildRepository,
@@ -500,6 +506,92 @@ assert.equal(counts.find((c) => c.status === "draft")?.count, 1);
 assert.equal((await admin.lastPublished([child.id]))[0]?.childId, child.id);
 assert.deepEqual((await admin.members([child.id])).map((m) => m.userId), [owner]);
 ok("la console d'administration ne voit que les carnets qu'on administre");
+
+const gestionnaire = `u-${randomUUID()}`;
+const lectrice = `u-${randomUUID()}`;
+for (const [id, name] of [[gestionnaire, "Maman"], [lectrice, "Tata"]] as const)
+  await db.insert(user).values({
+    id,
+    name,
+    email: `${id}@example.test`,
+    emailVerified: true,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
+const rappelEnfant = await childRepo.createWithOwner({
+  name: "Nino",
+  birthdate: null,
+  ownerUserId: gestionnaire,
+});
+await db
+  .insert(membershipRows)
+  .values({ userId: lectrice, childId: rappelEnfant.id, role: "reader" });
+const defaults = await listReminderPreferences(gestionnaire);
+assert.deepEqual(defaults, [
+  {
+    childId: rappelEnfant.id,
+    childName: "Nino",
+    enabled: false,
+    time: "18:30",
+    days: [1, 2, 3, 4, 5],
+  },
+]);
+assert.deepEqual(await listReminderPreferences(lectrice), []);
+const reminderStore = new DrizzleCaptureReminderStore();
+assert.deepEqual(await reminderStore.candidates("2026-11-04"), []);
+const saved = await saveReminderPreference(gestionnaire, rappelEnfant.id, {
+  enabled: true,
+  time: "19:15",
+});
+assert.deepEqual(saved, {
+  childId: rappelEnfant.id,
+  enabled: true,
+  time: "19:15",
+  days: [1, 2, 3, 4, 5],
+});
+await saveReminderPreference(lectrice, rappelEnfant.id, { enabled: true });
+const mineOnly = (rows: Awaited<ReturnType<typeof reminderStore.candidates>>) =>
+  rows.filter((r) => r.childId === rappelEnfant.id);
+let candidats = mineOnly(await reminderStore.candidates("2026-11-04"));
+assert.equal(candidats.length, 1);
+assert.equal(candidats[0].userId, gestionnaire);
+assert.equal(candidats[0].hasPush, false);
+assert.equal(candidats[0].hasEntryToday, false);
+await db.insert(pushSubscriptions).values({
+  userId: gestionnaire,
+  endpoint: `https://fcm.googleapis.com/fcm/send/${randomUUID()}`,
+  p256dh: "p",
+  auth: "a",
+});
+await repo.createIfAbsent({
+  childId: rappelEnfant.id,
+  date: "2026-11-04",
+  source: "nounou",
+  status: "processing",
+  createdBy: gestionnaire,
+});
+candidats = mineOnly(await reminderStore.candidates("2026-11-04"));
+assert.equal(candidats[0].hasPush, true);
+assert.equal(candidats[0].hasEntryToday, true);
+assert.equal(
+  mineOnly(await reminderStore.candidates("2026-11-05"))[0].hasEntryToday,
+  false,
+);
+assert.equal(await reminderStore.claim(gestionnaire, rappelEnfant.id, "2026-11-05"), true);
+assert.equal(await reminderStore.claim(gestionnaire, rappelEnfant.id, "2026-11-05"), false);
+assert.equal(await reminderStore.claim(gestionnaire, rappelEnfant.id, "2026-11-04"), false);
+assert.equal(
+  mineOnly(await reminderStore.candidates("2026-11-05"))[0].lastSentOn,
+  "2026-11-05",
+);
+assert.equal(await reminderStore.claim(gestionnaire, rappelEnfant.id, "2026-11-06"), true);
+await saveReminderPreference(gestionnaire, rappelEnfant.id, { enabled: false });
+assert.deepEqual(mineOnly(await reminderStore.candidates("2026-11-07")), []);
+assert.equal(await reminderStore.claim(gestionnaire, rappelEnfant.id, "2026-11-07"), false);
+await db.delete(children).where(eq(children.id, rappelEnfant.id));
+await db.delete(user).where(eq(user.id, gestionnaire));
+await db.delete(user).where(eq(user.id, lectrice));
+ok("rappel de capture : gestionnaires seulement, journée et push vus, une réservation par jour");
 
 const reclaimed = await repo.reclaimProcessing("interrompue");
 console.log("  ok — reclaimProcessing :", reclaimed, "journée(s) orpheline(s)");

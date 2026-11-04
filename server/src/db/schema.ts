@@ -367,6 +367,30 @@ export const pushSubscriptions = pgTable(
   (t) => [index("push_subscriptions_user_idx").on(t.userId)],
 );
 
+export const captureReminders = pgTable(
+  "capture_reminders",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    childId: uuid("child_id")
+      .notNull()
+      .references(() => children.id, { onDelete: "cascade" }),
+    enabled: boolean("enabled").notNull().default(false),
+    time: text("time").notNull().default("18:30"),
+    days: integer("days").array().notNull().default(sql`'{1,2,3,4,5}'::integer[]`),
+    lastSentOn: date("last_sent_on"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.userId, t.childId] }),
+    index("capture_reminders_enabled_idx")
+      .on(t.childId)
+      .where(sql`${t.enabled}`),
+  ],
+);
+
 export const appSettings = pgTable("app_settings", {
   id: text("id").primaryKey().default("singleton"),
   appName: text("app_name"),
@@ -523,3 +547,4 @@ export type McpUpload = typeof mcpUploads.$inferSelect;
 export type UserLlmSettings = typeof userLlmSettings.$inferSelect;
 export type InstanceSubscription = typeof instanceSubscription.$inferSelect;
 export type WordCorrection = typeof wordCorrections.$inferSelect;
+export type CaptureReminder = typeof captureReminders.$inferSelect;
