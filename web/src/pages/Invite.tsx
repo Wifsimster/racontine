@@ -170,7 +170,7 @@ export default function Invite() {
       await api.acceptInvitation(token);
       forgetIntent(token);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Échec de l'adhésion");
+      setError(e instanceof Error ? e.message : "Échec de l’adhésion");
       setPhase("ready");
       return;
     }
@@ -229,7 +229,7 @@ export default function Invite() {
         callbackURL: `/invite/${token}`,
       });
       if (res.error) {
-        setError(res.error.message ?? "L'envoi du lien a échoué.");
+        setError(res.error.message ?? "L’envoi du lien a échoué.");
       } else {
         setPhase("sent");
         if (again) setResent(true);

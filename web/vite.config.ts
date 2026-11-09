@@ -33,8 +33,8 @@ export default defineConfig({
         short_name: "Racontine",
         description:
           "Votre carnet de liaison, dématérialisé sans rien demander à la nounou.",
-        theme_color: "#faf8f3",
-        background_color: "#faf8f3",
+        theme_color: "#f9f7f2",
+        background_color: "#f9f7f2",
         display: "standalone",
         lang: "fr",
         start_url: "/",

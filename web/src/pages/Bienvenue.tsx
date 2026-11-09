@@ -61,7 +61,7 @@ export default function Bienvenue() {
         </div>
       </header>
 
-      <div className="rise-enter mx-auto flex w-full max-w-[26rem] flex-col pt-[5.25rem] pr-5 pb-6 pl-10 lg:grid lg:max-w-[64rem] lg:grid-cols-[minmax(0,1fr)_26rem] lg:grid-rows-[auto_1fr] lg:items-start lg:gap-x-16 lg:px-10 lg:pt-32 lg:pb-16 xl:gap-x-24">
+      <main className="rise-enter mx-auto flex w-full max-w-[26rem] flex-col pt-[5.25rem] pr-5 pb-6 pl-10 lg:grid lg:max-w-[64rem] lg:grid-cols-[minmax(0,1fr)_26rem] lg:grid-rows-[auto_1fr] lg:items-start lg:gap-x-16 lg:px-10 lg:pt-32 lg:pb-16 xl:gap-x-24">
         <div className="lg:col-start-1 lg:row-start-1 lg:pt-4">
           <DoorTitle appName={appName} />
           <p className="carnet-story mt-4 text-foreground lg:max-w-[22ch] lg:text-[1.375rem] lg:leading-9">
@@ -90,7 +90,7 @@ export default function Bienvenue() {
 
           <MarqueSignature className="mt-6" />
         </div>
-      </div>
+      </main>
     </div>
   );
 }
@@ -109,7 +109,7 @@ function Offre({
       <section className={SHEET} aria-labelledby="offre-titre">
         <div>
           <p className="surtitre text-muted-foreground">
-            L'offre, il n'y en a qu'une
+            L’offre, il n’y en a qu’une
           </p>
           <h2
             id="offre-titre"
@@ -133,8 +133,8 @@ function Offre({
               </>
             ) : (
               <span className="text-ui text-muted-foreground">
-                Le tarif n'a pas pu être récupéré à l'instant — il s'affichera
-                avant tout engagement, et aucune carte n'est demandée pour
+                Le tarif n’a pas pu être récupéré à l’instant — il s’affichera
+                avant tout engagement, et aucune carte n’est demandée pour
                 essayer.
               </span>
             )}
@@ -152,7 +152,7 @@ function Offre({
             />
             <span className="min-w-0 flex-1 text-meta text-muted-foreground">
               <span className="block text-ui font-bold text-foreground">
-                {trialDays} jours d'essai gratuit
+                {trialDays} jours d’essai gratuit
               </span>
               Aucun prélèvement, et aucune carte bancaire à donner pour
               commencer.
@@ -171,7 +171,7 @@ function Offre({
                   onClick={() => mesure("accueil_commencer")}
                 >
                   <BookOpenText aria-hidden="true" />
-                  Commencer l'essai gratuit
+                  Commencer l’essai gratuit
                 </Link>
               </Button>
               {price && (
@@ -207,7 +207,7 @@ function Offre({
             className="justify-start px-0 font-normal underline decoration-input decoration-1 underline-offset-4 hover:bg-transparent hover:decoration-foreground"
           >
             <Link to="/login" onClick={() => mesure("accueil_connexion")}>
-              J'ai déjà un carnet — me connecter
+              J’ai déjà un carnet — me connecter
               <ArrowRight aria-hidden="true" />
             </Link>
           </Button>
@@ -233,7 +233,7 @@ function OffreSquelette() {
         <div className="skeleton h-12 w-full" />
       </div>
       <p role="status" className="sr-only">
-        On ouvre l'offre…
+        On ouvre l’offre…
       </p>
     </>
   );

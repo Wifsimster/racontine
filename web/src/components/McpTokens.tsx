@@ -127,7 +127,7 @@ export default function McpTokens({ webBaseUrl }: { webBaseUrl?: string }) {
             <code className="min-w-0 flex-1 truncate rounded-xl border bg-background px-3 py-2 text-meta">
               {endpoint}
             </code>
-            <CopyButton value={endpoint} label="Copier l'adresse MCP" />
+            <CopyButton value={endpoint} label="Copier l’adresse MCP" />
           </div>
           <p className="text-meta text-muted-foreground">
             Transport « HTTP », en-tête{" "}
@@ -158,7 +158,7 @@ export default function McpTokens({ webBaseUrl }: { webBaseUrl?: string }) {
                 onClick={() => setSecret(null)}
                 className="text-muted-foreground"
               >
-                J'ai copié le jeton
+                J’ai copié le jeton
               </Button>
             </div>
           </div>
@@ -204,7 +204,7 @@ export default function McpTokens({ webBaseUrl }: { webBaseUrl?: string }) {
           </div>
         ) : tokens.length === 0 ? (
           <p className="rounded-xl border border-dashed px-3 py-3 text-meta text-muted-foreground">
-            Aucun jeton pour l'instant : créez-en un ci-dessus pour relier une
+            Aucun jeton pour l’instant : créez-en un ci-dessus pour relier une
             session Claude à ce carnet.
           </p>
         ) : (
@@ -244,7 +244,7 @@ export default function McpTokens({ webBaseUrl }: { webBaseUrl?: string }) {
             <AlertDialogTitle>Révoquer ce jeton ?</AlertDialogTitle>
             <AlertDialogDescription>
               Toute session Claude utilisant « {toRevoke?.name} » perdra
-              immédiatement l'accès. Cette action est définitive.
+              immédiatement l’accès. Cette action est définitive.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

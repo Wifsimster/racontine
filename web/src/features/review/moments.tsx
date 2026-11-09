@@ -71,7 +71,7 @@ export function MomentsGlance({
       </h2>
       {items.length === 0 ? (
         <p className="rounded-2xl border-2 border-dashed px-4 py-3 text-meta text-muted-foreground">
-          Aucun repas, aucune sieste n'a été relevé sur cette page. Vous pouvez
+          Aucun repas, aucune sieste n’a été relevé sur cette page. Vous pouvez
           en ajouter juste en dessous — ou publier le récit seul.
         </p>
       ) : (

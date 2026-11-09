@@ -173,6 +173,7 @@ export default function Tendances() {
           />
           <SegmentedControl
             label="Période"
+            className="self-start"
             value={period}
             options={PERIODS}
             onChange={(p) => choisir({ period: p })}

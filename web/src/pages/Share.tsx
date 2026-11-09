@@ -36,7 +36,7 @@ import { MemberRow, RemoveButton, RoleControl } from "@/components/MemberRow";
 
 const ROLES: MemberRole[] = ["reader", "contributor", "admin"];
 
-const SHELL = "lg:max-w-[64rem] lg:px-10 lg:pt-8 lg:pb-12";
+const SHELL = "lg:max-w-[48rem] lg:px-10 lg:pt-8 lg:pb-12";
 
 function RoleSelect({
   id,
@@ -199,7 +199,7 @@ export default function Share() {
       setRole("reader");
       await refresh(selected);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Échec de l'invitation");
+      setError(e instanceof Error ? e.message : "Échec de l’invitation");
     } finally {
       setInviting(false);
     }
@@ -241,7 +241,7 @@ export default function Share() {
           }
         >
           {error ??
-            "Seul l'administrateur d'un carnet peut inviter des proches. Créez un enfant depuis l'écran de capture pour commencer."}
+            "Seul l’administrateur d’un carnet peut inviter des proches. Créez un enfant depuis l’écran de capture pour commencer."}
         </PageState>
       </PageShell>
     );
@@ -252,7 +252,7 @@ export default function Share() {
     <PageShell className={SHELL}>
       {header}
 
-      <div className="flex max-w-3xl flex-col divide-y">
+      <div className="flex flex-col divide-y">
         {children.length > 1 && (
           <section className="flex flex-col gap-2 py-6 first:pt-0">
             <h2 className="font-serif text-title font-semibold">Le carnet</h2>
@@ -290,7 +290,7 @@ export default function Share() {
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="invite-role">Ce qu'elle pourra faire</Label>
+              <Label htmlFor="invite-role">Ce que cette personne pourra faire</Label>
               <RoleSelect id="invite-role" value={role} onChange={setRole} />
               <p className="text-meta text-muted-foreground">
                 {ROLE_HINTS[role]}
@@ -307,7 +307,7 @@ export default function Share() {
             )}
             <Button type="submit" loading={inviting} className="self-start">
               {!inviting && <UserPlus aria-hidden="true" />}
-              Envoyer l'invitation
+              Envoyer l’invitation
             </Button>
           </form>
         </section>
@@ -338,7 +338,7 @@ export default function Share() {
                       )}
                       <CopyButton url={inv.url} />
                       <RemoveButton
-                        label={`Révoquer l'invitation de ${inv.email}`}
+                        label={`Révoquer l’invitation de ${inv.email}`}
                         onClick={async () => {
                           try {
                             await api.revokeInvitation(inv.id);
@@ -358,7 +358,7 @@ export default function Share() {
 
         <section className="flex flex-col gap-2 py-6 first:pt-0">
           <h2 className="font-serif text-title font-semibold">
-            Le cercle de {child?.name ?? "l'enfant"} ({members.length})
+            Le cercle de {child?.name ?? "l’enfant"} ({members.length})
           </h2>
           <ul className="flex flex-col divide-y">
             {members.map((m) => {

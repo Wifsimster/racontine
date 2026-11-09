@@ -81,7 +81,7 @@ export function Highlight({
   return (
     <div
       className={cn(
-        "postit tilt-r relative mt-1 flex items-start gap-3 py-3 pr-4 pl-3",
+        "postit tilt-r relative mt-1 flex max-w-[30rem] items-start gap-3 py-3 pr-4 pl-3",
         className,
       )}
     >
@@ -91,7 +91,7 @@ export function Highlight({
       />
       <p className="text-pretty">
         <span className="block text-meta font-extrabold">Le temps fort</span>
-        <span className="text-ui leading-6">{fr(text)}</span>
+        <span className="text-ui">{fr(text)}</span>
       </p>
     </div>
   );

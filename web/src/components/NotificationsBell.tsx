@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 function timeAgo(iso: string): string {
   const then = new Date(iso).getTime();
   const mins = Math.round((Date.now() - then) / 60000);
-  if (mins < 1) return "à l'instant";
+  if (mins < 1) return "à l’instant";
   if (mins < 60) return `il y a ${mins} min`;
   const hrs = Math.round(mins / 60);
   if (hrs < 24) return `il y a ${hrs} h`;
@@ -150,7 +150,7 @@ export default function NotificationsBell() {
                 />
                 <p className="mt-3 text-ui font-bold">Rien de neuf</p>
                 <p className="mt-1 text-meta text-muted-foreground">
-                  Vous serez prévenu ici dès qu'une journée est publiée.
+                  Vous serez prévenu ici dès qu’une journée est publiée.
                 </p>
               </div>
             ) : (

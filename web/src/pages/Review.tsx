@@ -240,7 +240,7 @@ export default function Review() {
             ? "Le carnet n’avait pas encore répondu : la publication n’est donc pas confirmée — elle a peut-être abouti malgré tout. Vos corrections sont toujours à l’écran. Ouvrez le journal pour voir l’état de la journée, ou publiez à nouveau : une journée déjà publiée le reste, sans doublon."
             : err instanceof Error
               ? err.message
-              : "Échec de l'enregistrement",
+              : "Échec de l’enregistrement",
         );
         return false;
       } finally {
@@ -670,7 +670,7 @@ export default function Review() {
                 ))}
                 {entry.attachments.length === 0 && (
                   <p className="text-meta text-muted-foreground">
-                    Aucune page n'est attachée à cette journée : le récit a été
+                    Aucune page n’est attachée à cette journée : le récit a été
                     saisi à la main.
                   </p>
                 )}
@@ -898,12 +898,12 @@ export default function Review() {
                 <p className="text-ui font-bold">
                   {errorKind === "stopped"
                     ? "Publication non confirmée"
-                    : "La journée n'a pas pu être enregistrée"}
+                    : "La journée n’a pas pu être enregistrée"}
                 </p>
                 <p className="text-meta text-muted-foreground">
                   {errorKind === "stopped"
                     ? error
-                    : `${error} — rien n'est perdu : vos corrections sont toujours à l'écran.`}
+                    : `${error} — rien n’est perdu : vos corrections sont toujours à l’écran.`}
                 </p>
                 {errorKind === "stopped" && (
                   <Button asChild variant="outline" size="sm" className="mt-3">

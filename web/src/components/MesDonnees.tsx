@@ -50,7 +50,7 @@ export default function MesDonnees({ email }: { email?: string }) {
       await signOut().catch(() => {});
       window.location.href = "/login";
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Échec de l'effacement");
+      setError(e instanceof Error ? e.message : "Échec de l’effacement");
       setBusy(null);
       setOpen(false);
     }
@@ -91,7 +91,7 @@ export default function MesDonnees({ email }: { email?: string }) {
             Effacer mon compte
           </Button>
           <p className="text-meta text-muted-foreground">
-            Définitif, et sans corbeille. On vous montre d'abord ce qui
+            Définitif, et sans corbeille. On vous montre d’abord ce qui
             disparaîtrait.
           </p>
         </div>
@@ -119,16 +119,16 @@ export default function MesDonnees({ email }: { email?: string }) {
           {blocked ? (
             <p className="flex items-start gap-2 rounded-xl bg-warning-bg p-3 text-meta text-warning">
               <ShieldX className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-              Revenez ici une fois que ce sera fait : rien n'a été effacé.
+              Revenez ici une fois que ce sera fait : rien n’a été effacé.
             </p>
           ) : (
             <div className="flex flex-col gap-3">
               <CarnetList
                 tone="danger"
                 title="Effacés avec votre compte"
-                empty="Aucun carnet ne disparaît : vous n'êtes seul sur aucun."
+                empty="Aucun carnet ne disparaît : vous n’êtes seul sur aucun."
                 carnets={plan?.deletes ?? []}
-                note="Personne d'autre ne les suit — journées et photos comprises."
+                note="Personne d’autre ne les suit — journées et photos comprises."
               />
               {(plan?.leaves.length ?? 0) > 0 && (
                 <CarnetList

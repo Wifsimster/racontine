@@ -95,7 +95,7 @@ export default function App() {
   if (billing?.enabled) {
     items.push({
       to: "/abonnement",
-      label: "L'abonnement",
+      label: "L’abonnement",
       short: "Abonnement",
       icon: CreditCard,
     });
@@ -133,7 +133,7 @@ export default function App() {
       </a>
 
       <header className="sticky top-0 z-50 border-b print:hidden bg-surface-bar px-safe pt-safe backdrop-blur-md">
-        <div className="shell-width flex h-header items-center justify-between gap-2 px-4 lg:max-w-[64rem] lg:gap-6 lg:px-10">
+        <div className="shell-width flex h-header items-center justify-between gap-2 px-4 lg:max-w-[64rem] lg:px-10">
           <Link
             to="/"
             className="-ml-1 flex min-h-11 min-w-0 items-center gap-2 rounded-xl px-1 transition-colors dur-fast hover:bg-accent"
@@ -145,7 +145,7 @@ export default function App() {
           </Link>
           <nav
             aria-label="Navigation principale"
-            className="hidden shrink-0 items-center justify-end lg:flex"
+            className="ml-auto hidden shrink-0 items-center justify-end lg:flex"
           >
             {items.map(({ to, short }) => (
               <Link

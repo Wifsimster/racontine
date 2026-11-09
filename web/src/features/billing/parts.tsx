@@ -26,11 +26,11 @@ import { InlineError } from "@/components/PageState";
 const INCLUS: { icon: typeof Heart; text: string }[] = [
   {
     icon: BookOpenText,
-    text: "Toutes vos journées, sans compteur : photographiez chaque soir, toute l'année.",
+    text: "Toutes vos journées, sans compteur : photographiez chaque soir, toute l’année.",
   },
   {
     icon: Users,
-    text: "Vos enfants et vos proches sans limite — mamie n'a jamais de carte à sortir.",
+    text: "Vos enfants et vos proches sans limite — mamie n’a jamais de carte à sortir.",
   },
   {
     icon: Sparkles,
@@ -59,7 +59,7 @@ export function PayButton({
   const price = billing.price;
   const text =
     label ??
-    (price ? `S'abonner — ${formatPrice(price)}` : "S'abonner");
+    (price ? `S’abonner — ${formatPrice(price)}` : "S’abonner");
 
   async function pay() {
     setBusy(true);
@@ -72,7 +72,7 @@ export function PayButton({
       setError(
         e instanceof Error
           ? e.message
-          : "La page de paiement n'a pas pu s'ouvrir. Réessayez.",
+          : "La page de paiement n’a pas pu s’ouvrir. Réessayez.",
       );
     }
   }
@@ -94,7 +94,7 @@ export function PayButton({
   );
 }
 
-export function ManageButton({ label = "Gérer l'abonnement" }: { label?: string }) {
+export function ManageButton({ label = "Gérer l’abonnement" }: { label?: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -107,7 +107,7 @@ export function ManageButton({ label = "Gérer l'abonnement" }: { label?: string
     } catch (e) {
       setBusy(false);
       setError(
-        e instanceof Error ? e.message : "Le portail n'a pas pu s'ouvrir.",
+        e instanceof Error ? e.message : "Le portail n’a pas pu s’ouvrir.",
       );
     }
   }
@@ -127,7 +127,7 @@ export function BilledToNote({ billing }: { billing: Billing }) {
   if (!billing.billedTo) return null;
   return (
     <p className="text-meta text-muted-foreground">
-      L'abonnement de ce carnet se règle depuis le compte de{" "}
+      L’abonnement de ce carnet se règle depuis le compte de{" "}
       <span className="font-bold text-foreground">{billing.billedTo.name}</span>{" "}
       ({billing.billedTo.email}).
     </p>
@@ -155,7 +155,7 @@ export function OfferCard({ billing }: { billing: Billing }) {
 
   return (
     <section>
-      <p className="surtitre text-muted-foreground">L'offre, il n'y en a qu'une</p>
+      <p className="surtitre text-muted-foreground">L’offre, il n’y en a qu’une</p>
       <h2 className="mt-2 font-serif text-title font-semibold">
         Racontine Famille
       </h2>
@@ -172,7 +172,7 @@ export function OfferCard({ billing }: { billing: Billing }) {
           </>
         ) : (
           <span className="text-ui text-muted-foreground">
-            Le tarif n'a pas pu être récupéré à l'instant — il s'affichera sur la
+            Le tarif n’a pas pu être récupéré à l’instant — il s’affichera sur la
             page de paiement, avant tout engagement.
           </span>
         )}
@@ -195,7 +195,7 @@ export function OfferCard({ billing }: { billing: Billing }) {
         <BookOpenText className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
         <span>
           Si vous arrêtez un jour, votre journal reste lisible et partagé : on ne
-          referme jamais des souvenirs d'enfance.
+          referme jamais des souvenirs d’enfance.
         </span>
       </p>
     </section>
@@ -223,12 +223,12 @@ export function BillingCallout({ billing }: { billing: Billing }) {
           <p className="mt-0.5 text-meta text-muted-foreground">
             {price
               ? `Ensuite ${formatPrice(price)} pour continuer à ajouter des journées${fin ? `, à partir du ${fin}` : ""}.`
-              : "Ensuite, l'abonnement prend le relais pour continuer à ajouter des journées."}
+              : "Ensuite, l’abonnement prend le relais pour continuer à ajouter des journées."}
           </p>
         </div>
         <Button asChild className="shrink-0">
           <Link to="/abonnement">
-            {price ? `S'abonner — ${formatPrice(price)}` : "Voir l'offre"}
+            {price ? `S’abonner — ${formatPrice(price)}` : "Voir l’offre"}
             <ArrowRight aria-hidden="true" />
           </Link>
         </Button>
@@ -245,11 +245,11 @@ export function BillingCallout({ billing }: { billing: Billing }) {
         />
         <div className="min-w-0 flex-1">
           <p className="text-ui font-bold text-warning">
-            Le dernier paiement n'est pas passé
+            Le dernier paiement n’est pas passé
           </p>
           <p className="mt-0.5 text-meta text-warning">
             Le carnet reste ouvert. Mettez la carte à jour pour que rien ne
-            s'interrompe.
+            s’interrompe.
           </p>
         </div>
         {billing.canManage ? (
@@ -275,7 +275,7 @@ export function BillingCallout({ billing }: { billing: Billing }) {
             </h2>
             <p className="mt-1 text-ui text-pretty text-muted-foreground">
               {encore
-                ? "L'abonnement est terminé : on ne peut plus ajouter de nouvelles journées."
+                ? "L’abonnement est terminé : on ne peut plus ajouter de nouvelles journées."
                 : "Votre essai gratuit est terminé : on ne peut plus ajouter de nouvelles journées."}{" "}
               <span className="font-bold text-foreground">
                 Tout ce qui est déjà écrit reste là, lisible et partagé.
@@ -301,7 +301,7 @@ export function BillingCallout({ billing }: { billing: Billing }) {
 
         <Button asChild variant="link" size="sm" className="-ml-3 mt-1">
           <Link to="/abonnement">
-            Ce que comprend l'abonnement
+            Ce que comprend l’abonnement
             <ArrowRight aria-hidden="true" />
           </Link>
         </Button>
@@ -327,10 +327,10 @@ export function CapturePaused({ billing }: { billing: Billing }) {
         </h1>
         <p className="max-w-[34ch] text-ui text-pretty text-muted-foreground">
           {billing.access.reason === "subscription-over"
-            ? "L'abonnement est terminé."
+            ? "L’abonnement est terminé."
             : "Votre essai gratuit est terminé."}{" "}
-          Les journées déjà publiées restent lisibles par tous vos proches — c'est
-          l'ajout d'une nouvelle journée qui attend l'abonnement.
+          Les journées déjà publiées restent lisibles par tous vos proches — c’est
+          l’ajout d’une nouvelle journée qui attend l’abonnement.
         </p>
       </div>
       <div className="flex w-full flex-col items-center gap-3">
@@ -339,7 +339,7 @@ export function CapturePaused({ billing }: { billing: Billing }) {
             billing={billing}
             label={
               billing.price
-                ? `S'abonner — ${formatPrice(billing.price)}`
+                ? `S’abonner — ${formatPrice(billing.price)}`
                 : undefined
             }
           />

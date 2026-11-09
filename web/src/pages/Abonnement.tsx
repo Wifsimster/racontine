@@ -51,7 +51,7 @@ export default function Abonnement() {
   return (
     <PageShell className="lg:max-w-[64rem] lg:px-10 lg:pt-8 lg:pb-12">
       <PageHeader
-        title="L'abonnement"
+        title="L’abonnement"
         tone="meal"
         lede="Une seule offre, pour tout le foyer. Lire le journal reste gratuit, toujours."
       />
@@ -59,7 +59,7 @@ export default function Abonnement() {
       {paiement === "ok" && <Receipt syncing={syncing} />}
       {paiement === "annule" && (
         <p role="status" className="text-meta text-muted-foreground">
-          Paiement abandonné, rien n'a été débité. Vous pouvez y revenir quand
+          Paiement abandonné, rien n’a été débité. Vous pouvez y revenir quand
           vous voulez.
         </p>
       )}
@@ -67,10 +67,10 @@ export default function Abonnement() {
       <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-10">
         <div className="flex flex-col gap-6">
           {loading && !billing ? (
-            <PageSkeleton label="On ouvre l'abonnement" rows={1} />
+            <PageSkeleton label="On ouvre l’abonnement" rows={1} />
           ) : !billing ? (
             <p className="text-ui text-muted-foreground">
-              L'état de l'abonnement n'a pas pu être lu. Votre journal, lui, est
+              L’état de l’abonnement n’a pas pu être lu. Votre journal, lui, est
               intact : réessayez dans un instant.
             </p>
           ) : !billing.enabled ? (
@@ -118,8 +118,8 @@ function SelfHosted() {
         Ici, Racontine est gratuit
       </h2>
       <p className="mt-1 text-ui text-pretty text-muted-foreground">
-        Cette instance est auto-hébergée : elle n'encaisse rien et ne demandera
-        jamais de carte. L'abonnement ne concerne que l'offre hébergée par le
+        Cette instance est auto-hébergée : elle n’encaisse rien et ne demandera
+        jamais de carte. L’abonnement ne concerne que l’offre hébergée par le
         studio, pour les familles qui ne veulent pas tenir un serveur.
       </p>
       <Button asChild variant="outline" className="mt-4">
@@ -154,7 +154,7 @@ function Etat({ billing }: { billing: Billing }) {
           <ShieldCheck className="mt-0.5 size-4 shrink-0 text-success" aria-hidden="true" />
           <span>
             {access.endingAt
-              ? `Résilié : le carnet reste ouvert à l'écriture jusqu'au ${fin}. Rien n'est perdu ensuite, vous ne pourrez simplement plus ajouter de journée.`
+              ? `Résilié : le carnet reste ouvert à l’écriture jusqu’au ${fin}. Rien n’est perdu ensuite, vous ne pourrez simplement plus ajouter de journée.`
               : fin
                 ? `En cours — prochain renouvellement le ${fin}.`
                 : "En cours."}
@@ -185,7 +185,7 @@ function Etat({ billing }: { billing: Billing }) {
               Essai gratuit : il reste {access.daysLeft ?? 0} jour
               {(access.daysLeft ?? 0) > 1 ? "s" : ""}
             </span>
-            Aucun prélèvement n'a eu lieu, et aucune carte ne vous a été demandée.
+            Aucun prélèvement n’a eu lieu, et aucune carte ne vous a été demandée.
           </span>
         </p>
       )}
@@ -193,8 +193,8 @@ function Etat({ billing }: { billing: Billing }) {
       {!access.open && (
         <p className="border-l-4 border-primary pl-4 text-ui text-pretty">
           {access.reason === "subscription-over"
-            ? "L'abonnement est terminé : le carnet n'accepte plus de nouvelle journée."
-            : "Votre essai gratuit est terminé : le carnet n'accepte plus de nouvelle journée."}{" "}
+            ? "L’abonnement est terminé : le carnet n’accepte plus de nouvelle journée."
+            : "Votre essai gratuit est terminé : le carnet n’accepte plus de nouvelle journée."}{" "}
           <span className="font-bold">
             Tout ce qui est déjà écrit reste lisible et partagé.
           </span>

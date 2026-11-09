@@ -163,7 +163,7 @@ export function RemovePageDialog({
         <AlertDialogTitle>Retirer cette page ?</AlertDialogTitle>
         <AlertDialogDescription>
           La photo sera définitivement supprimée du carnet. Le récit déjà
-          écrit n'est pas modifié.
+          écrit n’est pas modifié.
         </AlertDialogDescription>
       </AlertDialogHeader>
       <AlertDialogFooter>

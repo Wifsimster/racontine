@@ -271,14 +271,14 @@ export function ReadFailed({
       <div className="flex flex-col items-center gap-2 text-center">
         <p className="surtitre text-muted-foreground">{when}</p>
         <h1 className="font-serif text-title font-semibold">
-          La page n'a pas pu être lue
+          La page n’a pas pu être lue
         </h1>
         <p className="max-w-[34ch] text-ui text-muted-foreground">
           {reason ??
-            "La lecture s'est arrêtée avant la fin, sans raison enregistrée."}
+            "La lecture s’est arrêtée avant la fin, sans raison enregistrée."}
         </p>
         <p className="max-w-[34ch] text-meta text-muted-foreground">
-          Rien n'a été publié et rien n'a été perdu : vos pages sont
+          Rien n’a été publié et rien n’a été perdu : vos pages sont
           conservées telles quelles.
         </p>
       </div>
@@ -289,8 +289,8 @@ export function ReadFailed({
             Toute la page dans le cadre, à plat, sans doigt sur le bord.
           </Tip>
           <Tip Icon={Sparkles}>
-            Une lumière du côté de la fenêtre plutôt qu'au-dessus : moins d'ombre
-            sur l'écriture.
+            Une lumière du côté de la fenêtre plutôt qu’au-dessus : moins d’ombre
+            sur l’écriture.
           </Tip>
         </ul>
       )}
@@ -350,10 +350,10 @@ export function LoadFailed({
       </span>
       <div className="flex flex-col items-center gap-2 text-center">
         <h1 className="font-serif text-title font-semibold">
-          Cette journée ne s'ouvre pas
+          Cette journée ne s’ouvre pas
         </h1>
         <p className="max-w-[34ch] text-ui text-muted-foreground">
-          Elle n'est pas perdue : c'est la connexion au carnet qui a échoué.
+          Elle n’est pas perdue : c’est la connexion au carnet qui a échoué.
           Réessayez — si cela persiste, le serveur redémarre peut-être.
         </p>
       </div>
@@ -428,7 +428,7 @@ export function DeleteDialog({
         <AlertDialogHeader>
           <AlertDialogTitle>Supprimer cette entrée ?</AlertDialogTitle>
           <AlertDialogDescription>
-            Cette action est définitive. L'entrée et ses photos seront
+            Cette action est définitive. L’entrée et ses photos seront
             supprimées.
           </AlertDialogDescription>
         </AlertDialogHeader>
