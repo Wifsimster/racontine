@@ -2,6 +2,13 @@
 
 Toutes les versions notables de Racontine. Format issu des messages de commit conventionnels (`feat`, `fix`, …).
 
+## [1.51.2](https://github.com/Wifsimster/racontine/compare/v1.51.1...v1.51.2) (2026-11-09)
+
+
+### Bug Fixes
+
+* **design:** remet l'interface d'accord avec la DA « carnet de souvenirs » ([#149](https://github.com/Wifsimster/racontine/issues/149)) ([ce036e0](https://github.com/Wifsimster/racontine/commit/ce036e03f4df2ccc2e9bd5d717d2d7494736c863)), closes [#f9f7f2](https://github.com/Wifsimster/racontine/issues/f9f7f2)
+
 ## [1.51.1](https://github.com/Wifsimster/racontine/compare/v1.51.0...v1.51.1) (2026-11-04)
 
 
