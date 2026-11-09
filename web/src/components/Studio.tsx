@@ -26,7 +26,7 @@ export function StudioCard({ className }: { className?: string }) {
       aria-labelledby="editeur"
     >
       <h2 id="editeur" className="surtitre text-muted-foreground">
-        L'éditeur
+        L’éditeur
       </h2>
       <p className="mt-3 text-ui">
         <a

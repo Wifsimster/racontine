@@ -183,7 +183,7 @@ export function JournalEmpty({
           <Button asChild size="lg">
             <Link to="/abonnement">
               <CreditCard aria-hidden="true" />
-              Reprendre l'abonnement
+              Reprendre l’abonnement
             </Link>
           </Button>
         )}

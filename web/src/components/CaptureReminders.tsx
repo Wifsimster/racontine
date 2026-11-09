@@ -102,7 +102,7 @@ function ReminderRow({
     } catch (e) {
       setValue(before);
       setTime(before.time);
-      setError(e instanceof Error ? e.message : "Échec de l'enregistrement");
+      setError(e instanceof Error ? e.message : "Échec de l’enregistrement");
     } finally {
       setBusy(false);
     }
@@ -165,8 +165,8 @@ function ReminderRow({
             className="max-w-[52ch] text-meta text-pretty text-muted-foreground"
           >
             {value.enabled
-              ? `À ${value.time.replace(":", " h ")}, si aucune journée de ${reminder.childName} n'est arrivée ce jour-là.`
-              : `Une notification le soir si la journée de ${reminder.childName} n'a pas encore été envoyée.`}
+              ? `À ${value.time.replace(":", " h ")}, si aucune journée de ${reminder.childName} n’est arrivée ce jour-là.`
+              : `Une notification le soir si la journée de ${reminder.childName} n’a pas encore été envoyée.`}
           </p>
         </div>
         <Toggle
@@ -277,7 +277,7 @@ export default function CaptureReminders() {
       <h2 className="font-serif text-title font-semibold">Rappel du carnet</h2>
       <p className="max-w-[52ch] text-meta text-pretty text-muted-foreground">
         Les proches attendent les journées. Un mot le soir, seulement si rien
-        n'est arrivé pour aujourd'hui ; jamais deux fois le même jour.
+        n’est arrivé pour aujourd’hui ; jamais deux fois le même jour.
       </p>
       <ul className="flex flex-col divide-y">
         {reminders.map((r) => (

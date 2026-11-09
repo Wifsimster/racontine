@@ -23,7 +23,7 @@ export default function Account() {
   }, []);
 
   return (
-    <PageShell className="lg:max-w-[64rem] lg:px-10 lg:pt-8 lg:pb-12">
+    <PageShell className="lg:max-w-[48rem] lg:px-10 lg:pt-8 lg:pb-12">
       <PageHeader
         title="Mon compte"
         tone="anecdote"
@@ -48,7 +48,7 @@ export default function Account() {
         )}
       </div>
 
-      <div className="flex max-w-3xl flex-col divide-y border-t">
+      <div className="flex flex-col divide-y border-t">
         <CaptureReminders />
         <LlmKey />
         <McpTokens />

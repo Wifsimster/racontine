@@ -214,7 +214,7 @@ export function MonthJump({
 
               {months.length === 0 && (
                 <p className="px-2 py-3 text-meta text-muted-foreground">
-                  Le carnet n'a pas encore de mois à parcourir.
+                  Le carnet n’a pas encore de mois à parcourir.
                 </p>
               )}
             </div>

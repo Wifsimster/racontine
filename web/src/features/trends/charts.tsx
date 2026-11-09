@@ -85,7 +85,7 @@ export function NapChart({ weeks }: { weeks: NapWeek[] }) {
                   y={yOf(t)}
                   dy="0.32em"
                   textAnchor="end"
-                  className="fill-muted-foreground text-[0.75rem]"
+                  className="fill-muted-foreground text-xs"
                   data-tabular
                 >
                   {t / 60}&nbsp;h
@@ -121,7 +121,7 @@ export function NapChart({ weeks }: { weeks: NapWeek[] }) {
                       x={PAD_LEFT + i * slot + slot / 2}
                       y={HEIGHT - 8}
                       textAnchor="middle"
-                      className="fill-muted-foreground text-[0.75rem]"
+                      className="fill-muted-foreground text-xs"
                     >
                       {dayMonthShort(w.weekStart)}
                     </text>

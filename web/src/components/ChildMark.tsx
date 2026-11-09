@@ -2,8 +2,8 @@ import { initialOf } from "@/lib/child";
 import { cn } from "@/lib/utils";
 
 const SIZE = {
-  sm: "size-5 rounded-sm text-overline tracking-normal",
-  md: "size-11 rounded-md text-title tracking-normal",
+  sm: "size-5 rounded-sm text-xs font-bold",
+  md: "size-11 rounded-md text-title",
 } as const;
 
 export function ChildMark({

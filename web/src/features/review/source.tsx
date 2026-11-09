@@ -100,7 +100,7 @@ export function SourcePage({
           loading={rotating}
           onClick={onRotate}
           title="Tourner la page (la photo est enregistrée dans ce sens)"
-          aria-label={`Tourner la page ${index + 1} d'un quart de tour`}
+          aria-label={`Tourner la page ${index + 1} d’un quart de tour`}
         >
           {rotating ? null : <RotateCw aria-hidden="true" />}
         </Button>

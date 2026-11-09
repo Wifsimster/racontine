@@ -150,7 +150,7 @@ export default function Settings() {
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Échec de l'enregistrement");
+      setError(e instanceof Error ? e.message : "Échec de l’enregistrement");
     } finally {
       setSaving(false);
     }
@@ -160,13 +160,13 @@ export default function Settings() {
     <PageHeader
       title="Réglages"
         tone="nap"
-      lede="Ils s'appliquent tout de suite à toute l'instance."
+      lede="Ils s’appliquent tout de suite à toute l’instance."
     />
   );
 
   if (loading)
     return (
-      <PageShell className="lg:max-w-[64rem] lg:px-10 lg:pt-8">
+      <PageShell className="lg:max-w-[48rem] lg:px-10 lg:pt-8">
         {header}
         <PageSkeleton label="Racontine ouvre les réglages" rows={3} />
       </PageShell>
@@ -174,15 +174,15 @@ export default function Settings() {
 
   if (forbidden)
     return (
-      <PageShell className="lg:max-w-[64rem] lg:px-10 lg:pt-8">
+      <PageShell className="lg:max-w-[48rem] lg:px-10 lg:pt-8">
         {header}
         <PageState
           icon={ShieldAlert}
           tone="locked"
           title="Réglages réservés au propriétaire"
         >
-          Seul le propriétaire de l'instance — le premier compte créé — peut
-          modifier les réglages de l'application. Vos propres réglages, eux, sont
+          Seul le propriétaire de l’instance — le premier compte créé — peut
+          modifier les réglages de l’application. Vos propres réglages, eux, sont
           dans « Mon compte ».
         </PageState>
       </PageShell>
@@ -190,7 +190,7 @@ export default function Settings() {
 
   if (!settings || !meta)
     return (
-      <PageShell className="lg:max-w-[64rem] lg:px-10 lg:pt-8">
+      <PageShell className="lg:max-w-[48rem] lg:px-10 lg:pt-8">
         {header}
         <PageState
           icon={CloudOff}
@@ -201,7 +201,7 @@ export default function Settings() {
           }
         >
           {error ??
-            "La connexion au serveur a échoué. Rien n'a été modifié : réessayez dans un instant."}
+            "La connexion au serveur a échoué. Rien n’a été modifié : réessayez dans un instant."}
         </PageState>
       </PageShell>
     );
@@ -211,14 +211,14 @@ export default function Settings() {
   );
 
   return (
-    <PageShell className="pb-8 lg:max-w-[64rem] lg:px-10 lg:pt-8">
+    <PageShell className="pb-8 lg:max-w-[48rem] lg:px-10 lg:pt-8">
       {header}
 
-      <div className="flex max-w-3xl flex-col divide-y">
-        <Section title="L'instance">
+      <div className="flex flex-col divide-y">
+        <Section title="L’instance">
           <Row
-            title="Nom de l'instance"
-            hint="Affiché dans l'en-tête et sur l'écran de connexion."
+            title="Nom de l’instance"
+            hint="Affiché dans l’en-tête et sur l’écran de connexion."
             htmlFor="appName"
           >
             <Input
@@ -245,7 +245,7 @@ export default function Settings() {
           </Row>
           <Row
             title="Validité des invitations"
-            hint="Durée avant expiration d'un lien d'invitation."
+            hint="Durée avant expiration d’un lien d’invitation."
             htmlFor="invitationTtlDays"
           >
             <div className="flex items-center gap-2">
@@ -274,7 +274,7 @@ export default function Settings() {
             hint={
               meta.mailConfigured
                 ? "Un e-mail aux abonnés à chaque journée publiée."
-                : "Serveur e-mail absent : seules les notifications dans l'app partent."
+                : "Serveur e-mail absent : seules les notifications dans l’app partent."
             }
             htmlFor="emailNotificationsEnabled"
           >
@@ -289,7 +289,7 @@ export default function Settings() {
 
         <Section title="Lecture des carnets">
           <Row
-            title="Modèle d'extraction"
+            title="Modèle d’extraction"
             hint="Modèle Claude qui lit les carnets, avec la clé de chaque contributeur."
             htmlFor="vlmModel"
           >
@@ -310,7 +310,7 @@ export default function Settings() {
 
         <Section
           title="Infrastructure"
-          intro="Lu depuis les variables d'environnement du serveur, non modifiable ici."
+          intro="Lu depuis les variables d’environnement du serveur, non modifiable ici."
         >
           <dl className="flex flex-col divide-y">
             <StatusLine ok={meta.mailConfigured} label="Serveur e-mail (SMTP)" />

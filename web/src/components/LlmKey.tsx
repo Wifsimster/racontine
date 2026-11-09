@@ -53,7 +53,7 @@ export default function LlmKey() {
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Échec de l'enregistrement");
+      setError(e instanceof Error ? e.message : "Échec de l’enregistrement");
     } finally {
       setSaving(false);
     }
@@ -73,7 +73,7 @@ export default function LlmKey() {
   return (
     <section className="flex flex-col gap-2 py-6">
       <h2 className="font-serif text-title font-semibold">
-        Clé API d'extraction (Anthropic)
+        Clé API d’extraction (Anthropic)
       </h2>
 
       <div className="flex flex-col gap-4">
@@ -117,7 +117,7 @@ export default function LlmKey() {
           </div>
         ) : state ? (
           <p className="rounded-xl border border-dashed px-3 py-3 text-meta text-muted-foreground">
-            Aucune clé pour l'instant : l'import de carnets attend qu'une clé
+            Aucune clé pour l’instant : l’import de carnets attend qu’une clé
             soit enregistrée.
           </p>
         ) : (
@@ -168,8 +168,8 @@ export default function LlmKey() {
           <AlertDialogHeader>
             <AlertDialogTitle>Supprimer votre clé API ?</AlertDialogTitle>
             <AlertDialogDescription>
-              L'extraction automatique des carnets sera indisponible jusqu'à
-              l'enregistrement d'une nouvelle clé.
+              L’extraction automatique des carnets sera indisponible jusqu’à
+              l’enregistrement d’une nouvelle clé.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

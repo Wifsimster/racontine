@@ -347,10 +347,6 @@
   --font-serif: "Fraunces", Georgia, serif;
   --font-hand: "Caveat", "Segoe Print", cursive;
 
-  --text-overline: 0.6875rem;
-  --text-overline--line-height: 1rem;
-  --text-overline--letter-spacing: 0.14em;
-  --text-overline--font-weight: 700;
 
   --text-meta: 0.875rem;
   --text-meta--line-height: 1.25rem;

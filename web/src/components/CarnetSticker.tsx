@@ -7,7 +7,7 @@ export function CarnetSticker({ className }: { className?: string }) {
       className={cn("relative inline-block h-28 w-32", className)}
     >
       <span className="absolute inset-y-1 left-3 w-24 -rotate-6 rounded-r-xl rounded-l-md bg-primary shadow-card">
-        <span className="absolute inset-y-0 left-2 w-1 bg-black/15" />
+        <span className="absolute inset-y-0 left-2 w-1 bg-foreground opacity-15" />
         <span className="font-hand absolute top-4 left-4 w-10 rounded-md bg-polaroid py-0.5 text-center text-base leading-5 text-primary">
           ♡
         </span>

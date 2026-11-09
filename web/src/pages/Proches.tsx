@@ -27,7 +27,7 @@ import {
 } from "@/components/PageState";
 import { MemberRow } from "@/components/MemberRow";
 
-const SHELL = "lg:max-w-[64rem] lg:px-10 lg:pt-8 lg:pb-12";
+const SHELL = "lg:max-w-[48rem] lg:px-10 lg:pt-8 lg:pb-12";
 
 type ChildState = {
   status: SubscriptionStatus;
@@ -340,12 +340,12 @@ export default function Proches() {
         <>
           <PushCard />
           <PageState icon={Users} title="Aucun carnet à suivre">
-            Dès qu'un carnet est partagé avec vous, il apparaît ici et vous
-            pouvez choisir d'en être prévenu·e.
+            Dès qu’un carnet est partagé avec vous, il apparaît ici et vous
+            pouvez choisir d’en être prévenu·e.
           </PageState>
         </>
       ) : (
-        <div className="flex max-w-3xl flex-col divide-y">
+        <div className="flex flex-col divide-y">
           <section className="flex flex-col gap-2 py-6 first:pt-0">
             <h2 className="font-serif text-title font-semibold">
               Les carnets ({children.length})

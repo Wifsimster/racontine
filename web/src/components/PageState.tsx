@@ -31,7 +31,7 @@ export function PageHeader({
     <header className="flex flex-col gap-2">
       <TitreCarnet title={title} accent={accent} tone={tone} />
       {lede && (
-        <p className="max-w-[46ch] text-ui leading-6 text-pretty text-muted-foreground">
+        <p className="max-w-[46ch] text-ui text-pretty text-muted-foreground">
           {lede}
         </p>
       )}

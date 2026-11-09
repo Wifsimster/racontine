@@ -67,7 +67,7 @@ colors:
     muted: "rgb(42 45 58)"
     accent: "rgb(44 48 62)"
     accent-foreground: "rgb(235 232 223)"
-    border: "rgb(255 255 255 / 0.16)"
+    border: "rgb(255 255 255 / 0.2)"
     input: "rgb(255 255 255 / 0.2)"
     ring: "rgb(238 125 141)"
     destructive: "rgb(244 124 110)"
@@ -101,7 +101,7 @@ typography:
   serif: "\"Fraunces\", Georgia, serif (600, 700 italic)"
   hand: "\"Caveat\", \"Segoe Print\", cursive (600)"
   scale:
-    overline: { size: 0.6875rem, line-height: 1rem, tracking: 0.14em, weight: 700, usage: "ChildMark et libellés du stepper seulement" }
+    micro: { size: 0.6875rem, line-height: 1rem, usage: "text-xs : initiale de ChildMark, compteur du calendrier, graduations des graphiques — jamais une phrase" }
     meta: { size: 0.875rem, line-height: 1.25rem }
     ui: { size: 0.9375rem, line-height: 1.25rem }
     body: { size: 1.0625rem, line-height: 1.75rem }
@@ -122,7 +122,7 @@ spacing:
   scale: tailwind-default (4px)
   rule-pitch: 1.75rem
   header-h: 3.5rem
-  shell-max: "32rem → 36rem (48rem) → 39rem (64rem)"
+  shell-max: "32rem → 36rem (48rem) → 42rem (64rem) → 46rem (80rem)"
   measure: 34rem
   action-max: 32rem
   control-h: 44px (h-11)
@@ -167,9 +167,9 @@ côté de chaque valeur.
 
 ## Colors
 
-Mode sombre : `@variant dark` dans `:root` (l. 259–329). Le variant `dark:`
+Mode sombre : `@variant dark` dans `:root`. Le variant `dark:`
 répond à `.dark` / `.light` posé à la main, sinon à `prefers-color-scheme`
-(`@custom-variant dark`, l. 11–20).
+(`@custom-variant dark`, en tête d'`index.css`).
 
 ### Surfaces, encres, action
 
@@ -187,7 +187,7 @@ répond à `.dark` / `.light` posé à la main, sinon à `prefers-color-scheme`
 | `--secondary` / `--muted` | `rgb(235 236 242)` | `rgb(42 45 58)` | Neutres d'interface |
 | `--secondary-foreground` | `rgb(46 51 79)` | `rgb(235 232 223)` | |
 | `--accent` | `rgb(240 237 228)` | `rgb(44 48 62)` | Survol : le papier qui s'assombrit |
-| `--border` | `rgb(219 221 232)` | `rgb(255 255 255 / 0.16)` | Le filet |
+| `--border` | `rgb(219 221 232)` | `rgb(255 255 255 / 0.2)` | Le filet |
 | `--input` | `rgb(206 208 220)` | `rgb(255 255 255 / 0.2)` | Bord de champ |
 | `--ring` | `rgb(184 40 77)` | `rgb(238 125 141)` | Focus |
 
@@ -223,6 +223,23 @@ répond à `.dark` / `.light` posé à la main, sinon à `prefers-color-scheme`
 | `--skeleton` | `rgb(232 233 240)` | `rgb(44 48 62)` |
 | `--surface-bar` (barres collantes) | `rgb(249 247 242 / 0.88)` | `rgb(16 18 29 / 0.9)` |
 
+### Objets du carnet
+
+Les teintes des objets collés. Elles ne portent aucun sens d'état : ce sont
+des matières.
+
+| Token | Rôle | Clair | Sombre |
+| --- | --- | --- | --- |
+| `--paper-glow` | Lueur rosée en haut du fond | `rgb(251 241 237)` | `rgb(36 26 40)` |
+| `--postit` / `--postit-ink` | Post-it du temps fort, `ChildMark`, tuiles d'icône | `rgb(255 229 138)` / `rgb(74 52 0)` | `rgb(78 64 24)` / `rgb(250 230 170)` |
+| `--tape`, `--tape-blue`, `--tape-green` | Rubans adhésifs (`.tape`) | `rgb(184 40 77 / 0.2)`, `rgb(63 78 151 / 0.18)`, `rgb(14 101 63 / 0.18)` | `rgb(238 125 141 / 0.22)`, `rgb(166 179 241 / 0.2)`, `rgb(129 206 162 / 0.2)` |
+| `--spark` | Étincelle du titre, étoile du temps fort | `rgb(232 178 30)` | `rgb(240 196 80)` |
+| `--polaroid` | Cadre des photos collées | `rgb(255 255 255)` | `rgb(44 47 62)` |
+| `--ink-hand` | Encre de l'écriture Caveat | `rgb(43 58 138)` | `rgb(176 190 250)` |
+
+Couleur de thème du navigateur et du manifeste PWA : `#f9f7f2`, la valeur
+exacte de `--background` en clair (`index.html`, `vite.config.ts`).
+
 ## Typography
 
 Polices auto-hébergées dans `web/public/fonts/` (hors ligne, cohérentes avec
@@ -245,7 +262,16 @@ la main : le mot à vérifier en relecture, la légende des polaroïds.
 | Titre | `text-title` | 22 / 28 | `-0.012em`, Fraunces 600 |
 | Bandeau | `text-display` | 30 / 36 | `-0.018em`, Fraunces 600 |
 
-Les crans Tailwind historiques sont réécrits pour retomber dans ces six :
+Hors des six crans, et seulement là :
+
+- `text-xs` (11/16) pour ce qui n'est pas une phrase : l'initiale de
+  `ChildMark`, le compteur du calendrier, les graduations des graphiques ;
+- le nom du produit sur les portes (`DoorTitle`, 36/40 puis 52 px dès
+  `64rem`), le titre de feuille des portes (24/32) et le prénom en couverture
+  du livre (44/52) : ce sont des couvertures, pas des pages ;
+- le mot à vérifier en relecture (Caveat 28 px sur une ligne du cahier).
+
+Les crans Tailwind historiques sont réécrits pour retomber dans l'échelle :
 `text-xs` → 11/16, `sm` → 13/20, `base` → 15/20, `lg` → 17/28, `xl` et `2xl`
 → 22/28, `3xl`–`5xl` → 30/36. Interlignes absolus : `leading-tight` 20 px,
 `snug` 24, `normal` et `relaxed` 28, `loose` 36. `h1–h4` en `text-wrap:
@@ -258,10 +284,17 @@ balance`, `p` en `pretty`, `time` et `[data-tabular]` en chiffres tabulaires.
 | `--rule-pitch` | `1.75rem` | Une ligne du cahier = l'interligne du récit |
 | `--header-h` | `3.5rem` | Chrome haut |
 | `read-width` | `40rem` | Colonne du journal et de la journée lue |
-| `--shell-max` | `32rem`, `36rem` dès `48rem`, `39rem` dès `64rem` | Colonne de lecture (`shell-width`) |
+| `--shell-max` | `32rem`, `36rem` dès `48rem`, `42rem` dès `64rem`, `46rem` dès `80rem` | Colonne de lecture (`shell-width`) |
+| `--page-half` | `13rem` (`.page-half`), `32rem` dès `64rem` (`.page-half-wide`) | Demi-largeur de la page pour le décor des portes |
 | `--measure` | `34rem` | Mesure du récit (`.measure`) |
 | `--action-max` | `32rem` | Largeur max d'une barre d'action |
 | `--safe-t/r/b/l` | `env(safe-area-inset-*, 0px)` | Zones sûres PWA |
+
+Dès `64rem`, toutes les colonnes sont centrées sous un en-tête de `64rem` :
+journal et journée lue en `read-width` (`40rem`), toutes les autres pages en
+`48rem` (Tendances, Livre, Proches, Partager, Compte, Administration,
+Réglages). Seule la page Abonnement garde `64rem`, pour ses deux colonnes.
+Un contenu ne se cale jamais à gauche dans une coque plus large que lui.
 
 Espacement Tailwind par défaut (4 px). Cible tactile 44 px : toutes les
 tailles de Button sont `h-11` (sauf `lg` `h-12`).
@@ -271,7 +304,7 @@ tailles de Button sont `h-11` (sauf `lg` `h-12`).
 | Token | Clair | Sombre |
 | --- | --- | --- |
 | `--elev-1` → `shadow-card` | `0 1px 2px rgb(36 40 70 / 0.05), 0 14px 30px -18px rgb(36 40 70 / 0.3)` | `inset 0 1px 0 0 rgb(255 255 255 / 0.05), 0 14px 30px -18px rgb(0 0 0 / 0.8)` |
-| `--elev-2` → `shadow-lift` | `0 2px 6px -2px rgb(36 40 70 / 0.12), 0 22px 48px -24px rgb(36 40 70 / 0.28)` | `inset 0 1px 0 0 rgb(255 255 255 / 0.08), 0 24px 48px -24px rgb(0 0 0 / 0.85)` |
+| `--elev-2` → `shadow-lift` | `0 2px 6px -2px rgb(36 40 70 / 0.12), 0 22px 48px -20px rgb(36 40 70 / 0.38)` | `inset 0 1px 0 0 rgb(255 255 255 / 0.08), 0 24px 48px -24px rgb(0 0 0 / 0.85)` |
 
 DA « carnet de souvenirs » (2026-11-04) : toute surface posée porte
 `shadow-card` en plus de son filet ; `shadow-lift` reste réservé aux couches
@@ -280,23 +313,23 @@ haut (`--paper-glow` → `--background` sur 32 rem).
 
 ## Shapes
 
-`--radius: 1rem`, pas de 4 px (`@theme inline` l. 351–358) :
+`--radius: 1rem`, pas de 4 px (`@theme inline`) :
 
 | Classe | Valeur | Commentaire du code |
 | --- | --- | --- |
-| `rounded-sm` | 4 px | Puce, pastille |
-| `rounded-md` | 8 px | Tuile d'icône |
-| `rounded-lg` | 12 px | Encart |
-| `rounded-xl` | 16 px | Bouton, champ, image, carte compacte |
-| `rounded-2xl` | 20 px | La feuille (Card) |
-| `rounded-3xl` | 28 px | Vignette d'état vide |
+| `rounded-sm` | 8 px | Puce, pastille |
+| `rounded-md` | 12 px | Tuile d'icône |
+| `rounded-lg` | 16 px | Encart |
+| `rounded-xl` | 20 px | Bouton, champ, image, carte compacte |
+| `rounded-2xl` | 24 px | La feuille (Card) |
+| `rounded-3xl` | 32 px | Vignette d'état vide |
 
 Composants : Card et carte de journée `rounded-2xl`, Button `rounded-full`
 (pilule), Input `rounded-xl`, tuile de moment `rounded-xl` inclinée de -6°.
 
 ## Motion
 
-`@theme` (l. 466–479) : `--ease-carnet` `cubic-bezier(0.2, 0.7, 0.3, 1)`,
+`@theme` : `--ease-carnet` `cubic-bezier(0.2, 0.7, 0.3, 1)`,
 `--ease-page` `cubic-bezier(0.32, 0.72, 0, 1)`, durée par défaut 180 ms.
 Budget : pression 120 ms (`scale(.97)`), survol 140 ms, pastille 160 ms,
 défaut 180 ms, page / panneau 220 ms (`ease-page`). Rien hors 120–260 ms sauf
@@ -314,11 +347,11 @@ shadcn `new-york`, `radix-ui`, `lucide-react` (45 imports). Installés :
 | `Button` | pilule `rounded-full` ; `default` : fond groseille + ombre teintée groseille ; `destructive` : fond plein + `shadow-card`, survol `*-hover` (on fonce, jamais de transparence) ; `outline` sur `bg-card` ; `secondary` bordé ; `link` souligné `decoration-primary/40` ; tailles toutes à 44 px | `ui/button.tsx` |
 | `Card` | `rounded-2xl border bg-card py-5 shadow-card` | `ui/card.tsx` |
 | `Input` | `rounded-xl border-input bg-card text-body` | `ui/input.tsx` |
-| `SegmentedControl` | pilule sur `bg-card` (`aria-pressed`), segment actif plein encre (`bg-foreground text-background`) : Lire/Parcourir, La page/Mot à mot | `components/SegmentedControl.tsx` |
+| `SegmentedControl` | pilule sur `bg-card` (`aria-pressed`), segment actif plein encre (`bg-foreground text-background`) : Lire/Parcourir, La page/Mot à mot, période des Tendances ; toujours à la largeur de son contenu, jamais étiré | `components/SegmentedControl.tsx` |
 | `TitreCarnet` / `PageHeader` | titre de page à mot accentué, voir Typography | `components/TitreCarnet.tsx`, `components/PageState.tsx` |
 | `Highlight` | le temps fort en post-it jaune incliné, étoile `--spark` | `features/journal/EntryCard.tsx` |
 | `NewSticker` | gommette « Nouveau » groseille sur une journée non lue | `features/journal/EntryCard.tsx` |
-| `Avatar` | initiales sur pastille de feutre (teinte stable par nom), posée par défaut dans `MemberRow` | `components/MemberRow.tsx` |
+| `Avatar` | initiales sur pastille de feutre (`nap`, `activity`, `meal`, `anecdote`, teinte stable par nom ; jamais groseille, réservée à l'action, ni `health`, trop proche de l'erreur), posée par défaut dans `MemberRow` et en tête de chaque proche dans Administration | `components/MemberRow.tsx` |
 | `MonthCalendar` | en mode Parcourir, un calendrier par mois sous l'en-tête collant : case groseille douce par journée (fond `warning-bg` si à relire), pastilles `ITEM_DOT` des moments, étoile si temps fort, anneau groseille si non lue ; chaque case est un lien vers la journée | `features/journal/MonthCalendar.tsx` |
 | `CarnetSticker` | le petit carnet dessiné (portes de connexion, capture vide) | `components/CarnetSticker.tsx` |
 | `MemberRow` | ligne de membre partagée (Proches, Partager, Administration), avatar à initiales, rôle verrouillé en texte | `components/MemberRow.tsx` |
@@ -340,7 +373,9 @@ Focus : `:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px
 - Un titre de page = `PageHeader` / `TitreCarnet`, un seul mot accentué.
 - Un badge seulement s'il appelle une action (À relire, Échec, N à vérifier).
 - Les jetons `*-soft`, `*-bg`, `--surface-bar` pour un fond teinté ou translucide.
-- Rester dans les six crans ; laisser les crans porter leur interligne.
+- Rester dans les six crans ; laisser les crans porter leur interligne (pas de `leading-*` posé sur un cran).
+- L'apostrophe typographique (’) dans tout texte affiché.
+- Les écrans hors coque (connexion, accueil, invitation, mot de passe) portent leur propre `<main>`.
 
 **À éviter**
 - Les modificateurs d'opacité sur un fond (`bg-primary/10`, `bg-background/95`) : ils compilent en `color-mix()` et cassent la mesure de contraste.
@@ -376,3 +411,19 @@ Aucun écart ouvert. Corrigés le 2026-10-10 :
    `text-[21px]` → `text-title` (22 px, +1 px), `rounded-[6px]` →
    `rounded-sm` (8 px). `tracking-normal` annule l'espacement du surtitre,
    qui décentrerait l'initiale.
+
+Corrigés le 2026-11-09 (revue de la DA « carnet de souvenirs ») :
+
+1. **Avatar groseille** — `bg-primary` sortait de la palette des avatars :
+   la groseille reste réservée à l'action.
+2. **Colonnes de bureau** — les pages de réglages se calaient à gauche dans
+   une coque de `64rem` ; toutes les colonnes sont désormais centrées.
+3. **Hors échelle** — `text-ui leading-6`, graduations en 12 px, compteur du
+   calendrier en 10 px `leading-none` ramenés dans l'échelle ; le cran
+   `text-overline` (capitales espacées) est supprimé.
+4. **Fond à opacité** — `bg-black/15` du `CarnetSticker` remplacé.
+5. **Portes sans `<main>`** — seules violations axe-core du produit.
+6. **Apostrophes droites** — 148 occurrences normalisées dans le texte de
+   l'interface web.
+7. **Ce document** — filet sombre (0,2), `--elev-2`, `--shell-max`, table
+   des rayons, jetons des objets du carnet : remis d'accord avec le code.

@@ -48,7 +48,6 @@ export function MemberRow({
 }
 
 const AVATAR_TONES = [
-  "bg-primary",
   "bg-nap",
   "bg-activity",
   "bg-meal",

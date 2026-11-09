@@ -295,7 +295,7 @@ export default function Timeline() {
       setMoreError(
         e instanceof Error
           ? e.message
-          : "Les journées précédentes n'ont pas pu être chargées.",
+          : "Les journées précédentes n’ont pas pu être chargées.",
       );
     } finally {
       setMore(false);

@@ -129,7 +129,7 @@ export function MonthCalendar({
                 {list.length > 1 && (
                   <span
                     aria-hidden="true"
-                    className="absolute -bottom-1 -left-1 grid size-4 place-items-center rounded-full bg-foreground text-[0.625rem] leading-none text-background"
+                    className="absolute -bottom-1 -left-1 grid size-4 place-items-center rounded-full bg-foreground text-xs font-bold text-background"
                   >
                     {list.length}
                   </span>
